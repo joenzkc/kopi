@@ -30,6 +30,6 @@ git pull --ff-only && docker compose up -d --build
 or run `./deploy.sh` from your own machine to do the same over SSH. It needs `DEPLOY_HOST` and `DEPLOY_DIR`, set as environment variables or in a git-ignored `.env.deploy` file:
 ```bash
 DEPLOY_HOST=user@my-server
-DEPLOY_DIR=~/apps/actual-companion
+DEPLOY_DIR=apps/actual-companion  # relative to your home directory on the server
 ```
 `docker` must be on the `PATH` of non-interactive SSH sessions on the server.
