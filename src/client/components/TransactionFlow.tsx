@@ -16,6 +16,7 @@ import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
+import { Alert } from '@client/components/ui/alert';
 
 export type FlowKind = 'expense' | 'income' | 'transfer';
 export type FlowRequest = { mode: 'add'; kind?: FlowKind } | { mode: 'review'; event: EmailEventRecord };
@@ -927,9 +928,9 @@ export function TransactionFlow({
             </div>
             <div className="flex flex-col gap-2 border-t px-4 pt-3 safe-pb" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-canvas)' }}>
               {error && (
-                <p role="alert" className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>
+                <Alert as="p" variant="destructive">
                   {error}
-                </p>
+                </Alert>
               )}
               <div className="flex gap-2">
                 {review && (

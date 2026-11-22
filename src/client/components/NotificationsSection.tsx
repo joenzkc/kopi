@@ -8,6 +8,8 @@ import type {
 } from '@shared/types';
 import { apiFetch } from '../lib/api';
 import { Button } from '@client/components/ui/button';
+import { Badge } from '@client/components/ui/badge';
+import { Card } from '@client/components/ui/card';
 
 interface NotificationsSectionProps {
   onToast: (msg: string, tone?: 'success' | 'error') => void;
@@ -325,7 +327,7 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
         : { label: 'Off', bg: 'var(--bg-subtle)', fg: 'var(--text-muted)' };
 
   return (
-    <section className="card space-y-4 rounded-3xl p-5">
+    <Card as="section" className="space-y-4 rounded-3xl p-5">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4" style={{ color: 'var(--accent-text)' }} />
@@ -333,12 +335,12 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
             Notifications
           </h2>
         </div>
-        <span
-          className="rounded-full px-2.5 py-1 text-[11px] font-bold"
+        <Badge
+          className="px-2.5 py-1 text-[11px] font-bold"
           style={{ backgroundColor: statusBadge.bg, color: statusBadge.fg }}
         >
           {statusBadge.label}
-        </span>
+        </Badge>
       </div>
 
       {/* Browser / Device Push Controls */}
@@ -507,12 +509,12 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
                     <div className="flex items-center gap-1.5 font-medium" style={{ color: 'var(--text-primary)' }}>
                       <span className="truncate">{sub.device_label}</span>
                       {isCurrent && (
-                        <span
-                          className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                        <Badge
+                          className="shrink-0 px-1.5 py-0.5 text-[10px] font-bold"
                           style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text)' }}
                         >
                           This device
-                        </span>
+                        </Badge>
                       )}
                     </div>
                     <div className="truncate" style={{ color: sub.last_error ? 'var(--negative)' : 'var(--text-muted)' }}>
@@ -538,6 +540,6 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
           </div>
         </div>
       )}
-    </section>
+    </Card>
   );
 }

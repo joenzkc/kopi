@@ -11,6 +11,9 @@ import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { Textarea } from '@client/components/ui/textarea';
+import { Badge } from '@client/components/ui/badge';
+import { Card } from '@client/components/ui/card';
+import { Skeleton } from '@client/components/ui/skeleton';
 
 interface ActivityPageProps {
   accounts: ActualAccount[];
@@ -285,10 +288,12 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
           const acct = accountName(p?.accountId);
           const busy = busyId === ev.id;
           return (
-            <article
+            <Card
+              as="article"
+              variant="outline"
               key={ev.id}
-              className="flex flex-col gap-3.5 rounded-[26px] border p-4"
-              style={{ backgroundColor: 'var(--bg-surface)', borderColor: failed ? 'var(--negative)' : 'var(--border-subtle)' }}
+              className="flex flex-col gap-3.5 rounded-[26px] p-4"
+              style={failed ? { borderColor: 'var(--negative)' } : undefined}
             >
               <div className="flex items-center justify-between gap-2 text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
                 <span className="flex min-w-0 items-center gap-1.5">
@@ -298,14 +303,14 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                   </span>
                 </span>
                 {failed ? (
-                  <span className="shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }}>
+                  <Badge className="shrink-0 px-2.5 py-0.5 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }}>
                     Couldn't parse
-                  </span>
+                  </Badge>
                 ) : (
                   p && (
-                    <span className="shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--positive)', color: 'var(--bg-canvas)' }}>
+                    <Badge className="shrink-0 px-2.5 py-0.5 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--positive)', color: 'var(--bg-canvas)' }}>
                       {p.matchedRuleName ? 'Rule match' : `${Math.round(p.confidence * 100)}% match`}
-                    </span>
+                    </Badge>
                   )
                 )}
               </div>
@@ -319,10 +324,10 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                       : [cat || 'Uncategorized', acct || (p?.accountRef ? null : 'No account')].filter(Boolean).join(' · ')}
                   </span>
                   {p?.accountRef && !p.accountId && (
-                    <span className="mt-1 flex max-w-full items-center gap-1 self-start whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
+                    <Badge className="mt-1 flex max-w-full items-center gap-1 self-start whitespace-nowrap px-2 py-0.5 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
                       <CreditCard className="h-3 w-3" />
                       New: {p.accountRef.label}
-                    </span>
+                    </Badge>
                   )}
                   {p?.fxEstimated && p.amount !== null && (
                     <span className="mt-0.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
@@ -370,7 +375,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                             : 'Add to Actual'}
                 </Button>
               </div>
-            </article>
+            </Card>
           );
         })}
       </section>
@@ -384,7 +389,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
       {loading && txs.length === 0 && !txError && (
         <div className="space-y-2" aria-busy="true">
           {[0, 1, 2].map((k) => (
-            <div key={k} className="h-14 animate-pulse rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)' }} />
+            <Skeleton key={k} className="h-14 rounded-2xl" />
           ))}
         </div>
       )}

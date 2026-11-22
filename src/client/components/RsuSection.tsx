@@ -14,6 +14,9 @@ import {
 import type { EnrichedRsuGrant, EnrichedRsuTranche, RsuEffectiveStatus, RsuSummary } from '@shared/types';
 import { formatMoney, formatPct, formatPrice, formatSignedMoney } from '../lib/api';
 import { Button } from '@client/components/ui/button';
+import { Badge } from '@client/components/ui/badge';
+import { Card } from '@client/components/ui/card';
+import { Progress } from '@client/components/ui/progress';
 
 interface RsuSectionProps {
   grants: EnrichedRsuGrant[];
@@ -95,7 +98,7 @@ export function RsuSection({
   if (grants.length === 0) {
     if (mode === 'compact') return null;
     return (
-      <div className="card rounded-2xl p-8 text-center">
+      <Card className="rounded-2xl p-8 text-center">
         <Award className="mx-auto h-8 w-8" style={{ color: '#8B6BB1' }} />
         <p className="mt-3 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
           No RSU grants tracked yet
@@ -110,7 +113,7 @@ export function RsuSection({
         >
           Add your first RSU grant
         </Button>
-      </div>
+      </Card>
     );
   }
 
@@ -127,12 +130,12 @@ export function RsuSection({
               RSUs &amp; Vesting
             </h2>
             {summary.unvestedNetValueBase > 0 && (
-              <span
-                className="truncate whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums"
+              <Badge
+                className="truncate whitespace-nowrap px-2 py-0.5 text-[11px] font-medium tabular-nums"
                 style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
               >
                 {formatMoney(summary.unvestedNetValueBase, baseCurrency, true)} unvested
-              </span>
+              </Badge>
             )}
           </div>
           {onViewAllRsu && (
@@ -152,7 +155,7 @@ export function RsuSection({
       {/* Full mode: KPI Strip */}
       {mode === 'full' && (
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          <div className="card min-w-0 overflow-hidden rounded-2xl p-3.5">
+          <Card className="min-w-0 overflow-hidden rounded-2xl p-3.5">
             <div className="truncate text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
               Vested &amp; Held
             </div>
@@ -164,9 +167,9 @@ export function RsuSection({
                 ? `${formatMoney(summary.includedHeldValueBase, baseCurrency, true)} in total`
                 : 'Counted in total'}
             </div>
-          </div>
+          </Card>
 
-          <div className="card min-w-0 overflow-hidden rounded-2xl p-3.5">
+          <Card className="min-w-0 overflow-hidden rounded-2xl p-3.5">
             <div className="truncate text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
               Unvested Value
             </div>
@@ -178,9 +181,9 @@ export function RsuSection({
                 ? `Gross ${formatMoney(summary.unvestedGrossValueBase, baseCurrency, true)}`
                 : 'Est. at live price'}
             </div>
-          </div>
+          </Card>
 
-          <div className="card min-w-0 overflow-hidden rounded-2xl p-3.5">
+          <Card className="min-w-0 overflow-hidden rounded-2xl p-3.5">
             <div className="truncate text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
               Next 12 Months
             </div>
@@ -191,9 +194,9 @@ export function RsuSection({
               {summary.upcomingTranches.filter((t) => t.daysUntilVest <= 365).length} upcoming vest
               {summary.upcomingTranches.filter((t) => t.daysUntilVest <= 365).length === 1 ? '' : 's'}
             </div>
-          </div>
+          </Card>
 
-          <div className="card min-w-0 overflow-hidden rounded-2xl p-3.5">
+          <Card className="min-w-0 overflow-hidden rounded-2xl p-3.5">
             <div className="truncate text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
               Next Vest
             </div>
@@ -218,13 +221,13 @@ export function RsuSection({
                 </div>
               </>
             )}
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Full mode: Vesting by Year */}
       {mode === 'full' && summary.byYear.length > 0 && (
-        <section className="card rounded-2xl p-4 sm:p-5">
+        <Card as="section" className="rounded-2xl p-4 sm:p-5">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
               Vesting by Year ({baseCurrency})
@@ -270,12 +273,12 @@ export function RsuSection({
               );
             })}
           </div>
-        </section>
+        </Card>
       )}
 
       {/* Full mode: Upcoming Vesting Timeline */}
       {mode === 'full' && summary.upcomingTranches.length > 0 && (
-        <section className="card overflow-hidden rounded-2xl">
+        <Card as="section" className="overflow-hidden rounded-2xl">
           <div
             className="flex items-center justify-between gap-2 px-4 py-3"
             style={{ borderBottom: '1px solid var(--border-subtle)' }}
@@ -309,15 +312,15 @@ export function RsuSection({
                         <span className="font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
                           {formatShortDate(item.vestDate)}
                         </span>
-                        <span
-                          className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                        <Badge
+                          className="px-1.5 py-0.5 text-[10px] font-semibold"
                           style={{
                             backgroundColor: cd.highlight ? 'var(--accent-soft)' : 'var(--bg-subtle)',
                             color: cd.highlight ? 'var(--accent-text)' : 'var(--text-muted)',
                           }}
                         >
                           {cd.label}
-                        </span>
+                        </Badge>
                       </div>
                       <div className="mt-0.5 truncate text-[11px]" style={{ color: 'var(--text-muted)' }}>
                         {item.grantName} · {formatUnits(item.units)} sh
@@ -355,11 +358,11 @@ export function RsuSection({
               {showAllUpcoming ? 'Show fewer' : `Show all ${summary.upcomingTranches.length} upcoming vests`}
             </Button>
           )}
-        </section>
+        </Card>
       )}
 
       {/* RSU Grants Cards */}
-      <div className="card divider-list overflow-hidden rounded-2xl">
+      <Card className="divider-list overflow-hidden rounded-2xl">
         {grants.map((g) => {
           const isExpanded = Boolean(expandedIds[g.id]);
           const up24 = (g.change24hPct ?? 0) >= 0;
@@ -385,28 +388,28 @@ export function RsuSection({
                       <span className="truncate text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                         {g.symbol}
                       </span>
-                      <span
-                        className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                      <Badge
+                        className="px-1.5 py-0.5 text-[10px] font-semibold"
                         style={{ backgroundColor: 'rgba(139, 107, 177, 0.2)', color: '#C8B8FF' }}
                       >
                         RSU
-                      </span>
+                      </Badge>
                       {g.actual_account_id && (
-                        <span
-                          className="inline-flex max-w-full items-center gap-0.5 truncate rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                        <Badge
+                          className="inline-flex max-w-full items-center gap-0.5 truncate px-1.5 py-0.5 text-[10px] font-medium"
                           style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text)' }}
                         >
                           <Link2 className="h-2.5 w-2.5 shrink-0" />
                           <span className="truncate">{accountMap.get(g.actual_account_id) || 'Linked'}</span>
-                        </span>
+                        </Badge>
                       )}
                       {!g.include_in_total && (
-                        <span
-                          className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                        <Badge
+                          className="px-1.5 py-0.5 text-[10px] font-medium"
                           style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-muted)' }}
                         >
                           Schedule only
-                        </span>
+                        </Badge>
                       )}
                     </div>
                     <div className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -440,12 +443,13 @@ export function RsuSection({
                     </span>
                   )}
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'var(--bg-subtle)' }}>
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${Math.min(100, Math.max(0, g.vestedPct))}%`, backgroundColor: '#8B6BB1' }}
-                  />
-                </div>
+                <Progress
+                  aria-label={`Vesting progress for ${g.grant_name || g.symbol}`}
+                  value={Math.min(100, Math.max(0, g.vestedPct))}
+                  className="bg-secondary"
+                  indicatorClassName="transition-all"
+                  indicatorStyle={{ backgroundColor: '#8B6BB1' }}
+                />
               </div>
 
               {/* Footer metadata + actions */}
@@ -526,12 +530,12 @@ export function RsuSection({
                               <span className="font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
                                 {formatShortDate(t.vest_date)}
                               </span>
-                              <span
-                                className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                              <Badge
+                                className="px-1.5 py-0.5 text-[10px] font-semibold"
                                 style={{ backgroundColor: st.bg, color: st.color }}
                               >
                                 {st.label}
-                              </span>
+                              </Badge>
                               {t.effectiveStatus === 'unvested' && (
                                 <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
                                   {cd.label}
@@ -607,7 +611,7 @@ export function RsuSection({
             </div>
           );
         })}
-      </div>
+      </Card>
     </div>
   );
 }

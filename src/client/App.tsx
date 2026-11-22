@@ -14,6 +14,7 @@ import { SchedulesPage } from './pages/SchedulesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TransactionFlow, type FlowRequest } from './components/TransactionFlow';
 import { Button } from '@client/components/ui/button';
+import { Badge } from '@client/components/ui/badge';
 
 interface AuthStatus {
   needsSetup: boolean;
@@ -280,9 +281,9 @@ export function App() {
                 <Icon className="h-5 w-5" />
                 <span className="flex-1 text-left">{item.label}</span>
                 {item.id === 'activity' && pendingCount > 0 && (
-                  <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--negative)', color: 'var(--bg-canvas)' }}>
+                  <Badge variant="destructive" className="px-2 py-0.5 text-[11px] font-extrabold">
                     {pendingCount}
-                  </span>
+                  </Badge>
                 )}
               </Button>
             );
@@ -410,12 +411,12 @@ export function App() {
             >
               <Icon className="h-[22px] w-[22px]" />
               {item.id === 'activity' && pendingCount > 0 && (
-                <span
-                  className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-extrabold"
-                  style={{ backgroundColor: 'var(--negative)', color: 'var(--bg-canvas)' }}
+                <Badge
+                  variant="destructive"
+                  className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center px-1 text-[10px] font-extrabold"
                 >
                   {pendingCount}
-                </span>
+                </Badge>
               )}
             </Button>
           );

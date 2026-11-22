@@ -5,6 +5,10 @@ import { apiFetch, formatMoney } from '../lib/api';
 import { Tile } from '../components/Tile';
 import { BudgetCategorySheet } from '../components/BudgetCategorySheet';
 import { Button } from '@client/components/ui/button';
+import { Badge } from '@client/components/ui/badge';
+import { Card } from '@client/components/ui/card';
+import { Progress } from '@client/components/ui/progress';
+import { Skeleton } from '@client/components/ui/skeleton';
 
 interface BudgetPageProps {
   baseCurrency: string;
@@ -50,18 +54,14 @@ function isEmpty(c: BudgetCategory): boolean {
 }
 
 export function ProgressBar({ ratio, color, label }: { ratio: number; color: string; label: string }) {
+  const percentage = ratio * 100;
   return (
-    <div
-      role="progressbar"
+    <Progress
       aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(ratio * 100)}
-      className="h-1.5 w-full overflow-hidden rounded-full"
-      style={{ backgroundColor: 'var(--bg-hover)' }}
-    >
-      <div className="h-full rounded-full transition-[width]" style={{ width: `${Math.max(ratio * 100, ratio > 0 ? 3 : 0)}%`, backgroundColor: color }} />
-    </div>
+      aria-valuetext={undefined}
+      value={Math.min(100, Math.max(0, Math.round(percentage)))}
+      indicatorStyle={{ width: `${Math.max(percentage, ratio > 0 ? 3 : 0)}%`, backgroundColor: color }}
+    />
   );
 }
 
@@ -178,12 +178,12 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
     return (
       <div className="flex flex-col gap-5">
         {monthNav}
-        <div className="card rounded-3xl p-6 text-center">
+        <Card className="rounded-3xl p-6 text-center">
           <p className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>{error}</p>
           <Button type="button" onClick={() => void load(month)} variant="secondary" className="mt-3 rounded-xl px-4 py-2 text-sm font-bold">
             Retry
           </Button>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -192,8 +192,8 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
     return (
       <div className="flex flex-col gap-5" aria-busy="true">
         {monthNav}
-        <div className="h-44 animate-pulse rounded-3xl" style={{ backgroundColor: 'var(--bg-surface)' }} />
-        <div className="h-64 animate-pulse rounded-3xl" style={{ backgroundColor: 'var(--bg-surface)' }} />
+        <Skeleton className="h-44 rounded-3xl" />
+        <Skeleton className="h-64 rounded-3xl" />
       </div>
     );
   }
@@ -206,7 +206,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
       {monthNav}
 
       {/* Summary */}
-      <section className="flex flex-col gap-4 rounded-[28px] p-5" style={{ backgroundColor: 'var(--bg-surface)' }}>
+      <Card as="section" variant="flat" className="flex flex-col gap-4 rounded-[28px] p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
             <span className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
@@ -216,8 +216,8 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
               {money(Math.abs(tb))}
             </span>
           </div>
-          <span
-            className="rounded-full px-2.5 py-1 text-xs font-extrabold"
+          <Badge
+            className="px-2.5 py-1 text-xs font-extrabold"
             style={
               tb > 0
                 ? { backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }
@@ -227,7 +227,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
             }
           >
             {tb > 0 ? 'Ready to assign' : tb < 0 ? 'Lower a budget' : 'All assigned'}
-          </span>
+          </Badge>
         </div>
         <div className="flex flex-col gap-2">
           <ProgressBar ratio={overallRatio} color={overallRatio >= 1 ? 'var(--negative)' : 'var(--accent)'} label="Spent of budgeted this month" />
@@ -241,15 +241,15 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
             { label: 'Spent', value: data.totalSpent },
             { label: 'Available', value: data.totalBalance },
           ].map((s) => (
-            <div key={s.label} className="flex flex-col gap-0.5 rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-subtle)' }}>
+            <Card key={s.label} variant="subtle" className="flex flex-col gap-0.5 rounded-2xl p-3">
               <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{s.label}</span>
               <span className="text-[15px] font-extrabold tabular-nums" style={{ color: s.value < 0 ? 'var(--negative)' : undefined }}>
                 {formatMoney(s.value / 100, baseCurrency, Math.abs(s.value) >= 1_000_000)}
               </span>
-            </div>
+            </Card>
           ))}
         </div>
-      </section>
+      </Card>
 
       {data.overspentCount > 0 && filter !== 'overspent' && (
         <Button

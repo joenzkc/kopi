@@ -10,6 +10,8 @@ import { SettingsCard, SettingsGroup } from '../components/settings/SettingsUI';
 import { Button } from '@client/components/ui/button';
 import { Label } from '@client/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
+import { Alert } from '@client/components/ui/alert';
+import { Card } from '@client/components/ui/card';
 
 interface SettingsPageProps {
   budgets: ActualBudget[];
@@ -131,7 +133,7 @@ export function SettingsPage({
             </div>
           </div>
           {pendingBudget && (
-            <div className="flex flex-col gap-3 rounded-2xl p-3.5" style={{ backgroundColor: 'var(--warning-soft)' }} role="alert">
+            <Alert className="flex flex-col gap-3 rounded-2xl p-3.5" style={{ backgroundColor: 'var(--warning-soft)' }}>
               <p className="flex gap-2 text-xs leading-relaxed" style={{ color: 'var(--warning)' }}>
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
@@ -147,22 +149,24 @@ export function SettingsPage({
                   Switch budget
                 </Button>
               </div>
-            </div>
+            </Alert>
           )}
         </SettingsCard>
 
-        <Button type="button" onClick={onOpenAccounts} className="card press flex w-full items-center gap-3 rounded-3xl p-5 text-left">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text)' }}>
-            <Landmark className="h-[18px] w-[18px]" />
-          </span>
-          <span className="flex flex-1 flex-col">
-            <span className="text-base font-extrabold">Accounts</span>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Add, group, close or reopen accounts, link cards, and choose what shows on Home
+        <Card asChild>
+          <Button type="button" onClick={onOpenAccounts} className="press flex w-full items-center gap-3 rounded-3xl p-5 text-left">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text)' }}>
+              <Landmark className="h-[18px] w-[18px]" />
             </span>
-          </span>
-          <ChevronRight className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
-        </Button>
+            <span className="flex flex-1 flex-col">
+              <span className="text-base font-extrabold">Accounts</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Add, group, close or reopen accounts, link cards, and choose what shows on Home
+              </span>
+            </span>
+            <ChevronRight className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
+          </Button>
+        </Card>
       </SettingsGroup>
 
       <SettingsGroup title="Connections">

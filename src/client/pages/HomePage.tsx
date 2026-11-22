@@ -7,6 +7,9 @@ import { Tile } from '../components/Tile';
 import type { FlowRequest } from '../components/TransactionFlow';
 import { ProgressBar, currentMonthKey } from './BudgetPage';
 import { Button } from '@client/components/ui/button';
+import { Badge } from '@client/components/ui/badge';
+import { Card } from '@client/components/ui/card';
+import { Skeleton } from '@client/components/ui/skeleton';
 
 export type AppTab = 'home' | 'activity' | 'budget' | 'accounts' | 'invest' | 'bills' | 'settings';
 
@@ -96,21 +99,21 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
   if (loading && !data) {
     return (
       <div className="space-y-5" aria-busy="true">
-        <div className="h-28 animate-pulse rounded-3xl" style={{ backgroundColor: 'var(--bg-surface)' }} />
-        <div className="h-20 animate-pulse rounded-3xl" style={{ backgroundColor: 'var(--bg-surface)' }} />
-        <div className="h-32 animate-pulse rounded-3xl" style={{ backgroundColor: 'var(--bg-surface)' }} />
+        <Skeleton className="h-28 rounded-3xl" />
+        <Skeleton className="h-20 rounded-3xl" />
+        <Skeleton className="h-32 rounded-3xl" />
       </div>
     );
   }
 
   if (error && !data) {
     return (
-      <div className="card rounded-3xl p-6 text-center">
+      <Card className="rounded-3xl p-6 text-center">
         <p className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>{error}</p>
         <Button type="button" onClick={() => void load(true)} variant="secondary" className="mt-3 rounded-xl px-4 py-2 text-sm font-bold">
           Retry
         </Button>
-      </div>
+      </Card>
     );
   }
   if (!data) return null;
@@ -156,17 +159,17 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
         <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
           Net worth
           {data.budgetName && (
-            <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-secondary)' }}>
+            <Badge className="px-2 py-0.5 text-[11px] font-bold" style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-secondary)' }}>
               {data.budgetName}
-            </span>
+            </Badge>
           )}
         </div>
         <div className="text-[40px] font-extrabold leading-none tracking-[-0.04em] tabular-nums sm:text-5xl">
           {formatMoney(whole, cur).replace(/\.00$/, '')}
           <span style={{ color: 'var(--text-muted)' }}>{cents}</span>
         </div>
-        <span
-          className="mt-1 self-start rounded-full px-2.5 py-1 text-xs font-extrabold tabular-nums"
+        <Badge
+          className="mt-1 self-start px-2.5 py-1 text-xs font-extrabold tabular-nums"
           style={
             dayUp
               ? { backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }
@@ -174,7 +177,7 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
           }
         >
           {dayUp ? '▲' : '▼'} {formatWhole(Math.abs(nw.dayChangeBase), cur)} · {formatPct(nw.dayChangePct).replace(/^[+-]/, '')} today
-        </span>
+        </Badge>
       </section>
 
       {data.snapshots.length >= 2 && (
@@ -199,13 +202,15 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
             </>
           );
           return s.onClick ? (
-            <Button key={s.label} type="button" onClick={s.onClick} className="press flex flex-col gap-0.5 rounded-2xl p-3 text-left" style={{ backgroundColor: 'var(--bg-surface)' }}>
-              {inner}
-            </Button>
+            <Card key={s.label} asChild variant="flat">
+              <Button type="button" onClick={s.onClick} className="press flex flex-col gap-0.5 rounded-2xl p-3 text-left">
+                {inner}
+              </Button>
+            </Card>
           ) : (
-            <div key={s.label} className="flex flex-col gap-0.5 rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-surface)' }}>
+            <Card key={s.label} variant="flat" className="flex flex-col gap-0.5 rounded-2xl p-3">
               {inner}
-            </div>
+            </Card>
           );
         })}
       </div>
@@ -222,12 +227,12 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
             </span>
             {a.label}
             {Boolean(a.badge) && (
-              <span
-                className="absolute -top-1 left-1/2 ml-3 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-extrabold"
-                style={{ backgroundColor: 'var(--negative)', color: 'var(--bg-canvas)' }}
+              <Badge
+                variant="destructive"
+                className="absolute -top-1 left-1/2 ml-3 flex h-5 min-w-5 items-center justify-center px-1 text-[11px] font-extrabold"
               >
                 {a.badge}
-              </span>
+              </Badge>
             )}
           </Button>
         ))}
@@ -236,54 +241,55 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
 
       {/* This month's budget */}
       {budget && (
-        <Button
-          type="button"
-          onClick={() => onNavigate('budget')}
-          className="press flex flex-col gap-3 rounded-[26px] p-4 text-left"
-          style={{ backgroundColor: 'var(--bg-surface)' }}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[15px] font-extrabold">This month&apos;s budget</span>
-            <span className="flex items-center gap-1 text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
-              Budget
-              <ChevronRight className="h-4 w-4" />
+        <Card asChild variant="flat">
+          <Button
+            type="button"
+            onClick={() => onNavigate('budget')}
+            className="press flex flex-col gap-3 rounded-[26px] p-4 text-left"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[15px] font-extrabold">This month&apos;s budget</span>
+              <span className="flex items-center gap-1 text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+                Budget
+                <ChevronRight className="h-4 w-4" />
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-2xl font-extrabold tracking-tight tabular-nums" style={{ color: budget.totalBalance < 0 ? 'var(--negative)' : undefined }}>
+                {formatMoney(budget.totalBalance / 100, cur)}
+                <span className="ml-1.5 text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
+                  available
+                </span>
+              </span>
+              {budget.toBudget !== 0 && (
+                <Badge
+                  className="px-2.5 py-0.5 text-xs font-extrabold tabular-nums"
+                  style={
+                    budget.toBudget > 0
+                      ? { backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }
+                      : { backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }
+                  }
+                >
+                  {budget.toBudget > 0 ? `${formatWhole(budget.toBudget / 100, cur)} to budget` : `${formatWhole(-budget.toBudget / 100, cur)} overbudgeted`}
+                </Badge>
+              )}
+            </div>
+            <ProgressBar
+              ratio={budget.totalBudgeted > 0 ? Math.min(1, budget.totalSpent / budget.totalBudgeted) : 0}
+              color={budget.totalSpent > budget.totalBudgeted ? 'var(--negative)' : 'var(--accent)'}
+              label="Spent of budgeted this month"
+            />
+            <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
+              {formatWhole(budget.totalSpent / 100, cur)} of {formatWhole(budget.totalBudgeted / 100, cur)} spent
+              {budget.overspentCount > 0 && (
+                <span style={{ color: 'var(--negative)' }}>
+                  {' '}
+                  · {budget.overspentCount} overspent
+                </span>
+              )}
             </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-2xl font-extrabold tracking-tight tabular-nums" style={{ color: budget.totalBalance < 0 ? 'var(--negative)' : undefined }}>
-              {formatMoney(budget.totalBalance / 100, cur)}
-              <span className="ml-1.5 text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
-                available
-              </span>
-            </span>
-            {budget.toBudget !== 0 && (
-              <span
-                className="rounded-full px-2.5 py-0.5 text-xs font-extrabold tabular-nums"
-                style={
-                  budget.toBudget > 0
-                    ? { backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }
-                    : { backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }
-                }
-              >
-                {budget.toBudget > 0 ? `${formatWhole(budget.toBudget / 100, cur)} to budget` : `${formatWhole(-budget.toBudget / 100, cur)} overbudgeted`}
-              </span>
-            )}
-          </div>
-          <ProgressBar
-            ratio={budget.totalBudgeted > 0 ? Math.min(1, budget.totalSpent / budget.totalBudgeted) : 0}
-            color={budget.totalSpent > budget.totalBudgeted ? 'var(--negative)' : 'var(--accent)'}
-            label="Spent of budgeted this month"
-          />
-          <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
-            {formatWhole(budget.totalSpent / 100, cur)} of {formatWhole(budget.totalBudgeted / 100, cur)} spent
-            {budget.overspentCount > 0 && (
-              <span style={{ color: 'var(--negative)' }}>
-                {' '}
-                · {budget.overspentCount} overspent
-              </span>
-            )}
-          </span>
-        </Button>
+          </Button>
+        </Card>
       )}
 
       {!data.actualConnected && (
@@ -358,7 +364,7 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
                     ? `${formatMoney((acc.unclearedBalance ?? 0) / 100, cur)} uncleared`
                     : 'All cleared';
               return (
-                <article key={acc.id} className="flex h-28 w-[168px] shrink-0 snap-start flex-col justify-between rounded-[22px] p-3.5 md:w-auto" style={style}>
+                <Card as="article" variant="unstyled" key={acc.id} className="flex h-28 w-[168px] shrink-0 snap-start flex-col justify-between rounded-[22px] p-3.5 md:w-auto" style={style}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-[13px] font-bold">{acc.name}</span>
                     <span className="shrink-0 text-[10px] font-extrabold opacity-75">{tag}</span>
@@ -369,7 +375,7 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
                     </span>
                     <span className="truncate text-[11px] opacity-75">{sub}</span>
                   </div>
-                </article>
+                </Card>
               );
             })}
           </div>

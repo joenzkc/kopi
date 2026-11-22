@@ -6,6 +6,7 @@ import { apiFetch } from '../lib/api';
 import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
+import { Card } from '@client/components/ui/card';
 
 interface AuthPageProps {
   needsSetup: boolean;
@@ -85,7 +86,7 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
           )}
         </div>
 
-        <div className="card rounded-2xl p-6">
+        <Card className="rounded-2xl p-6">
           {!needsSetup && hasPasskeys && (
             <>
               <Button
@@ -172,7 +173,7 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
               {loading ? 'Please wait...' : needsSetup ? 'Create Owner Account' : 'Sign In'}
             </Button>
           </form>
-        </div>
+        </Card>
 
       </div>
     </div>

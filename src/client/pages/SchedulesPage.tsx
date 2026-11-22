@@ -16,6 +16,9 @@ import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
+import { Badge } from '@client/components/ui/badge';
+import { Card } from '@client/components/ui/card';
+import { Skeleton } from '@client/components/ui/skeleton';
 
 interface SchedulesPageProps {
   accounts: ActualAccount[];
@@ -200,7 +203,7 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
   return (
     <div className="space-y-5">
       {/* Monthly Recurring Cashflow Card */}
-      <section className="card rounded-2xl p-5">
+      <Card as="section" className="rounded-2xl p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
@@ -245,7 +248,7 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
             </div>
           </div>
         )}
-      </section>
+      </Card>
 
       {/* Filter Tabs */}
       <div className="flex gap-1.5">
@@ -278,11 +281,15 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
       {/* Schedules List */}
       {loading && !data ? (
         <div className="space-y-3">
-          <div className="card h-24 animate-pulse rounded-2xl" />
-          <div className="card h-24 animate-pulse rounded-2xl" />
+          <Card asChild>
+            <Skeleton className="h-24 rounded-2xl" />
+          </Card>
+          <Card asChild>
+            <Skeleton className="h-24 rounded-2xl" />
+          </Card>
         </div>
       ) : list.length === 0 ? (
-        <div className="card rounded-2xl p-8 text-center">
+        <Card className="rounded-2xl p-8 text-center">
           <CalendarClock className="mx-auto h-8 w-8" style={{ color: 'var(--text-muted)' }} />
           <p className="mt-3 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
             No schedules in this view
@@ -290,9 +297,9 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
           <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
             Create recurring bills, subscriptions, or salary rules in seconds.
           </p>
-        </div>
+        </Card>
       ) : (
-        <div className="card divider-list overflow-hidden rounded-2xl">
+        <Card className="divider-list overflow-hidden rounded-2xl">
           {list.map((s) => {
             const due = formatDueBadge(s.daysUntilNext);
             const dueStyle =
@@ -311,18 +318,18 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
                         {s.name || s.payeeName || 'Untitled Schedule'}
                       </span>
                       {!s.completed && (
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={dueStyle}>
+                        <Badge className="px-2 py-0.5 text-[10px] font-semibold" style={dueStyle}>
                           {due.text}
-                        </span>
+                        </Badge>
                       )}
                       {s.posts_transaction && (
-                        <span
-                          className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                        <Badge
+                          className="inline-flex items-center gap-0.5 px-2 py-0.5 text-[10px] font-medium"
                           style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text)' }}
                         >
                           <Zap className="h-2.5 w-2.5" />
                           Auto-post
-                        </span>
+                        </Badge>
                       )}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -384,7 +391,7 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
               </div>
             );
           })}
-        </div>
+        </Card>
       )}
 
       {/* Create / Edit Schedule Sheet */}

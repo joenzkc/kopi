@@ -7,6 +7,7 @@ import { Tile } from './Tile';
 import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
+import { Alert } from '@client/components/ui/alert';
 
 interface LinkPayeeSheetProps {
   open: boolean;
@@ -193,9 +194,9 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
         )}
 
         {error && (
-          <p role="alert" className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>
+          <Alert as="p" variant="destructive">
             {error}
-          </p>
+          </Alert>
         )}
         <Button type="button" disabled={busy || !targetLabel} onClick={() => void save()} variant="default" className="h-12 rounded-2xl text-[15px] disabled:opacity-40">
           {busy ? 'Saving…' : targetLabel ? `Always use “${targetLabel}”` : 'Choose a payee'}

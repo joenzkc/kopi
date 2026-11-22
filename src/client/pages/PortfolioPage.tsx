@@ -30,6 +30,8 @@ import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
+import { Badge } from '@client/components/ui/badge';
+import { Card } from '@client/components/ui/card';
 
 interface PortfolioPageProps {
   accounts: ActualAccount[];
@@ -352,7 +354,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
   return (
     <div className="space-y-5">
       {/* Portfolio Summary Card */}
-      <section className="card rounded-2xl p-5 sm:p-6">
+      <Card as="section" className="rounded-2xl p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
@@ -363,8 +365,8 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
             </div>
             {data && (
               <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs tabular-nums">
-                <span
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-medium"
+                <Badge
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 font-medium"
                   style={{
                     backgroundColor: data.totals.unrealizedPnlBase >= 0 ? 'var(--positive-soft)' : 'var(--negative-soft)',
                     color: data.totals.unrealizedPnlBase >= 0 ? 'var(--positive)' : 'var(--negative)',
@@ -377,13 +379,13 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                   )}
                   All-time {formatSignedMoney(data.totals.unrealizedPnlBase, cur)} (
                   {formatPct(data.totals.unrealizedPnlPct)})
-                </span>
-                <span
-                  className="rounded-full px-2.5 py-0.5"
+                </Badge>
+                <Badge
+                  className="px-2.5 py-0.5"
                   style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
                 >
                   24h: {formatSignedMoney(data.totals.dayChangeBase, cur)} ({formatPct(data.totals.dayChangePct)})
-                </span>
+                </Badge>
                 {rsuSummary.unvestedNetValueBase > 0 && (
                   <Button
                     type="button"
@@ -467,7 +469,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
             </div>
           </div>
         )}
-      </section>
+      </Card>
 
       {/* Filter Bar + Quick Add Buttons */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
@@ -536,7 +538,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
           {holdings.length === 0 ? (
             // On 'all' tab, only show empty state if there are also no RSUs
             isAllEmpty || filter !== 'all' ? (
-              <div className="card rounded-2xl p-8 text-center">
+              <Card className="rounded-2xl p-8 text-center">
                 {filter === 'cash' ? (
                   <>
                     <Banknote className="mx-auto h-8 w-8" style={{ color: '#4A8FE7' }} />
@@ -592,10 +594,10 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                     </div>
                   </>
                 )}
-              </div>
+              </Card>
             ) : null
           ) : (
-            <div className="card divider-list overflow-hidden rounded-2xl">
+            <Card className="divider-list overflow-hidden rounded-2xl">
               {holdings.map((h) => {
                 const isCash = h.asset_type === 'cash';
                 const up24 = (h.change24hPct ?? 0) >= 0;
@@ -629,22 +631,22 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                               {isCash ? h.name : h.symbol}
                             </span>
                             {isCash && (
-                              <span
-                                className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                              <Badge
+                                className="px-1.5 py-0.5 text-[10px] font-semibold"
                                 style={{ backgroundColor: 'var(--info-soft)', color: 'var(--info)' }}
                               >
                                 Liquidity
-                              </span>
+                              </Badge>
                             )}
                             {h.actual_account_id && (
-                              <span
-                                className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                              <Badge
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium"
                                 style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text)' }}
                                 title={`Linked to ${accountMap.get(h.actual_account_id) || 'Actual account'}`}
                               >
                                 <Link2 className="h-2.5 w-2.5" />
                                 {accountMap.get(h.actual_account_id) || 'Linked'}
-                              </span>
+                              </Badge>
                             )}
                           </div>
                           <div className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -741,7 +743,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                   </div>
                 );
               })}
-            </div>
+            </Card>
           )}
         </>
       )}

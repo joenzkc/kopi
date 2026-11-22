@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Check, ChevronDown, Copy } from 'lucide-react';
 import { Button } from '@client/components/ui/button';
+import { Alert } from '@client/components/ui/alert';
+import { Card } from '@client/components/ui/card';
 
 /** A labelled group of settings cards ("General", "Security", …). */
 export function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
@@ -29,7 +31,7 @@ export function SettingsCard({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="card flex flex-col gap-4 rounded-3xl p-5">
+    <Card className="flex flex-col gap-4 rounded-3xl p-5">
       <div className="flex items-start justify-between gap-3">
         {/* Same header treatment as the Appearance and Notifications cards: accent icon beside the title. */}
         <div className="flex min-w-0 items-start gap-2">
@@ -48,7 +50,7 @@ export function SettingsCard({
         {right}
       </div>
       {children}
-    </div>
+    </Card>
   );
 }
 
@@ -109,7 +111,7 @@ export function ConfirmAction({
     );
   }
   return (
-    <div className="flex w-full flex-col gap-2 rounded-2xl p-3" style={{ backgroundColor: 'var(--negative-soft)' }} role="alert">
+    <Alert className="flex w-full flex-col gap-2 rounded-2xl p-3" style={{ backgroundColor: 'var(--negative-soft)' }}>
       <p className="text-xs leading-relaxed" style={{ color: 'var(--text-primary)' }}>
         {message}
       </p>
@@ -130,7 +132,7 @@ export function ConfirmAction({
           {confirmLabel}
         </Button>
       </div>
-    </div>
+    </Alert>
   );
 }
 

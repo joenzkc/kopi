@@ -9,6 +9,8 @@ import { ConfirmAction, CopyField, Disclosure, SettingsCard, describeDevice } fr
 import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
+import { Alert } from '@client/components/ui/alert';
+import { Badge } from '@client/components/ui/badge';
 
 interface SecuritySectionProps {
   webAuthnSupportedOrigin: boolean;
@@ -195,9 +197,9 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
             </div>
           </div>
           {pwError && (
-            <p role="alert" className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>
+            <Alert as="p" variant="destructive">
               {pwError}
-            </p>
+            </Alert>
           )}
           <div className="flex gap-2">
             <Button
@@ -236,9 +238,9 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
                 <span className="flex items-center gap-2 text-sm font-bold">
                   {describeDevice(s.user_agent)}
                   {s.current && (
-                    <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}>
+                    <Badge variant="accent" className="px-2 py-0.5 text-[11px] font-extrabold">
                       This device
-                    </span>
+                    </Badge>
                   )}
                 </span>
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>

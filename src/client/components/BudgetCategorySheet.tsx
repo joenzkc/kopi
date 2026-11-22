@@ -6,6 +6,7 @@ import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from '@client/components/ui/native-select';
+import { Alert } from '@client/components/ui/alert';
 
 interface BudgetCategorySheetProps {
   category: BudgetCategory | null;
@@ -293,9 +294,9 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
         </Button>
 
         {error && (
-          <p role="alert" className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>
+          <Alert as="p" variant="destructive">
             {error}
-          </p>
+          </Alert>
         )}
       </div>
     </Sheet>

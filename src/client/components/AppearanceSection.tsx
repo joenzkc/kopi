@@ -6,6 +6,8 @@ import { Tile } from './Tile';
 import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
+import { Badge } from '@client/components/ui/badge';
+import { Card } from '@client/components/ui/card';
 
 interface AppearanceSectionProps {
   appearance: Appearance;
@@ -24,22 +26,22 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
     on ? '0 0 0 3px var(--bg-surface), 0 0 0 5px var(--accent-text)' : 'inset 0 0 0 1px var(--border-subtle)';
 
   return (
-    <section className="card flex flex-col gap-5 rounded-3xl p-5">
+    <Card as="section" className="flex flex-col gap-5 rounded-3xl p-5">
       <div className="flex items-center gap-2">
         <Palette className="h-4 w-4" style={{ color: 'var(--accent-text)' }} />
         <h2 className="text-base font-extrabold">Appearance</h2>
       </div>
 
       {/* Live preview */}
-      <div className="flex flex-col gap-3 rounded-[24px] border p-4" style={{ backgroundColor: 'var(--bg-canvas)', borderColor: 'var(--border-subtle)' }} aria-label="Preview">
+      <Card variant="outline" className="flex flex-col gap-3 rounded-[24px] bg-background p-4" aria-label="Preview">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Net worth</span>
             <span className="text-2xl font-extrabold tracking-tight">S$12,345<span style={{ color: 'var(--text-muted)' }}>.67</span></span>
           </div>
-          <span className="rounded-full px-2.5 py-1 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}>
+          <Badge variant="accent" className="px-2.5 py-1 text-[11px] font-extrabold">
             ▲ 1.23%
-          </span>
+          </Badge>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-2xl p-3" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}>
@@ -59,7 +61,7 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
           </div>
         ))}
         <span className="text-sm font-bold" style={{ color: 'var(--accent-text)' }}>Links and labels look like this</span>
-      </div>
+      </Card>
 
       {/* Base */}
       <div className="flex flex-col gap-2.5">
@@ -199,6 +201,6 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
         Saved to your server, so every device uses the same scheme.
       </p>
-    </section>
+    </Card>
   );
 }

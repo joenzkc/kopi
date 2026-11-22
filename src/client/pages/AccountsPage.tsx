@@ -8,6 +8,8 @@ import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
+import { Alert } from '@client/components/ui/alert';
+import { Skeleton } from '@client/components/ui/skeleton';
 
 type ManagedAccount = ActualAccount & { linkedHoldings: number; autoImport: boolean; links: AccountLink[] };
 
@@ -410,7 +412,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
         </p>
       )}
       {loading && accounts.length === 0 && !error && (
-        <div className="h-48 animate-pulse rounded-3xl" style={{ backgroundColor: 'var(--bg-surface)' }} aria-busy="true" />
+        <Skeleton className="h-48 rounded-3xl" aria-busy="true" />
       )}
 
       {!loading && !error && (
@@ -464,9 +466,9 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
             </p>
           </div>
           {sheetError && (
-            <p role="alert" className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>
+            <Alert as="p" variant="destructive">
               {sheetError}
-            </p>
+            </Alert>
           )}
           <Button type="submit" disabled={busy} variant="default" className="h-12 rounded-2xl text-[15px] disabled:opacity-50">
             {busy ? 'Adding…' : 'Add account'}
@@ -724,9 +726,9 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
               </>
             )}
             {sheetError && (
-              <p role="alert" className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>
+              <Alert as="p" variant="destructive">
                 {sheetError}
-              </p>
+              </Alert>
             )}
           </div>
         )}
@@ -755,9 +757,9 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
               />
             </div>
             {sheetError && (
-              <p role="alert" className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>
+              <Alert as="p" variant="destructive">
                 {sheetError}
-              </p>
+              </Alert>
             )}
             <Button type="submit" disabled={busy} variant="default" className="h-12 rounded-2xl text-[15px] disabled:opacity-50">
               {busy ? 'Saving…' : groupSheet.mode === 'edit' ? 'Save' : 'Create group'}
