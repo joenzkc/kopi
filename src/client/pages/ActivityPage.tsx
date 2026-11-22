@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeftRight, CreditCard, FlaskConical, Loader2, Mail, RefreshCw, Search, X } from 'lucide-react';
+import { ArrowLeftRight, CreditCard, FlaskConical, Mail, RefreshCw, Search, X } from 'lucide-react';
 import type { ActualAccount, ActualCategory, ActualPayee, EmailEventRecord, RecentTransaction } from '@shared/types';
 import { apiFetch, formatMoney, formatSignedMoney } from '../lib/api';
 import { fetchRecent, friendlyDate, localISODate, relativeTime, senderLabel } from '../lib/recent';
@@ -15,6 +15,7 @@ import { Textarea } from '@client/components/ui/textarea';
 import { Badge } from '@client/components/ui/badge';
 import { Card } from '@client/components/ui/card';
 import { Skeleton } from '@client/components/ui/skeleton';
+import { Spinner } from '@client/components/ui/spinner';
 
 interface ActivityPageProps {
   accounts: ActualAccount[];
@@ -269,7 +270,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
         </div>
         {queued > 0 && (
           <p className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Spinner />
             {queued} email{queued === 1 ? '' : 's'} being parsed…
           </p>
         )}

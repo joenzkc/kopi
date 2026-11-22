@@ -7,6 +7,7 @@ import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { Card } from '@client/components/ui/card';
+import { Separator } from '@client/components/ui/separator';
 
 interface AuthPageProps {
   needsSetup: boolean;
@@ -99,11 +100,11 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
                 Sign in with Passkey
               </Button>
               <div className="my-5 flex items-center gap-3">
-                <div className="h-px flex-1" style={{ backgroundColor: 'var(--border-subtle)' }} />
+                <Separator className="flex-1" />
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   or use password
                 </span>
-                <div className="h-px flex-1" style={{ backgroundColor: 'var(--border-subtle)' }} />
+                <Separator className="flex-1" />
               </div>
             </>
           )}

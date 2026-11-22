@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowLeftRight } from 'lucide-react';
+import { Avatar } from '@client/components/ui/avatar';
 import { tileStyle } from '../lib/theme';
 
 interface TileProps {
@@ -17,12 +18,12 @@ export function Tile({ colorKey, label, size = 42, transfer = false }: TileProps
     ? { backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)' }
     : tileStyle(colorKey || label);
   return (
-    <span
+    <Avatar
       aria-hidden="true"
-      className="flex shrink-0 items-center justify-center font-extrabold"
+      className="items-center justify-center font-extrabold"
       style={{ ...style, width: size, height: size, borderRadius: Math.round(size / 3), fontSize: Math.round(size * 0.36) }}
     >
       {transfer ? <ArrowLeftRight className="h-4 w-4" /> : (label.trim().charAt(0) || '?').toUpperCase()}
-    </span>
+    </Avatar>
   );
 }

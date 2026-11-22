@@ -16,6 +16,8 @@ import { TransactionFlow, type FlowRequest } from './components/TransactionFlow'
 import { Button } from '@client/components/ui/button';
 import { Toggle } from '@client/components/ui/toggle';
 import { Badge } from '@client/components/ui/badge';
+import { Spinner } from '@client/components/ui/spinner';
+import { Toaster, type ToastMessage } from '@client/components/ui/toast';
 
 interface AuthStatus {
   needsSetup: boolean;
@@ -90,7 +92,7 @@ export function App() {
   const [pendingCount, setPendingCount] = useState(0);
   const [flow, setFlow] = useState<FlowRequest | null>(null);
   const [flowKey, setFlowKey] = useState(0);
-  const [toast, setToast] = useState<{ msg: string; tone: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // --- appearance ---
@@ -230,7 +232,7 @@ export function App() {
   if (!auth) {
     return (
       <div className="flex min-h-dvh items-center justify-center" style={{ backgroundColor: 'var(--bg-canvas)' }}>
-        <div className="h-7 w-7 animate-spin rounded-full border-2" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+        <Spinner variant="ring" />
       </div>
     );
   }
@@ -437,19 +439,7 @@ export function App() {
         />
       )}
 
-      {toast && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-28 z-[60] flex justify-center px-4 md:bottom-8" role="status" aria-live="polite">
-          <div
-            className="rounded-full px-4 py-2.5 text-sm font-bold shadow-lg"
-            style={{
-              backgroundColor: toast.tone === 'error' ? 'var(--negative)' : 'var(--text-primary)',
-              color: 'var(--bg-canvas)',
-            }}
-          >
-            {toast.msg}
-          </div>
-        </div>
-      )}
+      <Toaster notification={toast} />
     </div>
   );
 }
