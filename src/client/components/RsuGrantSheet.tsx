@@ -10,6 +10,9 @@ import {
 import { apiFetch } from '../lib/api';
 import { Sheet } from './Sheet';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
 
 interface StockSearchHit {
   symbol: string;
@@ -345,17 +348,17 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
         {/* Yahoo ticker search */}
         {!editing && (
           <div className="relative">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Search company stock ticker (Yahoo Finance)
-            </label>
+            </Label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4" style={{ color: 'var(--text-muted)' }} />
-              <input
+              <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by ticker or company name..."
-                className="input-field pl-9"
+                className="pl-9"
               />
             </div>
             {(searching || searchResults.length > 0) && (
@@ -397,41 +400,39 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
         {/* Symbol + Ticker + Name */}
         <div className="grid grid-cols-2 gap-3">
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Symbol
-            </label>
-            <input required value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="ACME" className="input-field" />
+            </Label>
+            <Input required value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="ACME" />
           </div>
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Yahoo Ticker
-            </label>
-            <input
+            </Label>
+            <Input
               required
               value={providerId}
               onChange={(e) => setProviderId(e.target.value)}
               placeholder="ACME"
-              className="input-field"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Company Name
-            </label>
-            <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Corp." className="input-field" />
+            </Label>
+            <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Corp." />
           </div>
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Grant Label (optional)
-            </label>
-            <input
+            </Label>
+            <Input
               value={grantName}
               onChange={(e) => setGrantName(e.target.value)}
               placeholder="e.g. New-hire grant"
-              className="input-field"
             />
           </div>
         </div>
@@ -439,10 +440,10 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
         {/* Grant date, price, currency */}
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           <div className="col-span-2 min-w-0 sm:col-span-1">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Grant Date
-            </label>
-            <input
+            </Label>
+            <Input
               required
               type="date"
               value={grantDate}
@@ -451,34 +452,32 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                 setGrantDate(next);
                 if (!editing && !manualOverride) setVestStartDate(next);
               }}
-              className="input-field"
             />
           </div>
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Grant Price
-            </label>
-            <input
+            </Label>
+            <Input
               type="number"
               step="any"
               min="0"
               value={grantPrice}
               onChange={(e) => setGrantPrice(e.target.value)}
               placeholder="Optional"
-              className="input-field"
             />
           </div>
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Currency
-            </label>
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="input-field">
+            </Label>
+            <NativeSelect value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {['USD', 'SGD', 'EUR', 'GBP', 'HKD', 'JPY', 'AUD'].map((c) => (
-                <option key={c} value={c}>
+                <NativeSelectOption key={c} value={c}>
                   {c}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </div>
         </div>
 
@@ -504,10 +503,10 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
 
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <div className="min-w-0">
-              <label className="mb-1 block text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <Label className="mb-1 block text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
                 Total Shares Granted
-              </label>
-              <input
+              </Label>
+              <Input
                 type="number"
                 step="any"
                 min="0"
@@ -517,22 +516,20 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                   if (!editing) setManualOverride(false);
                 }}
                 placeholder="e.g. 100"
-                className="input-field"
                 style={{ backgroundColor: 'var(--bg-surface)' }}
               />
             </div>
             <div className="min-w-0">
-              <label className="mb-1 block text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <Label className="mb-1 block text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
                 Vesting Start Date
-              </label>
-              <input
+              </Label>
+              <Input
                 type="date"
                 value={vestStartDate}
                 onChange={(e) => {
                   setVestStartDate(e.target.value);
                   if (!editing) setManualOverride(false);
                 }}
-                className="input-field"
                 style={{ backgroundColor: 'var(--bg-surface)' }}
               />
             </div>
@@ -542,8 +539,9 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
               <span>Schedule Preset</span>
-              <label className="inline-flex shrink-0 items-center gap-1.5 cursor-pointer">
-                <input
+              <Label className="inline-flex shrink-0 items-center gap-1.5 cursor-pointer">
+                <Input
+                  variant="unstyled"
                   type="checkbox"
                   checked={roundWhole}
                   onChange={(e) => {
@@ -552,7 +550,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                   }}
                 />
                 <span>Whole shares</span>
-              </label>
+              </Label>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {VESTING_PRESETS.map((p) => {
@@ -587,10 +585,10 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
           {preset === 'custom' && (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <div className="min-w-0">
-                <label className="mb-1 block text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                <Label className="mb-1 block text-[11px]" style={{ color: 'var(--text-secondary)' }}>
                   Years
-                </label>
-                <input
+                </Label>
+                <Input
                   type="number"
                   min="1"
                   max="6"
@@ -599,48 +597,45 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                     setCustomYears(e.target.value);
                     if (!editing) setManualOverride(false);
                   }}
-                  className="input-field"
                   style={{ backgroundColor: 'var(--bg-surface)' }}
                 />
               </div>
               <div className="min-w-0">
-                <label className="mb-1 block text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                <Label className="mb-1 block text-[11px]" style={{ color: 'var(--text-secondary)' }}>
                   Cliff (mo)
-                </label>
-                <select
+                </Label>
+                <NativeSelect
                   value={customCliff}
                   onChange={(e) => {
                     setCustomCliff(e.target.value);
                     if (!editing) setManualOverride(false);
                   }}
-                  className="input-field"
                   style={{ backgroundColor: 'var(--bg-surface)' }}
                 >
-                  <option value="0">None</option>
-                  <option value="6">6 mo</option>
-                  <option value="12">12 mo</option>
-                  <option value="18">18 mo</option>
-                  <option value="24">24 mo</option>
-                </select>
+                  <NativeSelectOption value="0">None</NativeSelectOption>
+                  <NativeSelectOption value="6">6 mo</NativeSelectOption>
+                  <NativeSelectOption value="12">12 mo</NativeSelectOption>
+                  <NativeSelectOption value="18">18 mo</NativeSelectOption>
+                  <NativeSelectOption value="24">24 mo</NativeSelectOption>
+                </NativeSelect>
               </div>
               <div className="col-span-2 min-w-0 sm:col-span-1">
-                <label className="mb-1 block text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                <Label className="mb-1 block text-[11px]" style={{ color: 'var(--text-secondary)' }}>
                   Frequency
-                </label>
-                <select
+                </Label>
+                <NativeSelect
                   value={customFreq}
                   onChange={(e) => {
                     setCustomFreq(e.target.value as VestingFrequency);
                     if (!editing) setManualOverride(false);
                   }}
-                  className="input-field"
                   style={{ backgroundColor: 'var(--bg-surface)' }}
                 >
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="semiannual">Semi-Annual</option>
-                  <option value="annual">Annual</option>
-                </select>
+                  <NativeSelectOption value="monthly">Monthly</NativeSelectOption>
+                  <NativeSelectOption value="quarterly">Quarterly</NativeSelectOption>
+                  <NativeSelectOption value="semiannual">Semi-Annual</NativeSelectOption>
+                  <NativeSelectOption value="annual">Annual</NativeSelectOption>
+                </NativeSelect>
               </div>
             </div>
           )}
@@ -703,12 +698,12 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                       style={{ borderColor: 'var(--border-subtle)' }}
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <input
+                        <Input
                           type="date"
                           required
                           value={t.vest_date}
                           onChange={(e) => updateTranche(t.key, { vest_date: e.target.value })}
-                          className="input-field min-w-0 flex-1 !py-1.5 !px-2.5 sm:!text-xs"
+                          className="min-w-0 flex-1 !py-1.5 !px-2.5 sm:!text-xs"
                         />
                         <Button
                           type="button"
@@ -721,7 +716,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                         </Button>
                       </div>
                       <div className="flex items-center gap-2 sm:shrink-0">
-                        <input
+                        <Input
                           type="number"
                           required
                           step="any"
@@ -729,7 +724,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                           value={t.units}
                           onChange={(e) => updateTranche(t.key, { units: e.target.value })}
                           placeholder="Shares"
-                          className="input-field min-w-0 flex-1 !py-1.5 !px-2.5 text-right tabular-nums sm:w-20 sm:flex-none sm:!text-xs"
+                          className="min-w-0 flex-1 !py-1.5 !px-2.5 text-right tabular-nums sm:w-20 sm:flex-none sm:!text-xs"
                         />
                         <span
                           className="w-16 shrink-0 text-center text-[11px] font-semibold"
@@ -758,10 +753,10 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
         {/* Tax withholding + Portfolio inclusion */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Est. Tax Withholding %
-            </label>
-            <input
+            </Label>
+            <Input
               type="number"
               step="any"
               min="0"
@@ -769,7 +764,6 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
               value={taxWithholdPct}
               onChange={(e) => setTaxWithholdPct(e.target.value)}
               placeholder="0"
-              className="input-field"
             />
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {[0, 22, 30, 37].map((pct) => (
@@ -790,25 +784,26 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
           </div>
 
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Link Actual Account (optional)
-            </label>
-            <select value={actualAccountId} onChange={(e) => setActualAccountId(e.target.value)} className="input-field">
-              <option value="">Not linked</option>
+            </Label>
+            <NativeSelect value={actualAccountId} onChange={(e) => setActualAccountId(e.target.value)}>
+              <NativeSelectOption value="">Not linked</NativeSelectOption>
               {(offBudgetAccounts.length > 0 ? offBudgetAccounts : accounts).map((acc) => (
-                <option key={acc.id} value={acc.id}>
+                <NativeSelectOption key={acc.id} value={acc.id}>
                   {acc.name} {acc.offbudget ? '(Off-budget)' : '(On-budget)'}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </div>
         </div>
 
-        <label
+        <Label
           className="flex items-start gap-2.5 rounded-xl p-3 text-xs cursor-pointer"
           style={{ backgroundColor: 'var(--bg-subtle)' }}
         >
-          <input
+          <Input
+            variant="unstyled"
             type="checkbox"
             checked={includeInTotal}
             onChange={(e) => setIncludeInTotal(e.target.checked)}
@@ -822,17 +817,16 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
               Unvested RSUs are always shown separately and never inflate Net Worth. Turn this off if you already track vested shares in regular Stock holdings.
             </div>
           </div>
-        </label>
+        </Label>
 
         <div>
-          <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+          <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
             Notes (optional)
-          </label>
-          <input
+          </Label>
+          <Input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="e.g. Broker name / grant ID"
-            className="input-field"
           />
         </div>
 

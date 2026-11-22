@@ -5,6 +5,9 @@ import { apiFetch, formatMoney } from '../lib/api';
 import { Sheet } from '../components/Sheet';
 import { Tile } from '../components/Tile';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
 
 type ManagedAccount = ActualAccount & { linkedHoldings: number; autoImport: boolean; links: AccountLink[] };
 
@@ -291,8 +294,9 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
         style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)', opacity: a.closed ? 0.7 : 1 }}
       >
         {!a.closed && (
-          <label className="-ml-2 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center" title="Show on Home">
-            <input
+          <Label className="-ml-2 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center" title="Show on Home">
+            <Input
+              variant="unstyled"
               type="checkbox"
               checked={onHome}
               onChange={(e) => onToggleHome(a.id, e.target.checked)}
@@ -300,7 +304,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
               className="h-5 w-5 cursor-pointer"
               style={{ accentColor: 'var(--accent)' }}
             />
-          </label>
+          </Label>
         )}
         <Button type="button" onClick={() => openManage(a)} className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
           <Tile colorKey={a.name} label={a.name} size={40} />
@@ -362,17 +366,17 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
 
   const groupSelect = (id: string, value: string, onChange: (v: string) => void) => (
     <div>
-      <label htmlFor={id} className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+      <Label htmlFor={id} className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
         Group
-      </label>
-      <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className="input-field">
-        <option value="">No group</option>
+      </Label>
+      <NativeSelect id={id} value={value} onChange={(e) => onChange(e.target.value)}>
+        <NativeSelectOption value="">No group</NativeSelectOption>
         {groups.map((g) => (
-          <option key={g.id} value={g.id}>
+          <NativeSelectOption key={g.id} value={g.id}>
             {g.name}
-          </option>
+          </NativeSelectOption>
         ))}
-      </select>
+      </NativeSelect>
     </div>
   );
 
@@ -428,10 +432,10 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
       <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Add account" subtitle="Creates the account in Actual">
         <form onSubmit={createAccount} className="flex flex-col gap-4">
           <div>
-            <label htmlFor="acc-name" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+            <Label htmlFor="acc-name" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
               Name
-            </label>
-            <input id="acc-name" autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Everyday Savings" maxLength={100} className="input-field" />
+            </Label>
+            <Input id="acc-name" autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Everyday Savings" maxLength={100} />
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
@@ -444,16 +448,16 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
           </div>
           {groups.length > 0 && groupSelect('acc-group', newGroup, setNewGroup)}
           <div>
-            <label htmlFor="acc-balance" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+            <Label htmlFor="acc-balance" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
               Starting balance ({baseCurrency})
-            </label>
-            <input
+            </Label>
+            <Input
               id="acc-balance"
               inputMode="decimal"
               value={newBalance}
               onChange={(e) => setNewBalance(e.target.value)}
               placeholder="0.00"
-              className="input-field tabular-nums"
+              className="tabular-nums"
             />
             <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
               Use a negative number for a credit card or loan you owe on.
@@ -487,11 +491,11 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
               <>
                 {/* Rename */}
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor="acc-edit-name" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                  <Label htmlFor="acc-edit-name" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
                     Name
-                  </label>
+                  </Label>
                   <div className="flex gap-2">
-                    <input id="acc-edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={100} className="input-field" />
+                    <Input id="acc-edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={100} />
                     <Button
                       type="button"
                       onClick={saveName}
@@ -590,32 +594,31 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                     </div>
                   )}
                   <div className="grid grid-cols-[1fr_auto_5.5rem] gap-2">
-                    <input
+                    <Input
                       aria-label="Bank"
                       list="known-issuers"
                       value={linkIssuer}
                       onChange={(e) => setLinkIssuer(e.target.value)}
                       placeholder="Bank"
-                      className="input-field"
                     />
                     <datalist id="known-issuers">
                       {KNOWN_ISSUERS.map((b) => (
-                        <option key={b} value={b} />
+                        <NativeSelectOption key={b} value={b} />
                       ))}
                     </datalist>
-                    <select aria-label="Type" value={linkKind} onChange={(e) => setLinkKind(e.target.value as 'card' | 'account' | 'wallet')} className="input-field w-auto">
-                      <option value="card">Card</option>
-                      <option value="account">Account</option>
-                      <option value="wallet">Wallet</option>
-                    </select>
-                    <input
+                    <NativeSelect aria-label="Type" value={linkKind} onChange={(e) => setLinkKind(e.target.value as 'card' | 'account' | 'wallet')} className="w-auto">
+                      <NativeSelectOption value="card">Card</NativeSelectOption>
+                      <NativeSelectOption value="account">Account</NativeSelectOption>
+                      <NativeSelectOption value="wallet">Wallet</NativeSelectOption>
+                    </NativeSelect>
+                    <Input
                       aria-label="Last 4 digits"
                       inputMode="numeric"
                       maxLength={4}
                       value={linkLast4}
                       onChange={(e) => setLinkLast4(e.target.value.replace(/\D/g, ''))}
                       placeholder="1234"
-                      className="input-field tabular-nums"
+                      className="tabular-nums"
                     />
                   </div>
                   <Button type="button" onClick={addLink} disabled={busy} variant="secondary" className="h-10 rounded-xl text-sm font-bold disabled:opacity-50">
@@ -670,33 +673,33 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                       {selectedBalance !== 0 && (
                         <>
                           <div>
-                            <label htmlFor="acc-transfer" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                            <Label htmlFor="acc-transfer" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
                               Move the remaining {money(selectedBalance)} to
-                            </label>
-                            <select id="acc-transfer" value={transferTo} onChange={(e) => setTransferTo(e.target.value)} className="input-field">
-                              <option value="">Choose an account…</option>
+                            </Label>
+                            <NativeSelect id="acc-transfer" value={transferTo} onChange={(e) => setTransferTo(e.target.value)}>
+                              <NativeSelectOption value="">Choose an account…</NativeSelectOption>
                               {open
                                 .filter((a) => a.id !== selected.id)
                                 .map((a) => (
-                                  <option key={a.id} value={a.id}>
+                                  <NativeSelectOption key={a.id} value={a.id}>
                                     {a.name} ({a.offbudget ? 'tracking' : 'budget'})
-                                  </option>
+                                  </NativeSelectOption>
                                 ))}
-                            </select>
+                            </NativeSelect>
                           </div>
                           {needsCategory && (
                             <div>
-                              <label htmlFor="acc-transfer-cat" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                              <Label htmlFor="acc-transfer-cat" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
                                 Category for money leaving the budget
-                              </label>
-                              <select id="acc-transfer-cat" value={transferCat} onChange={(e) => setTransferCat(e.target.value)} className="input-field">
-                                <option value="">Choose a category…</option>
+                              </Label>
+                              <NativeSelect id="acc-transfer-cat" value={transferCat} onChange={(e) => setTransferCat(e.target.value)}>
+                                <NativeSelectOption value="">Choose a category…</NativeSelectOption>
                                 {expenseCategories.map((c) => (
-                                  <option key={c.id} value={c.id}>
+                                  <NativeSelectOption key={c.id} value={c.id}>
                                     {c.name}
-                                  </option>
+                                  </NativeSelectOption>
                                 ))}
-                              </select>
+                              </NativeSelect>
                             </div>
                           )}
                         </>
@@ -739,17 +742,16 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
         {groupSheet && (
           <form onSubmit={saveGroup} className="flex flex-col gap-4">
             <div>
-              <label htmlFor="group-name" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="group-name" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
                 Name
-              </label>
-              <input
+              </Label>
+              <Input
                 id="group-name"
                 autoFocus
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
                 placeholder="e.g. Savings"
                 maxLength={60}
-                className="input-field"
               />
             </div>
             {sheetError && (

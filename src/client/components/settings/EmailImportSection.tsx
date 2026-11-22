@@ -5,6 +5,9 @@ import { apiFetch } from '../../lib/api';
 import { relativeTime } from '../../lib/recent';
 import { ConfirmAction, CopyField, Disclosure, SettingsCard } from './SettingsUI';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
 
 interface EmailImportSectionProps {
   accounts: ActualAccount[];
@@ -159,11 +162,11 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
 
       {/* Forwarding address */}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="fwd-address" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+        <Label htmlFor="fwd-address" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
           Forwarding address
-        </label>
+        </Label>
         <div className="flex gap-2">
-          <input
+          <Input
             id="fwd-address"
             type="email"
             inputMode="email"
@@ -175,7 +178,7 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
               if (e.key === 'Enter') void saveForwarding();
             }}
             placeholder="e.g. payments@yourdomain.com"
-            className="input-field min-w-0 flex-1"
+            className="min-w-0 flex-1"
           />
           {forwarding.trim() !== savedForwarding && (
             <Button type="button" onClick={() => void saveForwarding()} variant="default" className="shrink-0 rounded-xl px-4 text-sm">
@@ -193,10 +196,10 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
 
       {/* Fallback account */}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="default-import-account" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+        <Label htmlFor="default-import-account" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
           If Kopi can’t tell the account
-        </label>
-        <select
+        </Label>
+        <NativeSelect
           id="default-import-account"
           value={defaultAccount}
           onChange={(e) => {
@@ -204,15 +207,14 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
             setDefaultAccount(v);
             void patchSettings({ defaultEmailAccountId: v }, v ? 'Fallback account saved' : 'No fallback account');
           }}
-          className="input-field"
         >
-          <option value="">Ask me each time (recommended)</option>
+          <NativeSelectOption value="">Ask me each time (recommended)</NativeSelectOption>
           {openAccounts.map((a) => (
-            <option key={a.id} value={a.id}>
+            <NativeSelectOption key={a.id} value={a.id}>
               {a.name}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
           Used only for emails from a card Kopi hasn’t learned yet. Leaving it empty means those always ask.
         </p>
@@ -280,21 +282,22 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
             <div key={r.id} className="flex flex-col gap-2 rounded-xl p-3" style={{ backgroundColor: 'var(--bg-canvas)' }}>
               <span className="text-sm font-bold">{r.name}</span>
               <div className="flex items-center gap-2">
-                <select
+                <NativeSelect
                   aria-label={`Account for ${r.name}`}
                   value={r.actual_account_id || ''}
                   onChange={(e) => void updateRule(r, { actual_account_id: e.target.value || null })}
-                  className="input-field min-w-0 flex-1"
+                  className="min-w-0 flex-1"
                 >
-                  <option value="">No account</option>
+                  <NativeSelectOption value="">No account</NativeSelectOption>
                   {openAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
+                    <NativeSelectOption key={a.id} value={a.id}>
                       {a.name}
-                    </option>
+                    </NativeSelectOption>
                   ))}
-                </select>
-                <label className="flex min-h-[44px] shrink-0 cursor-pointer items-center gap-2 px-1 text-xs font-bold">
-                  <input
+                </NativeSelect>
+                <Label className="flex min-h-[44px] shrink-0 cursor-pointer items-center gap-2 px-1 text-xs font-bold">
+                  <Input
+                    variant="unstyled"
                     type="checkbox"
                     checked={r.auto_import}
                     onChange={() => void updateRule(r, { auto_import: !r.auto_import })}
@@ -302,7 +305,7 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
                     style={{ accentColor: 'var(--accent)' }}
                   />
                   Auto-import
-                </label>
+                </Label>
               </div>
             </div>
           ))}

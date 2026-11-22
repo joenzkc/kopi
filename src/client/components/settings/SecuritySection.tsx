@@ -7,6 +7,8 @@ import { apiFetch } from '../../lib/api';
 import { relativeTime } from '../../lib/recent';
 import { ConfirmAction, CopyField, Disclosure, SettingsCard, describeDevice } from './SettingsUI';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
 
 interface SecuritySectionProps {
   webAuthnSupportedOrigin: boolean;
@@ -144,11 +146,11 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
           </div>
         )}
         <form onSubmit={addPasskey} className="flex flex-col gap-1.5">
-          <label htmlFor="passkey-name" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+          <Label htmlFor="passkey-name" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
             Add a passkey for this device
-          </label>
+          </Label>
           <div className="flex gap-2">
-            <input id="passkey-name" value={passkeyName} onChange={(e) => setPasskeyName(e.target.value)} maxLength={60} className="input-field min-w-0 flex-1" />
+            <Input id="passkey-name" value={passkeyName} onChange={(e) => setPasskeyName(e.target.value)} maxLength={60} className="min-w-0 flex-1" />
             <Button type="submit" disabled={busy || !webAuthnSupportedOrigin} variant="default" className="flex shrink-0 items-center gap-1.5 rounded-xl px-4 text-sm disabled:opacity-40">
               <Plus className="h-4 w-4" />
               Add
@@ -173,23 +175,23 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
         {pwOpen && (
         <form onSubmit={changePassword} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="pw-current" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+            <Label htmlFor="pw-current" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
               Current password
-            </label>
-            <input id="pw-current" type="password" autoComplete="current-password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} className="input-field" />
+            </Label>
+            <Input id="pw-current" type="password" autoComplete="current-password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="pw-new" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="pw-new" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
                 New password
-              </label>
-              <input id="pw-new" type="password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} className="input-field" />
+              </Label>
+              <Input id="pw-new" type="password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="pw-confirm" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="pw-confirm" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
                 Repeat new password
-              </label>
-              <input id="pw-confirm" type="password" autoComplete="new-password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} className="input-field" />
+              </Label>
+              <Input id="pw-confirm" type="password" autoComplete="new-password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
             </div>
           </div>
           {pwError && (
@@ -276,16 +278,16 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
       <Disclosure title="Automation (Shortcuts, n8n)" description="API keys for adding transactions from other tools">
         <CopyField label="Add-transaction endpoint (POST with Bearer API key)" value={`${window.location.origin}/api/v1/transactions/ingest`} />
         <form onSubmit={createKey} className="flex flex-col gap-1.5">
-          <label htmlFor="api-key-name" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+          <Label htmlFor="api-key-name" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
             New API key
-          </label>
+          </Label>
           <div className="flex gap-2">
-            <input
+            <Input
               id="api-key-name"
               value={newKeyName}
               onChange={(e) => setNewKeyName(e.target.value)}
               placeholder="e.g. Apple Shortcuts"
-              className="input-field min-w-0 flex-1"
+              className="min-w-0 flex-1"
             />
             <Button type="submit" disabled={busy || !newKeyName.trim()} variant="default" className="flex shrink-0 items-center gap-1.5 rounded-xl px-4 text-sm disabled:opacity-40">
               <KeyRound className="h-4 w-4" />

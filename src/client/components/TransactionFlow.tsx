@@ -13,6 +13,9 @@ import { fetchRecent, friendlyDate, invalidateRecent, localISODate, senderLabel,
 import { Tile } from './Tile';
 import { LinkPayeeSheet } from './LinkPayeeSheet';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
 
 export type FlowKind = 'expense' | 'income' | 'transfer';
 export type FlowRequest = { mode: 'add'; kind?: FlowKind } | { mode: 'review'; event: EmailEventRecord };
@@ -468,27 +471,28 @@ export function TransactionFlow({
                   </span>
                   <span className="truncate text-6xl font-extrabold tracking-tight">{displayAmount(amt)}</span>
                 </div>
-                <label
+                <Label
                   className="relative flex h-10 items-center gap-1.5 rounded-full border pl-4 pr-3 text-sm font-semibold"
                   style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
                 >
                   <span style={{ color: 'var(--text-muted)' }}>{kind === 'income' ? 'Into' : 'From'}</span>
                   <span>{accountName(accountId)}</span>
                   <ChevronDown className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
-                  <select
+                  <NativeSelect
+                    variant="unstyled"
                     aria-label={kind === 'income' ? 'Into account' : 'From account'}
                     value={accountId}
                     onChange={(e) => setAccountId(e.target.value)}
                     className="absolute inset-0 cursor-pointer opacity-0"
                   >
                     {openAccounts.map((a) => (
-                      <option key={a.id} value={a.id}>
+                      <NativeSelectOption key={a.id} value={a.id}>
                         {a.name}
                         {a.offbudget ? ' (off budget)' : ''}
-                      </option>
+                      </NativeSelectOption>
                     ))}
-                  </select>
-                </label>
+                  </NativeSelect>
+                </Label>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
@@ -527,12 +531,13 @@ export function TransactionFlow({
             )}
             <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-5 safe-pb">
               {!isTransfer && (
-                <label
+                <Label
                   className="flex h-12 items-center gap-2 rounded-2xl border-2 px-3.5"
                   style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--accent-text)', color: 'var(--text-muted)' }}
                 >
                   <Search className="h-4 w-4 shrink-0" />
-                  <input
+                  <Input
+                    variant="unstyled"
                     ref={payeeInputRef}
                     aria-label="Payee"
                     value={query}
@@ -549,7 +554,7 @@ export function TransactionFlow({
                     className="h-full flex-1 bg-transparent text-[15px] outline-none"
                     style={{ color: 'var(--text-primary)' }}
                   />
-                </label>
+                </Label>
               )}
               <span className={sectionLabel} style={{ color: 'var(--text-muted)' }}>
                 {isTransfer ? 'Your accounts' : query.trim() ? 'Matches' : 'Recent payees'}
@@ -809,7 +814,7 @@ export function TransactionFlow({
                 className="flex flex-col rounded-3xl border px-4"
                 style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
               >
-                <label className="relative flex min-h-[54px] items-center justify-between gap-3">
+                <Label className="relative flex min-h-[54px] items-center justify-between gap-3">
                   <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     {kind === 'income' ? 'Into account' : isTransfer ? 'From account' : 'Account'}
                   </span>
@@ -817,7 +822,8 @@ export function TransactionFlow({
                     <span className="truncate">{accountId ? accountName(accountId) : 'Choose account'}</span>
                     <ChevronDown className="h-4 w-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
                   </span>
-                  <select
+                  <NativeSelect
+                    variant="unstyled"
                     aria-label="Account"
                     value={accountId}
                     onChange={(e) => {
@@ -826,17 +832,18 @@ export function TransactionFlow({
                     }}
                     className="absolute inset-0 cursor-pointer opacity-0"
                   >
-                    {!accountId && <option value="">Choose an account…</option>}
+                    {!accountId && <NativeSelectOption value="">Choose an account…</NativeSelectOption>}
                     {openAccounts.map((a) => (
-                      <option key={a.id} value={a.id}>
+                      <NativeSelectOption key={a.id} value={a.id}>
                         {a.name}
-                      </option>
+                      </NativeSelectOption>
                     ))}
-                  </select>
-                </label>
+                  </NativeSelect>
+                </Label>
                 {review && rememberLabel && accountId && (
-                  <label className="flex items-center gap-2.5 border-t py-3 text-xs" style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
-                    <input
+                  <Label className="flex items-center gap-2.5 border-t py-3 text-xs" style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                    <Input
+                      variant="unstyled"
                       type="checkbox"
                       checked={remember}
                       onChange={(e) => setRemember(e.target.checked)}
@@ -846,7 +853,7 @@ export function TransactionFlow({
                     <span>
                       Remember: <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{rememberLabel}</span> → {accountName(accountId)}
                     </span>
-                  </label>
+                  </Label>
                 )}
                 <div className="flex min-h-[54px] flex-wrap items-center justify-between gap-2 border-t py-2" style={{ borderColor: 'var(--border-subtle)' }}>
                   <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -868,12 +875,13 @@ export function TransactionFlow({
                         </Button>
                       );
                     })}
-                    <label
+                    <Label
                       className="relative flex h-9 items-center rounded-xl border px-3 text-xs font-bold"
                       style={chip(date !== today && date !== shiftDays(today, -1))}
                     >
                       {date !== today && date !== shiftDays(today, -1) ? friendlyDate(date) : 'Other'}
-                      <input
+                      <Input
+                        variant="unstyled"
                         type="date"
                         aria-label="Pick a date"
                         value={date}
@@ -881,21 +889,22 @@ export function TransactionFlow({
                         onChange={(e) => e.target.value && setDate(e.target.value)}
                         className="absolute inset-0 cursor-pointer opacity-0"
                       />
-                    </label>
+                    </Label>
                   </div>
                 </div>
-                <label className="flex min-h-[54px] items-center justify-between gap-3 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                <Label className="flex min-h-[54px] items-center justify-between gap-3 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
                   <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     Notes
                   </span>
-                  <input
+                  <Input
+                    variant="unstyled"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Optional"
                     maxLength={500}
                     className="min-w-0 flex-1 bg-transparent text-right text-sm outline-none"
                   />
-                </label>
+                </Label>
                 {!review && (
                   <Button
                     type="button"
@@ -941,12 +950,13 @@ export function TransactionFlow({
           <div className="flex min-h-0 flex-1 flex-col">
             {header('Category', () => setStep('details'))}
             <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-5 safe-pb">
-              <label
+              <Label
                 className="flex h-12 items-center gap-2 rounded-2xl border px-3.5"
                 style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-muted)' }}
               >
                 <Search className="h-4 w-4 shrink-0" />
-                <input
+                <Input
+                  variant="unstyled"
                   autoFocus
                   aria-label="Search categories"
                   value={catQuery}
@@ -955,7 +965,7 @@ export function TransactionFlow({
                   className="h-full flex-1 bg-transparent text-[15px] outline-none"
                   style={{ color: 'var(--text-primary)' }}
                 />
-              </label>
+              </Label>
               <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
                 <Button
                   type="button"

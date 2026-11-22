@@ -8,6 +8,8 @@ import { EmailImportSection } from '../components/settings/EmailImportSection';
 import { SecuritySection } from '../components/settings/SecuritySection';
 import { SettingsCard, SettingsGroup } from '../components/settings/SettingsUI';
 import { Button } from '@client/components/ui/button';
+import { Label } from '@client/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
 
 interface SettingsPageProps {
   budgets: ActualBudget[];
@@ -90,10 +92,10 @@ export function SettingsPage({
         <SettingsCard icon={<Wallet className="h-[18px] w-[18px]" />} title="Budget" description="Changes save straight away.">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="base-currency" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="base-currency" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
                 Base currency
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id="base-currency"
                 value={baseCurrency}
                 disabled={saving}
@@ -102,32 +104,30 @@ export function SettingsPage({
                   setBaseCurrency(v);
                   void save({ baseCurrency: v }, `Base currency set to ${v}`);
                 }}
-                className="input-field"
               >
                 {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>
+                  <NativeSelectOption key={c} value={c}>
                     {c}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="active-budget" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="active-budget" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
                 Actual budget
-              </label>
-              <select
+              </Label>
+              <NativeSelect
                 id="active-budget"
                 value={shownBudget}
                 disabled={saving}
                 onChange={(e) => setPendingBudget(e.target.value === budgetSyncId ? null : e.target.value)}
-                className="input-field"
               >
                 {budgets.map((b) => (
-                  <option key={b.groupId} value={b.groupId}>
+                  <NativeSelectOption key={b.groupId} value={b.groupId}>
                     {b.name}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </div>
           {pendingBudget && (

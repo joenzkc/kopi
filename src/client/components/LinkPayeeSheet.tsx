@@ -5,6 +5,8 @@ import { apiFetch } from '../lib/api';
 import { Sheet } from './Sheet';
 import { Tile } from './Tile';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
 
 interface LinkPayeeSheetProps {
   open: boolean;
@@ -111,11 +113,10 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
           </div>
           {match === 'contains' && (
             <>
-              <input
+              <Input
                 aria-label="Text the bank's payee must contain"
                 value={containsText}
                 onChange={(e) => setContainsText(e.target.value)}
-                className="input-field"
               />
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 Catches every outlet, e.g. “{containsText || 'McDonalds'} JE”, “{containsText || 'McDonalds'} Tampines”.
@@ -128,9 +129,10 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
           <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
             Rename to
           </span>
-          <label className="flex h-11 items-center gap-2 rounded-xl border px-3" style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border-subtle)', color: 'var(--text-muted)' }}>
+          <Label className="flex h-11 items-center gap-2 rounded-xl border px-3" style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border-subtle)', color: 'var(--text-muted)' }}>
             <Search className="h-4 w-4 shrink-0" />
-            <input
+            <Input
+              variant="unstyled"
               aria-label="Search payees"
               value={query}
               onChange={(e) => {
@@ -142,7 +144,7 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
               className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none"
               style={{ color: 'var(--text-primary)' }}
             />
-          </label>
+          </Label>
           <div className="flex max-h-56 flex-col gap-1 overflow-y-auto">
             {candidates.map((p) => (
               <Button
@@ -179,15 +181,15 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
         </div>
 
         {mergePayeeId && (
-          <label className="flex items-start gap-3 text-sm">
-            <input type="checkbox" checked={merge} onChange={(e) => setMerge(e.target.checked)} className="mt-0.5 h-5 w-5" style={{ accentColor: 'var(--accent)' }} />
+          <Label className="flex items-start gap-3 text-sm">
+            <Input variant="unstyled" type="checkbox" checked={merge} onChange={(e) => setMerge(e.target.checked)} className="mt-0.5 h-5 w-5" style={{ accentColor: 'var(--accent)' }} />
             <span>
               Also rename past transactions
               <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
                 Merges the “{raw}” payee into {targetLabel ? `“${targetLabel}”` : 'the one you pick'} in Actual.
               </span>
             </span>
-          </label>
+          </Label>
         )}
 
         {error && (

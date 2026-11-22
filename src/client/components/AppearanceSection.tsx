@@ -4,6 +4,8 @@ import type { Appearance } from '@shared/types';
 import { ACCENTS, BASES, DEFAULT_APPEARANCE, accentHex, contrast, readableOn, resolveBase } from '../lib/theme';
 import { Tile } from './Tile';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
 
 interface AppearanceSectionProps {
   appearance: Appearance;
@@ -113,8 +115,9 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
           })}
         </div>
         {appearance.accent === 'custom' && (
-          <label className="flex items-center gap-3 rounded-2xl border p-2.5" style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border-subtle)' }}>
-            <input
+          <Label className="flex items-center gap-3 rounded-2xl border p-2.5" style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border-subtle)' }}>
+            <Input
+              variant="unstyled"
               type="color"
               value={appearance.custom}
               onChange={(e) => set({ custom: e.target.value.toUpperCase(), accent: 'custom' })}
@@ -127,7 +130,7 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
                 {appearance.custom.toUpperCase()} · text on it is {readableOn(appearance.custom) === '#FFFFFF' ? 'white' : 'dark'}
               </span>
             </span>
-          </label>
+          </Label>
         )}
         {lowContrast && (
           <p className="rounded-xl px-3 py-2.5 text-xs leading-relaxed" style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}>

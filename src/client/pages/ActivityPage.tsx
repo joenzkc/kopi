@@ -8,6 +8,9 @@ import { Tile } from '../components/Tile';
 import { LinkPayeeSheet } from '../components/LinkPayeeSheet';
 import type { FlowRequest } from '../components/TransactionFlow';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
+import { Textarea } from '@client/components/ui/textarea';
 
 interface ActivityPageProps {
   accounts: ActualAccount[];
@@ -192,12 +195,13 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
           {month.label} · in <span style={{ color: 'var(--positive)' }}>{formatMoney(month.inc, baseCurrency)}</span> · out{' '}
           <span style={{ color: 'var(--text-primary)' }}>{formatMoney(month.out, baseCurrency)}</span>
         </p>
-        <label
+        <Label
           className="flex h-12 items-center gap-2 rounded-2xl px-3.5"
           style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-muted)' }}
         >
           <Search className="h-4 w-4 shrink-0" />
-          <input
+          <Input
+            variant="unstyled"
             aria-label="Search transactions"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -210,7 +214,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
               <X className="h-4 w-4" />
             </Button>
           )}
-        </label>
+        </Label>
         <div role="radiogroup" aria-label="Filter" className="grid grid-cols-4 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-surface)' }}>
           {filters.map((f) => {
             const on = filter === f.id;
@@ -437,16 +441,16 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
       <Sheet open={testOpen} onClose={() => setTestOpen(false)} title="Test email parser" subtitle="Simulates an incoming bank alert email">
         <form onSubmit={runTest} className="space-y-3.5">
           <div>
-            <label htmlFor="test-from" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>From</label>
-            <input id="test-from" value={testFrom} onChange={(e) => setTestFrom(e.target.value)} className="input-field" />
+            <Label htmlFor="test-from" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>From</Label>
+            <Input id="test-from" value={testFrom} onChange={(e) => setTestFrom(e.target.value)} />
           </div>
           <div>
-            <label htmlFor="test-subject" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Subject</label>
-            <input id="test-subject" value={testSubject} onChange={(e) => setTestSubject(e.target.value)} className="input-field" />
+            <Label htmlFor="test-subject" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Subject</Label>
+            <Input id="test-subject" value={testSubject} onChange={(e) => setTestSubject(e.target.value)} />
           </div>
           <div>
-            <label htmlFor="test-body" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Email body</label>
-            <textarea id="test-body" rows={4} value={testBody} onChange={(e) => setTestBody(e.target.value)} className="input-field" />
+            <Label htmlFor="test-body" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Email body</Label>
+            <Textarea id="test-body" rows={4} value={testBody} onChange={(e) => setTestBody(e.target.value)} />
           </div>
           <Button type="submit" disabled={testBusy} variant="default" className="h-12 w-full rounded-2xl text-sm disabled:opacity-50">
             {testBusy ? 'Parsing…' : 'Queue & parse test email'}

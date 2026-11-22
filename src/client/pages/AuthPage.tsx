@@ -4,6 +4,8 @@ import { startAuthentication } from '@simplewebauthn/browser';
 import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
 import { apiFetch } from '../lib/api';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
 
 interface AuthPageProps {
   needsSetup: boolean;
@@ -107,25 +109,24 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="auth-username" className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="auth-username" className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                 Username
-              </label>
-              <input
+              </Label>
+              <Input
                 id="auth-username"
                 type="text"
                 autoComplete="username"
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="input-field"
               />
             </div>
 
             <div>
-              <label htmlFor="auth-password" className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="auth-password" className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                 Password
-              </label>
-              <input
+              </Label>
+              <Input
                 id="auth-password"
                 type="password"
                 autoComplete={needsSetup ? 'new-password' : 'current-password'}
@@ -133,23 +134,21 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
                 minLength={needsSetup ? 8 : 1}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="input-field"
                 placeholder={needsSetup ? 'At least 8 characters' : undefined}
               />
             </div>
 
             {needsSetup && (
               <div>
-                <label className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                <Label className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Confirm Password
-                </label>
-                <input
+                </Label>
+                <Input
                   type="password"
                   autoComplete="new-password"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="input-field"
                   placeholder="Repeat password"
                 />
               </div>

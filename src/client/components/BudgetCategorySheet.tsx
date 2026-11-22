@@ -3,6 +3,9 @@ import type { BudgetCategory, BudgetMonthResponse } from '@shared/types';
 import { apiFetch, formatMoney } from '../lib/api';
 import { Sheet } from './Sheet';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
+import { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from '@client/components/ui/native-select';
 
 interface BudgetCategorySheetProps {
   category: BudgetCategory | null;
@@ -149,18 +152,18 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
 
         {/* Set budgeted amount */}
         <form onSubmit={saveBudget} className="flex flex-col gap-2">
-          <label htmlFor="budget-amount" className="text-xs font-bold" style={labelStyle}>
+          <Label htmlFor="budget-amount" className="text-xs font-bold" style={labelStyle}>
             Budgeted for {monthName} ({baseCurrency})
-          </label>
+          </Label>
           <div className="flex gap-2">
-            <input
+            <Input
               id="budget-amount"
               inputMode="decimal"
               value={budgetInput}
               onChange={(e) => setBudgetInput(e.target.value)}
               onFocus={(e) => e.target.select()}
               placeholder="0.00"
-              className="input-field flex-1 tabular-nums"
+              className="flex-1 tabular-nums"
             />
             <Button type="submit" disabled={busy !== null || newBudgeted === null} variant="default" className="h-12 shrink-0 rounded-2xl px-5 text-[15px] disabled:opacity-50">
               {busy === 'budget' ? 'Saving…' : 'Save'}
@@ -209,36 +212,36 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
               );
             })}
           </div>
-          <label htmlFor="move-other" className="sr-only">
+          <Label htmlFor="move-other" className="sr-only">
             {moveDir === 'in' ? 'Take money from' : 'Send money to'}
-          </label>
+          </Label>
           <div className="flex items-center gap-2">
             <span className="w-12 shrink-0 text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
               {moveDir === 'in' ? 'From' : 'To'}
             </span>
-            <select id="move-other" value={moveOther} onChange={(e) => setMoveOther(e.target.value)} className="input-field flex-1">
-              <option value="">To budget ({money(data.toBudget)})</option>
+            <NativeSelect id="move-other" value={moveOther} onChange={(e) => setMoveOther(e.target.value)} className="flex-1">
+              <NativeSelectOption value="">To budget ({money(data.toBudget)})</NativeSelectOption>
               {otherGroups.map((g) => (
-                <optgroup key={g.id} label={g.name}>
+                <NativeSelectOptGroup key={g.id} label={g.name}>
                   {g.categories.map((c) => (
-                    <option key={c.id} value={c.id}>
+                    <NativeSelectOption key={c.id} value={c.id}>
                       {c.name} ({money(c.balance)})
-                    </option>
+                    </NativeSelectOption>
                   ))}
-                </optgroup>
+                </NativeSelectOptGroup>
               ))}
-            </select>
+            </NativeSelect>
           </div>
           <div className="flex gap-2">
-            <label htmlFor="move-amount" className="sr-only">Amount to move</label>
-            <input
+            <Label htmlFor="move-amount" className="sr-only">Amount to move</Label>
+            <Input
               id="move-amount"
               inputMode="decimal"
               value={moveInput}
               onChange={(e) => setMoveInput(e.target.value)}
               onFocus={(e) => e.target.select()}
               placeholder="0.00"
-              className="input-field flex-1 tabular-nums"
+              className="flex-1 tabular-nums"
             />
             <Button
               type="submit"

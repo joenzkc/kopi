@@ -4,6 +4,8 @@ import type { EnrichedRsuGrant, EnrichedRsuTranche, RsuTrancheStatus } from '@sh
 import { apiFetch } from '../lib/api';
 import { Sheet } from './Sheet';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
 
 interface RsuTrancheSheetProps {
   open: boolean;
@@ -137,9 +139,9 @@ export function RsuTrancheSheet({ open, onClose, grant, tranche, onSaved, onErro
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+          <Label className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
             Status
-          </label>
+          </Label>
           <div className="grid grid-cols-4 gap-1.5">
             {STATUS_OPTIONS.map((opt) => {
               const active = status === opt.id;
@@ -167,16 +169,16 @@ export function RsuTrancheSheet({ open, onClose, grant, tranche, onSaved, onErro
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Vest Date
-            </label>
-            <input required type="date" value={vestDate} onChange={(e) => setVestDate(e.target.value)} className="input-field" />
+            </Label>
+            <Input required type="date" value={vestDate} onChange={(e) => setVestDate(e.target.value)} />
           </div>
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Gross Shares
-            </label>
-            <input
+            </Label>
+            <Input
               required
               type="number"
               step="any"
@@ -184,7 +186,6 @@ export function RsuTrancheSheet({ open, onClose, grant, tranche, onSaved, onErro
               value={units}
               onChange={(e) => setUnits(e.target.value)}
               placeholder="0"
-              className="input-field"
             />
           </div>
         </div>
@@ -192,9 +193,9 @@ export function RsuTrancheSheet({ open, onClose, grant, tranche, onSaved, onErro
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="min-w-0">
             <div className="mb-1 flex items-center justify-between gap-2">
-              <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <Label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                 Tax Withheld Shares
-              </label>
+              </Label>
               {grant.tax_withhold_pct > 0 && unitsNum > 0 && (
                 <Button
                   type="button"
@@ -206,14 +207,13 @@ export function RsuTrancheSheet({ open, onClose, grant, tranche, onSaved, onErro
                 </Button>
               )}
             </div>
-            <input
+            <Input
               type="number"
               step="any"
               min="0"
               value={withheldUnits}
               onChange={(e) => setWithheldUnits(e.target.value)}
               placeholder="0"
-              className="input-field"
             />
             {unitsNum > 0 && (
               <p className="mt-1 text-[11px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
@@ -222,17 +222,16 @@ export function RsuTrancheSheet({ open, onClose, grant, tranche, onSaved, onErro
             )}
           </div>
           <div className="min-w-0">
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Vest FMV Price ({grant.currency})
-            </label>
-            <input
+            </Label>
+            <Input
               type="number"
               step="any"
               min="0"
               value={vestedPrice}
               onChange={(e) => setVestedPrice(e.target.value)}
               placeholder={grant.price !== null ? `${grant.price.toFixed(2)}` : 'Optional'}
-              className="input-field"
             />
             <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
               Used as cost basis for post-vest P&amp;L
@@ -241,14 +240,13 @@ export function RsuTrancheSheet({ open, onClose, grant, tranche, onSaved, onErro
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+          <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
             Notes (optional)
-          </label>
-          <input
+          </Label>
+          <Input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="e.g. Sold to cover taxes / transferred to broker"
-            className="input-field"
           />
         </div>
 

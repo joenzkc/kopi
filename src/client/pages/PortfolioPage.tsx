@@ -27,6 +27,9 @@ import { RsuGrantSheet } from '../components/RsuGrantSheet';
 import { RsuTrancheSheet } from '../components/RsuTrancheSheet';
 import { RsuSection } from '../components/RsuSection';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
 
 interface PortfolioPageProps {
   accounts: ActualAccount[];
@@ -820,10 +823,10 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
             <>
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2 min-w-0">
-                  <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                     Cash Balance / Excess Liquidity
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     required
                     type="number"
                     step="any"
@@ -831,36 +834,34 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     placeholder="0.00"
-                    className="input-field"
                   />
                 </div>
                 <div className="min-w-0">
-                  <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                     Currency
-                  </label>
-                  <select
+                  </Label>
+                  <NativeSelect
                     value={currency}
                     onChange={(e) => {
                       setCurrency(e.target.value);
                       setSymbol(e.target.value);
                       setProviderId(`cash:${e.target.value}`);
                     }}
-                    className="input-field"
                   >
                     {['SGD', 'USD', 'EUR', 'GBP', 'HKD', 'JPY', 'AUD'].map((c) => (
-                      <option key={c} value={c}>
+                      <NativeSelectOption key={c} value={c}>
                         {c}
-                      </option>
+                      </NativeSelectOption>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Link to Actual Off-Budget Account (optional)
-                </label>
-                <select
+                </Label>
+                <NativeSelect
                   value={actualAccountId}
                   onChange={(e) => {
                     const nextId = e.target.value;
@@ -870,41 +871,38 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                       if (acctName) setName(`${acctName} ${currency} Liquidity`);
                     }
                   }}
-                  className="input-field"
                 >
-                  <option value="">Not linked (track here only)</option>
+                  <NativeSelectOption value="">Not linked (track here only)</NativeSelectOption>
                   {(offBudgetAccounts.length > 0 ? offBudgetAccounts : accounts).map((acc) => (
-                    <option key={acc.id} value={acc.id}>
+                    <NativeSelectOption key={acc.id} value={acc.id}>
                       {acc.name} {acc.offbudget ? '(Off-budget)' : '(On-budget)'}
-                    </option>
+                    </NativeSelectOption>
                   ))}
-                </select>
+                </NativeSelect>
                 <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>
                   Linking includes this excess liquidity when syncing the brokerage account balance to Actual.
                 </p>
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Label
-                </label>
-                <input
+                </Label>
+                <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={`e.g. Brokerage ${currency} cash`}
-                  className="input-field"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Notes (optional)
-                </label>
-                <input
+                </Label>
+                <Input
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="e.g. Uninvested brokerage cash / dividends"
-                  className="input-field"
                 />
               </div>
             </>
@@ -912,25 +910,25 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
             <>
               {!editing && (
                 <div className="relative">
-                  <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                     Search{' '}
                     {assetType === 'crypto'
                       ? 'CoinGecko coin'
                       : 'Yahoo Finance ticker (e.g. ACME, ACME.L, ACME.SI)'}
-                  </label>
+                  </Label>
                   <div className="relative">
                     <Search
                       className="pointer-events-none absolute left-3 top-2.5 h-4 w-4"
                       style={{ color: 'var(--text-muted)' }}
                     />
-                    <input
+                    <Input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder={
                         assetType === 'crypto' ? 'Search bitcoin, ethereum...' : 'Search by ticker or company name...'
                       }
-                      className="input-field pl-9"
+                      className="pl-9"
                     />
                   </div>
                   {(searching || searchResults.length > 0) && (
@@ -971,50 +969,47 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="min-w-0">
-                  <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                     Symbol
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     required
                     value={symbol}
                     onChange={(e) => setSymbol(e.target.value)}
                     placeholder="ACME / BTC"
-                    className="input-field"
                   />
                 </div>
                 <div className="min-w-0">
-                  <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                     {assetType === 'crypto' ? 'CoinGecko ID' : 'Yahoo Ticker'}
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     required
                     value={providerId}
                     onChange={(e) => setProviderId(e.target.value)}
                     placeholder={assetType === 'crypto' ? 'bitcoin' : 'ACME'}
-                    className="input-field"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Name
-                </label>
-                <input
+                </Label>
+                <Input
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Acme Corp."
-                  className="input-field"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                 <div className="min-w-0">
-                  <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                     Quantity
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     required
                     type="number"
                     step="any"
@@ -1022,49 +1017,47 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     placeholder="0"
-                    className="input-field"
                   />
                 </div>
                 <div className="min-w-0">
-                  <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                     Avg Cost
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="number"
                     step="any"
                     min="0"
                     value={avgCost}
                     onChange={(e) => setAvgCost(e.target.value)}
                     placeholder="0.00"
-                    className="input-field"
                   />
                 </div>
                 <div className="col-span-2 min-w-0 sm:col-span-1">
-                  <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                     Cost CCY
-                  </label>
-                  <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="input-field">
+                  </Label>
+                  <NativeSelect value={currency} onChange={(e) => setCurrency(e.target.value)}>
                     {['USD', 'SGD', 'EUR', 'GBP', 'HKD', 'JPY', 'AUD'].map((c) => (
-                      <option key={c} value={c}>
+                      <NativeSelectOption key={c} value={c}>
                         {c}
-                      </option>
+                      </NativeSelectOption>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Link to Actual Off-Budget Account (optional)
-                </label>
-                <select value={actualAccountId} onChange={(e) => setActualAccountId(e.target.value)} className="input-field">
-                  <option value="">Not linked (track here only)</option>
+                </Label>
+                <NativeSelect value={actualAccountId} onChange={(e) => setActualAccountId(e.target.value)}>
+                  <NativeSelectOption value="">Not linked (track here only)</NativeSelectOption>
                   {(offBudgetAccounts.length > 0 ? offBudgetAccounts : accounts).map((acc) => (
-                    <option key={acc.id} value={acc.id}>
+                    <NativeSelectOption key={acc.id} value={acc.id}>
                       {acc.name} {acc.offbudget ? '(Off-budget)' : '(On-budget)'}
-                    </option>
+                    </NativeSelectOption>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
             </>
           )}

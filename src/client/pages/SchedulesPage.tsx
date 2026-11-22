@@ -13,6 +13,9 @@ import type { ActualAccount, ActualPayee, EnrichedSchedule, RecurConfig } from '
 import { apiFetch, formatDueBadge, formatMoney, formatSignedMoney } from '../lib/api';
 import { Sheet } from '../components/Sheet';
 import { Button } from '@client/components/ui/button';
+import { Input } from '@client/components/ui/input';
+import { Label } from '@client/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
 
 interface SchedulesPageProps {
   accounts: ActualAccount[];
@@ -421,23 +424,23 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Schedule Name</label>
-            <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Rent, Spotify, Salary..." className="input-field" />
+            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Schedule Name</Label>
+            <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Rent, Spotify, Salary..." />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Amount ({baseCurrency})</label>
-              <input required type="number" step="0.01" min="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="input-field" />
+              <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Amount ({baseCurrency})</Label>
+              <Input required type="number" step="0.01" min="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Start / Next Date</label>
-              <input required type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input-field" />
+              <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Start / Next Date</Label>
+              <Input required type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Frequency</label>
+            <Label className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Frequency</Label>
             <div className="grid grid-cols-5 gap-1.5">
               {(
                 [
@@ -470,35 +473,35 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Account</label>
-              <select required value={accountId} onChange={(e) => setAccountId(e.target.value)} className="input-field">
-                <option value="">Select account...</option>
+              <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Account</Label>
+              <NativeSelect required value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                <NativeSelectOption value="">Select account...</NativeSelectOption>
                 {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
+                  <NativeSelectOption key={a.id} value={a.id}>{a.name}</NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Payee</label>
-              <input list="actual-payees-list" value={payeeName} onChange={(e) => setPayeeName(e.target.value)} placeholder="Type or pick payee" className="input-field" />
+              <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Payee</Label>
+              <Input list="actual-payees-list" value={payeeName} onChange={(e) => setPayeeName(e.target.value)} placeholder="Type or pick payee" />
               <datalist id="actual-payees-list">
                 {payees.map((p) => (
-                  <option key={p.id} value={p.name} />
+                  <NativeSelectOption key={p.id} value={p.name} />
                 ))}
               </datalist>
             </div>
           </div>
 
           <div className="surface-subtle space-y-2.5 rounded-xl p-3.5">
-            <label className="flex cursor-pointer items-center justify-between text-xs" style={{ color: 'var(--text-primary)' }}>
+            <Label className="flex cursor-pointer items-center justify-between text-xs" style={{ color: 'var(--text-primary)' }}>
               <span>Auto-post transaction when due</span>
-              <input type="checkbox" checked={postsTransaction} onChange={(e) => setPostsTransaction(e.target.checked)} className="h-4 w-4 accent-[#0F5E56]" />
-            </label>
+              <Input variant="unstyled" type="checkbox" checked={postsTransaction} onChange={(e) => setPostsTransaction(e.target.checked)} className="h-4 w-4 accent-[#0F5E56]" />
+            </Label>
             {preset !== 'once' && (
-              <label className="flex cursor-pointer items-center justify-between text-xs" style={{ color: 'var(--text-primary)' }}>
+              <Label className="flex cursor-pointer items-center justify-between text-xs" style={{ color: 'var(--text-primary)' }}>
                 <span>Move weekend due dates to Friday</span>
-                <input type="checkbox" checked={skipWeekend} onChange={(e) => setSkipWeekend(e.target.checked)} className="h-4 w-4 accent-[#0F5E56]" />
-              </label>
+                <Input variant="unstyled" type="checkbox" checked={skipWeekend} onChange={(e) => setSkipWeekend(e.target.checked)} className="h-4 w-4 accent-[#0F5E56]" />
+              </Label>
             )}
           </div>
 
