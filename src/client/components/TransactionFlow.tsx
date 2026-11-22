@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeftRight, Check, ChevronDown, ChevronLeft, ChevronRight, CreditCard, Delete, Mail, Plus, Search, X } from 'lucide-react';
 import type {
   ActualAccount,
@@ -21,6 +21,7 @@ import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
 import { Alert } from '@client/components/ui/alert';
+import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogTitle } from '@client/components/ui/dialog';
 
 export type FlowKind = 'expense' | 'income' | 'transfer';
 export type FlowRequest = { mode: 'add'; kind?: FlowKind } | { mode: 'review'; event: EmailEventRecord };
@@ -121,19 +122,12 @@ export function TransactionFlow({
   const [recent, setRecent] = useState<RecentTransaction[]>([]);
   const [done, setDone] = useState<{ title: string; line1: string; line2: string; amount: string } | null>(null);
   const payeeInputRef = useRef<HTMLInputElement>(null);
+  const linkPayeeOpenerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     fetchRecent()
       .then(setRecent)
       .catch(() => setRecent([]));
-  }, []);
-
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
   }, []);
 
   const n = Number.parseFloat(amt) || 0;
@@ -170,10 +164,6 @@ export function TransactionFlow({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
       if (step !== 'amount') return;
       if (/^[0-9]$/.test(e.key)) press(e.key);
       else if (e.key === '.' || e.key === ',') press('.');
@@ -184,11 +174,17 @@ export function TransactionFlow({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [step, press, goFromAmount, onClose]);
+  }, [step, press, goFromAmount]);
 
   useEffect(() => {
     if (step === 'payee' && !isTransfer) payeeInputRef.current?.focus();
   }, [step, isTransfer]);
+
+  useLayoutEffect(() => {
+    if (!linkOpen) return;
+    // Return to the parent dialog before the next keystroke when the child closes.
+    return () => linkPayeeOpenerRef.current?.focus({ preventScroll: true });
+  }, [linkOpen]);
 
   // --- payee suggestions ---
   const lastCategoryFor = useCallback(
@@ -397,9 +393,11 @@ export function TransactionFlow({
           <ChevronLeft className="h-5 w-5" />
         </Button>
       ) : (
-        <Button type="button" onClick={onClose} aria-label="Close" className={iconBtn} style={{ backgroundColor: 'var(--bg-surface)' }}>
-          <X className="h-5 w-5" />
-        </Button>
+        <DialogClose asChild>
+          <Button type="button" aria-label="Close" className={iconBtn} style={{ backgroundColor: 'var(--bg-surface)' }}>
+            <X className="h-5 w-5" />
+          </Button>
+        </DialogClose>
       )}
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-xl font-extrabold tracking-tight">{title}</h1>
@@ -410,9 +408,11 @@ export function TransactionFlow({
         )}
       </div>
       {onBack && (
-        <Button type="button" onClick={onClose} aria-label="Close" className={iconBtn} style={{ color: 'var(--text-muted)' }}>
-          <X className="h-5 w-5" />
-        </Button>
+        <DialogClose asChild>
+          <Button type="button" aria-label="Close" className={iconBtn} style={{ color: 'var(--text-muted)' }}>
+            <X className="h-5 w-5" />
+          </Button>
+        </DialogClose>
       )}
     </header>
   );
@@ -424,19 +424,21 @@ export function TransactionFlow({
   });
 
   const amountSummary = isTransfer ? formatMoney(n, baseCurrency) : `${signed > 0 ? '+' : ''}${formatMoney(signed, baseCurrency)}`;
+  const dialogTitle = review ? 'Review email transaction' : 'New transaction';
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-stretch justify-center md:items-center md:p-6"
-      role="dialog"
-      aria-modal="true"
-      aria-label={review ? 'Review email transaction' : 'New transaction'}
-    >
-      <div className="absolute inset-0 hidden bg-black/60 md:block" onClick={onClose} />
-      <div
+  const panel = (
+    <div className="fixed inset-0 z-50 flex items-stretch justify-center md:items-center md:p-6">
+      <DialogOverlay className="absolute inset-0 hidden bg-black/60 md:block" onClick={onClose} />
+      <DialogContent
+        aria-label={dialogTitle}
+        aria-describedby={undefined}
         className="rise-in relative flex h-full w-full flex-col overflow-hidden md:h-[min(860px,92dvh)] md:max-w-[440px] md:rounded-[28px] md:border"
         style={{ backgroundColor: 'var(--bg-canvas)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
+        onPointerDownOutside={(event) => event.preventDefault()}
       >
+        <DialogTitle asChild>
+          <span className="sr-only">{dialogTitle}</span>
+        </DialogTitle>
         {/* ---------- AMOUNT ---------- */}
         {step === 'amount' && (
           <div className="flex min-h-0 flex-1 flex-col">
@@ -751,6 +753,7 @@ export function TransactionFlow({
               {!isTransfer && review && rawPayee && !review.parsed?.payeeFromRule && (
                 <Button
                   type="button"
+                  ref={linkPayeeOpenerRef}
                   onClick={() => setLinkOpen(true)}
                   className="-mt-2 self-start px-1 text-xs font-bold"
                   style={{ color: 'var(--accent-text)' }}
@@ -1001,19 +1004,6 @@ export function TransactionFlow({
           </div>
         )}
 
-        {review && rawPayee && (
-          <LinkPayeeSheet
-            open={linkOpen}
-            onClose={() => setLinkOpen(false)}
-            raw={rawPayee}
-            payees={payees}
-            onLinked={({ targetName }) => {
-              if (targetName) setPayeeName(targetName);
-              onChanged(`Future “${rawPayee}” will be saved as “${targetName}”`);
-            }}
-          />
-        )}
-
         {/* ---------- DONE ---------- */}
         {step === 'done' && done && (
           <div className="flex flex-1 flex-col items-center justify-center gap-5 px-8 text-center safe-pb">
@@ -1039,13 +1029,33 @@ export function TransactionFlow({
                   Add another
                 </Button>
               )}
-              <Button type="button" onClick={onClose} variant="default" className="h-14 flex-1 rounded-2xl text-base">
-                Done
-              </Button>
+              <DialogClose asChild>
+                <Button type="button" variant="default" className="h-14 flex-1 rounded-2xl text-base">
+                  Done
+                </Button>
+              </DialogClose>
             </div>
           </div>
         )}
-      </div>
+      </DialogContent>
+      {review && rawPayee && (
+        <LinkPayeeSheet
+          open={linkOpen}
+          onClose={() => setLinkOpen(false)}
+          raw={rawPayee}
+          payees={payees}
+          onLinked={({ targetName }) => {
+            if (targetName) setPayeeName(targetName);
+            onChanged(`Future “${rawPayee}” will be saved as “${targetName}”`);
+          }}
+        />
+      )}
     </div>
+  );
+
+  return (
+    <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
+      {panel}
+    </Dialog>
   );
 }

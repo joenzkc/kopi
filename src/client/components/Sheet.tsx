@@ -1,72 +1,62 @@
-import React, { useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 import type { SnapshotPoint } from '@shared/types';
 import { Button } from '@client/components/ui/button';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogOverlay, DialogTitle } from '@client/components/ui/dialog';
 
 interface SheetProps {
   open: boolean;
   onClose: () => void;
   title: string;
   subtitle?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
-    };
-  }, [open, onClose]);
-
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity"
-        onClick={onClose}
-      />
-      <div
-        className="relative z-10 flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-3xl shadow-2xl sm:max-w-lg sm:rounded-2xl"
-        style={{
-          backgroundColor: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-        }}
-      >
-        <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: '1px solid var(--border-subtle)' }}
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+        <DialogOverlay className="fixed inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity" onClick={onClose} />
+        <DialogContent
+          aria-describedby={undefined}
+          className="relative z-10 flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-3xl shadow-2xl sm:max-w-lg sm:rounded-2xl"
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+          }}
+          onPointerDownOutside={(event) => event.preventDefault()}
         >
-          <div>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-              {title}
-            </h2>
-            {subtitle && (
-              <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-                {subtitle}
-              </p>
-            )}
-          </div>
-          <Button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition"
-            style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
-            aria-label="Close"
+          <div
+            className="flex items-center justify-between px-5 py-4"
+            style={{ borderBottom: '1px solid var(--border-subtle)' }}
           >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="overflow-y-auto overflow-x-hidden px-5 py-4 safe-pb">{children}</div>
+            <div>
+              <DialogTitle className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {title}
+              </DialogTitle>
+              {subtitle && (
+                <DialogDescription className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {subtitle}
+                </DialogDescription>
+              )}
+            </div>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition"
+                style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogClose>
+          </div>
+          <div className="overflow-y-auto overflow-x-hidden px-5 py-4 safe-pb">{children}</div>
+        </DialogContent>
       </div>
-    </div>
+    </Dialog>
   );
 }
 
