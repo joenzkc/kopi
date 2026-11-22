@@ -3,6 +3,8 @@ import { db, getSetting } from '../db';
 import { parseEmailTransaction } from './parser';
 import * as actual from '../actual/client';
 import { notifyEmailTransaction } from '../notifications/service';
+import type { ParsedEmailTx } from '../../shared/types';
+import { claimBankAlert, findBillReview, hasBillRule, linkBill, lockEmail, recordRepeatedAlert } from './billMatches';
 
 let processing = false;
 
@@ -69,10 +71,22 @@ export async function processQueuedEmailEvents(): Promise<void> {
           subject: string;
           body_text: string;
           received_at: string;
+          created_at: string;
           notified_at: string | null;
+          status: string;
+          parsed_json: string | null;
         },
         []
-      >("SELECT id, source, message_id, sender, subject, body_text, received_at, notified_at FROM email_events WHERE status = 'queued' ORDER BY created_at ASC LIMIT 20")
+      >(`
+        SELECT id, source, message_id, sender, subject, body_text, received_at, created_at, notified_at, status, parsed_json
+        FROM email_events
+        WHERE status = 'queued' OR (
+          status = 'pending_review'
+          AND json_extract(parsed_json, '$.billReview.waitingForBill') = 1
+          AND julianday(processed_at) < julianday('now', '-5 minutes')
+        )
+        ORDER BY status = 'queued' DESC, created_at ASC LIMIT 20
+      `)
       .all();
 
     let accountNameById: Map<string, string> | null = null;
@@ -88,8 +102,13 @@ export async function processQueuedEmailEvents(): Promise<void> {
     const baseCurrency = (getSetting('base_currency') || 'SGD').toUpperCase();
 
     for (const ev of queued) {
+      const release = lockEmail(ev.id);
+      if (!release) continue;
       const shouldNotify = !ev.notified_at;
       try {
+        const current = db.query<{ status: string; parsed_json: string | null }, [string]>('SELECT status, parsed_json FROM email_events WHERE id = ?').get(ev.id);
+        if (current?.status !== ev.status || current.parsed_json !== ev.parsed_json) continue;
+        const previous = ev.parsed_json ? (JSON.parse(ev.parsed_json) as ParsedEmailTx).billReview : undefined;
         const { parsed, autoImport } = await parseEmailTransaction({
           sender: ev.sender,
           subject: ev.subject,
@@ -98,8 +117,38 @@ export async function processQueuedEmailEvents(): Promise<void> {
         });
 
         const now = new Date().toISOString();
+        const waitExpired = Date.now() - Date.parse(ev.created_at) >= 2 * 86_400_000;
+        if (parsed.accountId && (parsed.transactionReference || (parsed.amountBase !== null && parsed.amountBase < 0 && parsed.payee && !parsed.transferAccountId))) {
+          let budgetId = previous?.budgetId || '';
+          try {
+            const activeBudget = (await actual.resolveBudgetSyncId()).syncId;
+            if (budgetId && budgetId !== activeBudget) throw new Error('Switch back to the budget that received this email.');
+            budgetId = activeBudget;
+            const duplicate = claimBankAlert(budgetId, ev.id, ev.source, parsed);
+            if (duplicate) {
+              recordRepeatedAlert(budgetId, ev.id, duplicate, parsed);
+              continue;
+            }
 
-        if (autoImport && parsed.accountId && parsed.amountBase !== null) {
+            const review = await findBillReview(parsed, budgetId, previous);
+            if (review?.waitingForBill && waitExpired) {
+              review.waitingForBill = false;
+              review.needsReview = true;
+            }
+            parsed.billReview = review;
+            const candidate = review?.candidates[0];
+            if (review && candidate && review.candidates.length === 1 && !review.needsReview && ev.source !== 'manual-test' &&
+                hasBillRule(parsed, review, candidate)) {
+              if (linkBill(ev.id, parsed, review, candidate, false)) continue;
+              parsed.billReview = { ...review, candidates: [], needsReview: true };
+            }
+          } catch (err) {
+            console.warn('[email] bill lookup failed:', err instanceof Error ? err.message : String(err));
+            parsed.billReview = { ...previous, budgetId, candidates: [], needsReview: true, waitingForBill: !waitExpired && previous?.waitingForBill };
+          }
+        }
+
+        if (autoImport && !parsed.billReview && !previous && parsed.accountId && parsed.amountBase !== null) {
           const importedId = `email:${crypto
             .createHash('sha256')
             .update(`${ev.source}:${ev.message_id}`)
@@ -184,6 +233,8 @@ export async function processQueuedEmailEvents(): Promise<void> {
             accountName: null,
           }).catch((pushErr) => console.warn('[notifications] email push failed:', pushErr));
         }
+      } finally {
+        release();
       }
     }
   } finally {

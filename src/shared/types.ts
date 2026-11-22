@@ -294,6 +294,28 @@ export interface ParsedEmailTx {
   payeeFromRule?: boolean;
   /** The bank's own sender (after unwrapping a hand-forwarded email). */
   originalSender?: string;
+  transactionReference?: string;
+  billReview?: EmailBillReview;
+}
+
+export interface EmailBillCandidate {
+  transactionId: string;
+  scheduleId: string;
+  scheduleName: string;
+  payee: string;
+  date: string;
+  amountCents: number;
+}
+
+export interface EmailBillReview {
+  budgetId: string;
+  candidates: EmailBillCandidate[];
+  canRemember?: boolean;
+  waitingForBill?: boolean;
+  needsReview?: boolean;
+  rejectedIds?: string[];
+  dismissed?: boolean;
+  outcome?: 'matched' | 'repeat';
 }
 
 export interface EmailAccountRef {

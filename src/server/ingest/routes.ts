@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { Hono } from 'hono';
+import type { MiddlewareHandler } from 'hono';
 import { z } from 'zod';
 import { db, getSetting } from '../db';
 import {
@@ -19,6 +20,7 @@ import type { EmailEventRecord, EmailRuleRecord, ParsedEmailTx } from '../../sha
 import { enqueueEmailEvent, processQueuedEmailEvents } from './worker';
 import { upsertLink } from './links';
 import { parseEmailTransaction } from './parser';
+import { claimBankAlert, findBillReview, linkBill, lockEmail, recordRepeatedAlert } from './billMatches';
 import { getFxRate } from '../portfolio/prices';
 import * as actual from '../actual/client';
 
@@ -209,7 +211,9 @@ inboxRoutes.get('/summary', requireSession, (c) => {
     lastSender: last ? bankSender(last) : null,
     total: counts.reduce((sum, x) => sum + x.n, 0),
     pending: (by.pending_review || 0) + (by.failed || 0),
-    imported: by.imported || 0,
+    imported: db.query<{ n: number }, []>(
+      "SELECT COUNT(*) AS n FROM email_events WHERE status = 'imported' AND json_extract(parsed_json, '$.billReview.outcome') IS NULL",
+    ).get()?.n ?? 0,
     senders: [...senders].sort(),
   });
 });
@@ -284,15 +288,82 @@ inboxRoutes.post('/test-parse', requireSession, async (c) => {
   return c.json(result);
 });
 
-inboxRoutes.post('/:id/approve', requireSession, async (c) => {
+const withEmailLock: MiddlewareHandler = async (c, next) => {
+  const release = lockEmail(c.req.param('id')!);
+  if (!release) return c.json({ error: 'This email is being processed. Try again in a moment.' }, 409);
+  try {
+    await next();
+  } finally {
+    release();
+  }
+};
+
+inboxRoutes.post('/:id/bill-match', requireSession, withEmailLock, async (c) => {
+  const id = c.req.param('id');
+  const input = z.object({
+    action: z.enum(['link', 'reject', 'restore']),
+    transactionId: z.string().min(1).optional(),
+    remember: z.boolean().default(false),
+  }).safeParse(await c.req.json().catch(() => null));
+  if (!input.success) return c.json({ error: 'Invalid bill match action' }, 400);
+
+  const row = db.query<{ status: string; parsed_json: string | null }, [string]>(
+    'SELECT status, parsed_json FROM email_events WHERE id = ?',
+  ).get(id);
+  if (!row) return c.json({ error: 'Email event not found' }, 404);
+  const parsed = row.parsed_json ? (JSON.parse(row.parsed_json) as ParsedEmailTx) : null;
+  const previous = parsed?.billReview;
+  if (row.status !== 'pending_review' || !parsed || !previous) return c.json({ error: 'This email is no longer awaiting a bill match.' }, 409);
+
+  const { syncId } = await actual.resolveBudgetSyncId();
+  if (previous.budgetId && previous.budgetId !== syncId) return c.json({ error: 'Switch back to the budget that received this email.' }, 409);
+  const { action, transactionId, remember } = input.data;
+  const saveReview = (review: ParsedEmailTx['billReview']) => {
+    db.query('UPDATE email_events SET parsed_json = ? WHERE id = ?').run(JSON.stringify({ ...parsed, billReview: review }), id);
+  };
+
+  if (action === 'reject') {
+    const candidate = previous.candidates.find((entry) => entry.transactionId === transactionId);
+    if ((transactionId && !candidate) || (!transactionId && previous.candidates.length)) {
+      return c.json({ error: 'That suggested bill has changed. Refresh and try again.' }, 409);
+    }
+    const candidates = previous.candidates.filter((entry) => entry.transactionId !== transactionId);
+    saveReview({
+      ...previous,
+      budgetId: syncId,
+      candidates,
+      waitingForBill: false,
+      needsReview: false,
+      rejectedIds: candidate ? [...new Set([...(previous.rejectedIds || []), candidate.transactionId])] : previous.rejectedIds,
+      dismissed: !candidates.length,
+    });
+    return c.json({ ok: true });
+  }
+
+  const review = await findBillReview(parsed, syncId, action === 'restore' ? undefined : previous);
+  if (action === 'restore') {
+    saveReview(review);
+    return c.json({ ok: true });
+  }
+  const candidate = review?.candidates.find((entry) => entry.transactionId === transactionId);
+  if (!candidate || !review || !linkBill(id, parsed, review, candidate, remember)) {
+    saveReview(review);
+    return c.json({ error: 'That bill is no longer available to match. Refresh and review the email again.' }, 409);
+  }
+  return c.json({ ok: true });
+});
+
+inboxRoutes.post('/:id/approve', requireSession, withEmailLock, async (c) => {
   const id = c.req.param('id');
   const ev = db
-    .query<{ id: string; source: string; message_id: string; parsed_json: string | null }, [string]>(
-      'SELECT id, source, message_id, parsed_json FROM email_events WHERE id = ?',
+    .query<{ id: string; source: string; message_id: string; parsed_json: string | null; status: string; actual_tx_id: string | null }, [string]>(
+      'SELECT id, source, message_id, parsed_json, status, actual_tx_id FROM email_events WHERE id = ?',
     )
     .get(id);
   if (!ev) return c.json({ error: 'Email event not found' }, 404);
   const parsedEvent = ev.parsed_json ? (JSON.parse(ev.parsed_json) as ParsedEmailTx) : null;
+  if (ev.status === 'imported' && !parsedEvent?.billReview?.outcome) return c.json({ ok: true, actualTxId: ev.actual_tx_id });
+  if (ev.status !== 'pending_review' && ev.status !== 'failed') return c.json({ error: 'This email is no longer awaiting import.' }, 409);
 
   const body = await c.req.json().catch(() => null);
   const schema = z
@@ -315,6 +386,24 @@ inboxRoutes.post('/:id/approve', requireSession, async (c) => {
   }
 
   const d = parsed.data;
+  const { syncId } = await actual.resolveBudgetSyncId();
+  const previous = parsedEvent?.billReview;
+  if (previous?.budgetId && previous.budgetId !== syncId) return c.json({ error: 'Switch back to the budget that received this email.' }, 409);
+  const addSeparately = Boolean(previous?.dismissed && previous.budgetId === syncId);
+  if (parsedEvent) {
+    const duplicate = claimBankAlert(syncId, id, ev.source, parsedEvent);
+    if (duplicate) {
+      recordRepeatedAlert(syncId, id, duplicate, parsedEvent);
+      return c.json({ error: 'This card alert was already received.' }, 409);
+    }
+  }
+  if (parsedEvent && !addSeparately) {
+    const review = await findBillReview(parsedEvent, syncId, previous);
+    if (review?.candidates.length || review?.waitingForBill || review?.needsReview || previous?.candidates.length) {
+      db.query('UPDATE email_events SET parsed_json = ? WHERE id = ?').run(JSON.stringify({ ...parsedEvent, billReview: review }), id);
+      return c.json({ error: 'Review the bill match in Activity before importing this email.' }, 409);
+    }
+  }
   const importedId = `email:${crypto
     .createHash('sha256')
     .update(`${ev.source}:${ev.message_id}`)
@@ -338,6 +427,23 @@ inboxRoutes.post('/:id/approve', requireSession, async (c) => {
       },
       { runTransfers: true },
     );
+  } else if (addSeparately) {
+    // An explicitly separate charge must bypass Actual's amount/date reconciliation.
+    const transactions = await actual.getAccountTransactions(d.accountId, d.date, d.date);
+    const existing = transactions.find((tx) => tx.imported_id === importedId);
+    if (existing) {
+      txId = existing.id;
+    } else {
+      await actual.addTransaction(d.accountId, {
+        date: d.date,
+        amount: Math.round(d.amount * 100),
+        payee_name: d.payee!,
+        category: d.categoryId || undefined,
+        notes: d.notes || undefined,
+        cleared: true,
+        imported_id: importedId,
+      });
+    }
   } else {
     // imported_payee carries the bank's original text so Actual's payee rename rules match it.
     const rawPayee = parsedEvent?.rawPayee && parsedEvent.payee === d.payee ? parsedEvent.rawPayee : d.payee!;
@@ -387,8 +493,8 @@ inboxRoutes.post('/reparse', requireSession, (c) => {
   return c.json({ ok: true, requeued: res.changes });
 });
 
-inboxRoutes.post('/:id/dismiss', requireSession, (c) => {
-  db.query("UPDATE email_events SET status = 'dismissed', processed_at = ? WHERE id = ?").run(
+inboxRoutes.post('/:id/dismiss', requireSession, withEmailLock, (c) => {
+  db.query("UPDATE email_events SET status = 'dismissed', processed_at = ? WHERE id = ? AND status IN ('pending_review', 'failed')").run(
     new Date().toISOString(),
     c.req.param('id'),
   );

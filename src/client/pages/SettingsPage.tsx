@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, ChevronRight, Landmark, LogOut, Wallet } from 'lucide-react';
 import type { ActualAccount, ActualBudget, Appearance } from '@shared/types';
+import { version } from '../../../package.json';
 import { apiFetch } from '../lib/api';
 import { AppearanceSection } from '../components/AppearanceSection';
 import { NotificationsSection } from '../components/NotificationsSection';
@@ -187,6 +188,8 @@ export function SettingsPage({
         <LogOut className="h-4 w-4" />
         Sign out
       </Button>
+
+      <p className="text-center text-xs text-muted-foreground">Kopi v{version}</p>
     </div>
   );
 }

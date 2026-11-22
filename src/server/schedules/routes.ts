@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import * as actual from '../actual/client';
 import { requireApiKeyOrSession } from '../auth/service';
 import { notifyScheduledPosted } from '../notifications/service';
+import { postedScheduleId, scheduleImportId } from './occurrence';
 import {
   deleteScheduleWatchState,
   recordSchedulePostNotified,
@@ -192,6 +193,8 @@ scheduleRoutes.delete('/:id', requireApiKeyOrSession('schedules:write'), async (
   return c.json({ ok: true });
 });
 
+const postingOccurrences = new Set<string>();
+
 scheduleRoutes.post('/:id/post-now', requireApiKeyOrSession('schedules:write'), async (c) => {
   const id = c.req.param('id');
   const schedules = await getEnrichedSchedules();
@@ -200,14 +203,28 @@ scheduleRoutes.post('/:id/post-now', requireApiKeyOrSession('schedules:write'), 
   if (!target.account) return c.json({ error: 'Schedule has no account assigned' }, 400);
 
   const date = target.next_date || new Date().toISOString().slice(0, 10);
-  await actual.addTransaction(target.account, {
-    date,
-    amount: target.amountCents,
-    payee: target.payee || undefined,
-    payee_name: !target.payee ? target.name || 'Scheduled Transaction' : undefined,
-    notes: `Posted from schedule: ${target.name || target.id}`,
-    cleared: true,
-  });
+  const { syncId } = await actual.resolveBudgetSyncId();
+  const importedId = scheduleImportId(id, date);
+  const occurrence = syncId + ':' + importedId;
+  if (postingOccurrences.has(occurrence)) return c.json({ error: 'This bill is already being posted.' }, 409);
+  postingOccurrences.add(occurrence);
+  try {
+    const transactions = await actual.getAccountTransactions(target.account, date, date);
+    const existing = transactions.find((tx) => tx.date === date && postedScheduleId(tx, schedules) === id);
+    if (existing) return c.json({ ok: true, alreadyPosted: true, postedDate: date, amountCents: existing.amount });
+    if ((await actual.resolveBudgetSyncId()).syncId !== syncId) return c.json({ error: 'Actual budget changed while posting the bill.' }, 409);
+    await actual.addTransaction(target.account, {
+      date,
+      amount: target.amountCents,
+      payee: target.payee || undefined,
+      payee_name: !target.payee ? target.name || 'Scheduled Transaction' : undefined,
+      notes: 'Posted from schedule: ' + (target.name || target.id),
+      cleared: true,
+      imported_id: importedId,
+    });
+  } finally {
+    postingOccurrences.delete(occurrence);
+  }
 
   recordSchedulePostNotified({
     scheduleId: target.id,

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeftRight, CreditCard, FlaskConical, Mail, RefreshCw, Search, X } from 'lucide-react';
+import { ArrowLeftRight, CalendarCheck, CreditCard, FlaskConical, Mail, RefreshCw, Search, X } from 'lucide-react';
 import type { ActualAccount, ActualCategory, ActualPayee, EmailEventRecord, RecentTransaction } from '@shared/types';
-import { apiFetch, formatMoney, formatSignedMoney } from '../lib/api';
+import { ApiError, apiFetch, formatMoney, formatSignedMoney } from '../lib/api';
 import { fetchRecent, friendlyDate, localISODate, relativeTime, senderLabel } from '../lib/recent';
 import { Sheet } from '../components/Sheet';
 import { Tile } from '../components/Tile';
 import { LinkPayeeSheet } from '../components/LinkPayeeSheet';
+import { BillMatchSheet } from '../components/BillMatchSheet';
 import type { FlowRequest } from '../components/TransactionFlow';
 import { Button } from '@client/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
@@ -39,6 +40,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [linkTx, setLinkTx] = useState<RecentTransaction | null>(null);
+  const [reviewBillId, setReviewBillId] = useState<string | null>(null);
   const [rescanning, setRescanning] = useState(false);
 
   const [testOpen, setTestOpen] = useState(false);
@@ -76,7 +78,26 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
   const categoryName = useCallback((id: string | null | undefined) => categories.find((c) => c.id === id)?.name || null, [categories]);
 
   const toReview = events.filter((e) => e.status === 'pending_review' || e.status === 'failed');
+  const billEmail = toReview.find((e) => e.id === reviewBillId);
+  const resolvedBills = events.filter((e) => e.status === 'imported' && e.parsed?.billReview?.outcome);
   const queued = events.filter((e) => e.status === 'queued').length;
+
+  async function decideBill(ev: EmailEventRecord, action: 'link' | 'reject' | 'restore', transactionId?: string, remember = false) {
+    setBusyId(ev.id);
+    try {
+      await apiFetch('/api/inbox/' + ev.id + '/bill-match', {
+        method: 'POST',
+        body: JSON.stringify({ action, transactionId, remember }),
+      });
+      setReviewBillId(null);
+      onChanged(action === 'link' ? 'Matched to paid bill' : action === 'reject' ? 'Match dismissed. Email kept in review.' : 'Bill match refreshed.');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) void load(false);
+      onToast(err instanceof Error ? err.message : 'Could not update bill match', 'error');
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   async function quickAdd(ev: EmailEventRecord) {
     const p = ev.parsed;
@@ -100,6 +121,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
       });
       onChanged(p.transferAccountId ? `Transfer to ${accountName(p.transferAccountId)} recorded` : `Imported "${p.payee}"`);
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) void load(false);
       onToast(err instanceof Error ? err.message : 'Import failed', 'error');
     } finally {
       setBusyId(null);
@@ -286,6 +308,9 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
           const cat = categoryName(p?.categoryId);
           const acct = accountName(p?.accountId);
           const busy = busyId === ev.id;
+          const billReview = p?.billReview;
+          const candidate = billReview?.candidates[0];
+          const checkBill = billReview && !billReview.dismissed && (billReview.waitingForBill || billReview.needsReview);
           return (
             <Card
               as="article"
@@ -306,7 +331,11 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                     Couldn't parse
                   </Badge>
                 ) : (
-                  p && (
+                  (candidate || checkBill || billReview?.dismissed) ? (
+                    <Badge className="shrink-0 bg-accent px-2.5 py-0.5 text-[11px] font-extrabold">
+                      {candidate ? 'Possible match' : billReview?.dismissed ? 'Match dismissed' : 'Check bill'}
+                    </Badge>
+                  ) : p && (
                     <Badge className="shrink-0 px-2.5 py-0.5 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--positive)', color: 'var(--bg-canvas)' }}>
                       {p.matchedRuleName ? 'Rule match' : `${Math.round(p.confidence * 100)}% match`}
                     </Badge>
@@ -348,6 +377,22 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                   {ev.error}
                 </p>
               )}
+              {candidate && (
+                <div className="flex items-center gap-2.5 rounded-xl bg-secondary p-3">
+                  <CalendarCheck className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold">
+                      {billReview!.candidates.length === 1 ? candidate.scheduleName + ' already posted' : 'Several posted bills match'}
+                    </p>
+                    {billReview!.candidates.length === 1 && <p className="text-xs text-muted-foreground">Posted by schedule · {friendlyDate(candidate.date)}</p>}
+                  </div>
+                </div>
+              )}
+              {!candidate && checkBill && (
+                <p className="rounded-xl bg-secondary p-3 text-sm">
+                  {billReview.waitingForBill ? 'Waiting for the scheduled bill in Actual. Kopi will check again.' : 'Check the scheduled bill or confirm this is a separate charge.'}
+                </p>
+              )}
               <div className="grid grid-cols-4 gap-2">
                 <Button type="button" disabled={busy} onClick={() => void skip(ev)} variant="secondary" className="h-12 rounded-2xl text-sm font-bold disabled:opacity-50">
                   Skip
@@ -355,7 +400,17 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                 <Button type="button" disabled={busy} onClick={() => onOpenFlow({ mode: 'review', event: ev })} variant="secondary" className="h-12 rounded-2xl text-sm font-bold disabled:opacity-50">
                   Edit
                 </Button>
-                <Button
+                {candidate ? (
+                  <Button type="button" disabled={busy} onClick={() => setReviewBillId(ev.id)}
+                    variant="default" className="col-span-2 h-12 rounded-2xl text-sm disabled:opacity-50">
+                    Review match
+                  </Button>
+                ) : checkBill ? (
+                  <Button type="button" disabled={busy} onClick={() => void decideBill(ev, 'reject')}
+                    variant="secondary" className="col-span-2 h-12 rounded-2xl text-sm font-bold disabled:opacity-50">
+                    Not a match
+                  </Button>
+                ) : <Button
                   type="button"
                   disabled={busy}
                   onClick={() => void quickAdd(ev)}
@@ -363,6 +418,8 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                 >
                   {busy
                     ? 'Saving…'
+                    : billReview?.dismissed
+                      ? 'Add separately'
                     : failed
                       ? 'Fix & import'
                       : !p?.accountId
@@ -372,12 +429,41 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                           : p.transferAccountId
                             ? 'Add transfer'
                             : 'Add to Actual'}
-                </Button>
+                </Button>}
               </div>
+              {billReview?.dismissed && (
+                <Button type="button" disabled={busy} onClick={() => void decideBill(ev, 'restore')}
+                  className="self-start px-1 text-xs font-bold text-primary">
+                  Undo dismissal
+                </Button>
+              )}
             </Card>
           );
         })}
       </section>
+
+      {resolvedBills.length > 0 && (
+        <section className="flex flex-col gap-2.5" aria-label="Resolved bill emails">
+          <h2 className="text-lg font-extrabold">Resolved bill emails</h2>
+          {resolvedBills.map((event) => {
+            const matched = event.parsed?.billReview?.outcome === 'matched';
+            const bill = event.parsed?.billReview?.candidates[0];
+            return (
+              <Card key={event.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl p-3.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold">{event.parsed?.payee || event.subject}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {bill ? bill.scheduleName + ' · ' + friendlyDate(bill.date) : 'Same bank reference · ' + friendlyDate(event.received_at.slice(0, 10))}
+                  </p>
+                </div>
+                <Badge className="bg-accent px-2.5 py-0.5 text-[11px] font-extrabold">
+                  {matched ? 'Matched to paid bill' : 'Repeat alert ignored'}
+                </Badge>
+              </Card>
+            );
+          })}
+        </section>
+      )}
 
       {/* Transactions */}
       {txError && (
@@ -431,6 +517,11 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
         </section>
       ))}
 
+      {billEmail && (
+        <BillMatchSheet key={billEmail.id} event={billEmail} accountName={accountName(billEmail.parsed?.accountId)} currency={baseCurrency}
+          busy={busyId === billEmail.id} onClose={() => setReviewBillId(null)}
+          onDecision={(action, transactionId, remember) => void decideBill(billEmail, action, transactionId, remember)} />
+      )}
       <LinkPayeeSheet
         open={Boolean(linkTx)}
         onClose={() => setLinkTx(null)}

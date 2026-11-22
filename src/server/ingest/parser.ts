@@ -4,7 +4,7 @@ import { getFxRate } from '../portfolio/prices';
 import type { EmailRuleRecord, ParsedEmailTx } from '../../shared/types';
 import * as actual from '../actual/client';
 import { resolvePayeeByRules } from '../actual/payeeRules';
-import { extractTransaction, tidyPayee } from './extract';
+import { extractTransaction, readFields, tidyPayee } from './extract';
 import { findLink, getAutoImportAccounts } from './links';
 
 function stripHtml(html: string): string {
@@ -125,6 +125,9 @@ export async function parseEmailTransaction(input: {
   const body = (input.text || (input.html ? stripHtml(input.html) : '')).trim();
   const x = extractTransaction({ sender: input.sender, subject: input.subject, body, receivedAt: input.receivedAt });
   const combined = `${x.subject}\n${x.body}`;
+  const reference = readFields(x.body).find((field) =>
+    ['transaction ref', 'transaction reference', 'transaction reference number', 'transaction id', 'payment reference'].includes(field.label),
+  )?.value.match(/^([a-z0-9][a-z0-9-]{5,63})\b/i)?.[1];
 
   // Optional user rules (matched on the bank's own sender/subject, not the forwarder's).
   let matchedRule: EmailRuleRecord | null = null;
@@ -259,6 +262,7 @@ export async function parseEmailTransaction(input: {
     rawPayee,
     payeeFromRule,
     originalSender: x.sender,
+    transactionReference: reference,
   };
 
   const essentials = parsed.amountBase !== null && Boolean(parsed.accountId) && Boolean(parsed.payee) && parsed.confidence >= 0.75;

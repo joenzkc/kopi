@@ -171,6 +171,29 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
   CREATE INDEX IF NOT EXISTS idx_email_events_status ON email_events(status, created_at DESC);
 
+  CREATE TABLE IF NOT EXISTS email_bill_matches (
+    budget_id TEXT NOT NULL,
+    transaction_id TEXT NOT NULL,
+    event_id TEXT NOT NULL UNIQUE REFERENCES email_events(id),
+    PRIMARY KEY (budget_id, transaction_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS email_bill_rules (
+    budget_id TEXT NOT NULL,
+    account_id TEXT NOT NULL,
+    card_fingerprint TEXT NOT NULL,
+    merchant_key TEXT NOT NULL,
+    schedule_id TEXT NOT NULL,
+    PRIMARY KEY (budget_id, account_id, card_fingerprint, merchant_key, schedule_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS email_alert_receipts (
+    budget_id TEXT NOT NULL,
+    alert_key TEXT NOT NULL,
+    event_id TEXT NOT NULL REFERENCES email_events(id),
+    PRIMARY KEY (budget_id, alert_key)
+  );
+
   -- Learned/manual links from a card or account fingerprint (e.g. "uob:card:1234") or an alert type
   -- (kind 'alert', fingerprint "sender|subject") to an Actual account.
   CREATE TABLE IF NOT EXISTS account_links (

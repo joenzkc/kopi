@@ -77,7 +77,8 @@ const MONEY_SUFFIX = new RegExp(`(?<![0-9.,])${NUM}\\s?(${CUR_ALT})(?![A-Za-z])`
 
 /** Labels whose values we read ("Amount: SGD3.42"). */
 const LABELS = [
-  'Transaction Ref', 'Transaction Reference', 'Date & Time', 'Date and Time', 'Transaction date', 'Transaction time',
+  'Transaction Ref', 'Transaction Reference', 'Transaction Reference Number', 'Transaction ID', 'Payment Reference',
+  'Date & Time', 'Date and Time', 'Transaction date', 'Transaction time',
   'Transaction Time', 'Transaction amount', 'Amount', 'From', 'To', 'Transaction details', 'Merchant', 'Merchant name',
   'Account number', 'Card number', 'Description', 'Payee', 'Recipient', 'Reference',
 ];
