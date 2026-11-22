@@ -1,0 +1,218 @@
+@import "tailwindcss";
+
+/* Default tokens = Night Cards · Midnight + Lime. lib/theme.ts overrides these at runtime
+   from the saved Appearance setting. */
+:root {
+  --bg-canvas: #0D0E11;
+  --bg-surface: #17191E;
+  --bg-subtle: #22252C;
+  --bg-hover: #2A2E36;
+  --bg-glass: rgba(31, 34, 41, 0.95);
+  --bg-nav: #1F2229;
+  --border-subtle: #2A2E36;
+  --border-strong: #3A3F48;
+  --text-primary: #F4F5F7;
+  --text-secondary: #C4C8CF;
+  --text-muted: #9BA1AC;
+  --accent: #C8F25A;
+  --accent-hover: #CEF36B;
+  --accent-fg: #0D0E11;
+  --accent-text: #C8F25A;
+  --accent-soft: #2B3318;
+  --accent-border: #6F8538;
+  --positive: #5EE38F;
+  --positive-soft: #1E3428;
+  --negative: #FF9A9A;
+  --negative-soft: #3A2427;
+  --warning: #FFC247;
+  --warning-soft: #3A3120;
+  --info: #8EC5FF;
+  --info-soft: #23303F;
+  --card-shadow: none;
+  --tile-bg-0: #FFC78A; --tile-fg-0: #0D0E11;
+  --tile-bg-1: #8FE3B0; --tile-fg-1: #0D0E11;
+  --tile-bg-2: #8EC5FF; --tile-fg-2: #0D0E11;
+  --tile-bg-3: #FFB3C7; --tile-fg-3: #0D0E11;
+  --tile-bg-4: #B9A6FF; --tile-fg-4: #0D0E11;
+  --tile-bg-5: #FFE08A; --tile-fg-5: #0D0E11;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    font-family: Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    overscroll-behavior-y: contain;
+  }
+
+  input,
+  select,
+  textarea {
+    color: var(--text-primary);
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+  }
+}
+
+/* iOS zooms the whole page into any text field smaller than 16px when it gets focus (and leaves it zoomed).
+   Unlayered, so it wins over Tailwind's text-sm/text-[15px] utilities on inputs, without blocking pinch-zoom. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']),
+  select,
+  select.input-field,
+  textarea,
+  textarea.input-field {
+    font-size: 16px;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.safe-pb {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+.safe-pt {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+/* Shared component styles live in the components layer so per-element utilities (e.g. pl-9, w-auto) can override them. */
+@layer components {
+  .card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--card-shadow);
+  }
+
+  .surface-subtle {
+    background-color: var(--bg-subtle);
+  }
+
+  .btn-primary {
+    background-color: var(--accent);
+    color: var(--accent-fg);
+    font-weight: 700;
+    transition: background-color 150ms ease, opacity 150ms ease, transform 100ms ease;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--accent-hover);
+  }
+
+  .btn-primary:active:not(:disabled),
+  .btn-secondary:active:not(:disabled),
+  .press:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .btn-secondary {
+    background-color: var(--bg-subtle);
+    border: 1px solid transparent;
+    color: var(--text-primary);
+    transition: background-color 150ms ease, border-color 150ms ease, transform 100ms ease;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--bg-hover);
+  }
+
+  .input-field {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    border-radius: 0.875rem;
+    border: 1px solid var(--border-subtle);
+    background-color: var(--bg-subtle);
+    padding: 0.65rem 0.85rem;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  input[type='date'].input-field {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    text-align: left;
+    min-height: 2.75rem;
+  }
+
+  .input-field:focus {
+    border-color: var(--accent-text);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .input-field::placeholder {
+    color: var(--text-muted);
+  }
+
+  .divider-list > * + * {
+    border-top: 1px solid var(--border-subtle);
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise-in {
+  animation: rise-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}

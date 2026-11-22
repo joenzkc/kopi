@@ -1,0 +1,22 @@
+services:
+  actual_companion:
+    build: .
+    container_name: actual-companion
+    mem_limit: 192m
+    ports:
+      - '5008:5008'
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Singapore
+      - DATA_DIR=/data
+      - ACTUAL_API_URL=http://actual_http_api:5007
+    volumes:
+      - ./data:/data
+    networks:
+      - actual-budget_default
+    restart: unless-stopped
+
+networks:
+  actual-budget_default:
+    external: true

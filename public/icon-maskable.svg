@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <title>Kopi</title>
+  <!-- Full-bleed background; the mark is scaled into the central safe zone so launchers can crop to any shape. -->
+  <rect width="512" height="512" fill="#FFC247"/>
+  <g transform="translate(256 256) scale(0.74) translate(-258 -240)" fill="#0D0E11">
+    <path d="M128 248 H336 V320 A80 80 0 0 1 256 400 H208 A80 80 0 0 1 128 320 Z"/>
+    <path d="M336 272 H360 A40 40 0 0 1 360 352 H328" fill="none" stroke="#0D0E11" stroke-width="28"/>
+    <rect x="160" y="168" width="32" height="48" rx="16"/>
+    <rect x="216" y="136" width="32" height="80" rx="16"/>
+    <rect x="272" y="96" width="32" height="120" rx="16"/>
+  </g>
+</svg>

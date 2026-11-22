@@ -1,0 +1,9 @@
+name = "kopi-email-ingest"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+
+[vars]
+# Kopi's public email-event endpoint
+INGEST_URL = "https://kopi.yourdomain.com/api/v1/events/email"
+# Optional: forward a copy of incoming emails to your real inbox too
+# FORWARD_TO = "you@gmail.com"

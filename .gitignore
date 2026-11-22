@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+workers/email-ingest/node_modules/
+
+# Build & dev outputs
+dist/
+dev-dist/
+.wrangler/
+workers/email-ingest/.wrangler/
+
+# Runtime data & databases
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3
+
+# Secrets & environment (.env.deploy holds your deploy host)
+.env
+.env.local
+.env.*
+!.env.example
+.dev.vars
+workers/**/.dev.vars
+*.pem
+*.key
+
+# Logs, OS & editor files
+*.log
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
