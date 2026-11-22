@@ -7,6 +7,7 @@ import type {
   PushSubscriptionRecord,
 } from '@shared/types';
 import { apiFetch } from '../lib/api';
+import { Button } from '@client/components/ui/button';
 
 interface NotificationsSectionProps {
   onToast: (msg: string, tone?: 'success' | 'error') => void;
@@ -70,7 +71,7 @@ function SwitchRow({
   onToggle: () => void;
 }) {
   return (
-    <button
+    <Button
       type="button"
       role="switch"
       aria-checked={checked}
@@ -95,7 +96,7 @@ function SwitchRow({
           style={{ backgroundColor: checked ? 'var(--accent-fg)' : 'var(--text-muted)' }}
         />
       </span>
-    </button>
+    </Button>
   );
 }
 
@@ -375,35 +376,35 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
           <div className="flex flex-wrap items-center gap-2">
             {isThisDeviceRegistered ? (
               <>
-                <button
+                <Button
                   type="button"
                   disabled={testing}
                   onClick={() => void sendTest()}
-                  className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold disabled:opacity-50"
+                  variant="default" className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold disabled:opacity-50"
                 >
                   <Send className="h-3.5 w-3.5" />
                   {testing ? 'Sending...' : 'Send test'}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   disabled={busy}
                   onClick={() => void disableOnThisDevice()}
-                  className="btn-secondary inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium disabled:opacity-50"
+                  variant="secondary" className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium disabled:opacity-50"
                 >
                   <BellOff className="h-3.5 w-3.5" style={{ color: 'var(--text-muted)' }} />
                   {busy ? 'Disabling...' : 'Disable on this device'}
-                </button>
+                </Button>
               </>
             ) : (
-              <button
+              <Button
                 type="button"
                 disabled={busy || loading || !vapidPublicKey}
                 onClick={() => void enableOnThisDevice()}
-                className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-50"
+                variant="default" className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-50"
               >
                 <BellRing className="h-3.5 w-3.5" />
                 {busy ? 'Enabling...' : 'Enable on this device'}
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -444,7 +445,7 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
               ).map(([mode, label]) => {
                 const on = prefs.emailMode === mode;
                 return (
-                  <button
+                  <Button
                     key={mode}
                     type="button"
                     role="radio"
@@ -458,7 +459,7 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
                     }}
                   >
                     {label}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -484,7 +485,7 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
               Subscribed devices ({subscriptions.length})
             </div>
             {!isThisDeviceRegistered && (
-              <button
+              <Button
                 type="button"
                 disabled={testing}
                 onClick={() => void sendTest()}
@@ -493,7 +494,7 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
               >
                 <Send className="h-3 w-3" />
                 {testing ? 'Sending...' : 'Send test'}
-              </button>
+              </Button>
             )}
           </div>
 
@@ -522,7 +523,7 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
                           : `Added ${sub.created_at.slice(0, 10)}`}
                     </div>
                   </div>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => void removeDevice(sub)}
                     aria-label={`Remove ${sub.device_label}`}
@@ -530,7 +531,7 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
                     style={{ color: 'var(--negative)' }}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  </Button>
                 </div>
               );
             })}

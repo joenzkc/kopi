@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Check, ChevronDown, Copy } from 'lucide-react';
+import { Button } from '@client/components/ui/button';
 
 /** A labelled group of settings cards ("General", "Security", …). */
 export function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
@@ -56,7 +57,7 @@ export function Disclosure({ title, description, children }: { title: string; de
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-2xl" style={{ backgroundColor: 'var(--bg-subtle)' }}>
-      <button
+      <Button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
@@ -71,7 +72,7 @@ export function Disclosure({ title, description, children }: { title: string; de
           )}
         </span>
         <ChevronDown className="h-4 w-4 shrink-0 transition-transform" style={{ transform: open ? 'rotate(180deg)' : 'none', color: 'var(--text-muted)' }} />
-      </button>
+      </Button>
       {open && <div className="flex flex-col gap-4 border-t px-4 pb-4 pt-4" style={{ borderColor: 'var(--border-subtle)' }}>{children}</div>}
     </div>
   );
@@ -96,7 +97,7 @@ export function ConfirmAction({
   const [asking, setAsking] = useState(false);
   if (!asking) {
     return (
-      <button
+      <Button
         type="button"
         onClick={() => setAsking(true)}
         aria-label={ariaLabel}
@@ -104,7 +105,7 @@ export function ConfirmAction({
         style={{ color: 'var(--negative)' }}
       >
         {label}
-      </button>
+      </Button>
     );
   }
   return (
@@ -113,10 +114,10 @@ export function ConfirmAction({
         {message}
       </p>
       <div className="flex gap-2">
-        <button type="button" onClick={() => setAsking(false)} className="btn-secondary h-10 flex-1 rounded-xl text-sm font-bold">
+        <Button type="button" onClick={() => setAsking(false)} variant="secondary" className="h-10 flex-1 rounded-xl text-sm font-bold">
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           disabled={busy}
           onClick={async () => {
@@ -127,7 +128,7 @@ export function ConfirmAction({
           style={{ backgroundColor: 'var(--negative)', color: 'var(--bg-canvas)' }}
         >
           {confirmLabel}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -162,7 +163,7 @@ export function CopyField({
         >
           {display ?? value}
         </code>
-        <button
+        <Button
           type="button"
           onClick={() => {
             void navigator.clipboard.writeText(value).then(() => {
@@ -171,13 +172,13 @@ export function CopyField({
             });
           }}
           aria-label={`Copy ${label}`}
-          className="btn-secondary flex w-12 shrink-0 items-center justify-center rounded-xl"
+          variant="secondary" className="flex w-12 shrink-0 items-center justify-center rounded-xl"
         >
           {copied ? <Check className="h-4 w-4" style={{ color: 'var(--positive)' }} /> : <Copy className="h-4 w-4" />}
-        </button>
+        </Button>
       </div>
       {clamp && (
-        <button
+        <Button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
@@ -186,7 +187,7 @@ export function CopyField({
         >
           <ChevronDown className="h-3.5 w-3.5 transition-transform" style={{ transform: expanded ? 'rotate(180deg)' : 'none' }} />
           {expanded ? 'Show less' : 'Show all'}
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -9,6 +9,7 @@ import {
 } from '@shared/rsu';
 import { apiFetch } from '../lib/api';
 import { Sheet } from './Sheet';
+import { Button } from '@client/components/ui/button';
 
 interface StockSearchHit {
   symbol: string;
@@ -368,7 +369,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                   </div>
                 )}
                 {searchResults.map((hit) => (
-                  <button
+                  <Button
                     key={`${hit.asset_type}:${hit.provider_id}`}
                     type="button"
                     onClick={() => pickSearchHit(hit)}
@@ -386,7 +387,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                     <span className="ml-2 shrink-0 text-[10px]" style={{ color: 'var(--text-muted)' }}>
                       {hit.exchange || hit.currency}
                     </span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -489,7 +490,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
               Vesting Schedule Builder
             </div>
             {editing && (
-              <button
+              <Button
                 type="button"
                 onClick={regenerateNow}
                 className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition hover:opacity-80"
@@ -497,7 +498,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
               >
                 <RefreshCw className="h-3 w-3" />
                 Regenerate
-              </button>
+              </Button>
             )}
           </div>
 
@@ -557,7 +558,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
               {VESTING_PRESETS.map((p) => {
                 const active = preset === p.id;
                 return (
-                  <button
+                  <Button
                     key={p.id}
                     type="button"
                     onClick={() => {
@@ -572,7 +573,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                     }}
                   >
                     {p.label}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -650,7 +651,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
               <span className="truncate font-semibold" style={{ color: 'var(--text-primary)' }}>
                 Tranches ({tranches.length}) · {Number(sumTrancheUnits.toFixed(4))} sh
               </span>
-              <button
+              <Button
                 type="button"
                 onClick={addManualTranche}
                 className="inline-flex shrink-0 items-center gap-1 font-semibold transition hover:opacity-80"
@@ -658,7 +659,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
               >
                 <Plus className="h-3 w-3" />
                 Add date
-              </button>
+              </Button>
             </div>
 
             {tranches.length === 0 ? (
@@ -709,7 +710,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                           onChange={(e) => updateTranche(t.key, { vest_date: e.target.value })}
                           className="input-field min-w-0 flex-1 !py-1.5 !px-2.5 sm:!text-xs"
                         />
-                        <button
+                        <Button
                           type="button"
                           onClick={() => removeTranche(t.key)}
                           className="shrink-0 rounded-lg p-1.5 transition hover:opacity-80 sm:hidden"
@@ -717,7 +718,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                           aria-label="Remove tranche"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </button>
+                        </Button>
                       </div>
                       <div className="flex items-center gap-2 sm:shrink-0">
                         <input
@@ -736,7 +737,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                         >
                           {badgeText}
                         </span>
-                        <button
+                        <Button
                           type="button"
                           onClick={() => removeTranche(t.key)}
                           className="hidden shrink-0 rounded-lg p-1 transition hover:opacity-80 sm:inline-flex"
@@ -744,7 +745,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                           aria-label="Remove tranche"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   );
@@ -772,7 +773,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
             />
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {[0, 22, 30, 37].map((pct) => (
-                <button
+                <Button
                   key={pct}
                   type="button"
                   onClick={() => setTaxWithholdPct(String(pct))}
@@ -783,7 +784,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                   }}
                 >
                   {pct}%
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -835,13 +836,13 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
           />
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={saving}
-          className="btn-primary w-full rounded-xl py-3 text-sm font-medium disabled:opacity-50"
+          variant="default" className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-50"
         >
           {saving ? 'Saving...' : editing ? 'Save RSU Grant' : 'Add RSU Grant'}
-        </button>
+        </Button>
       </form>
     </Sheet>
   );

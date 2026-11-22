@@ -13,6 +13,7 @@ import { PortfolioPage } from './pages/PortfolioPage';
 import { SchedulesPage } from './pages/SchedulesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TransactionFlow, type FlowRequest } from './components/TransactionFlow';
+import { Button } from '@client/components/ui/button';
 
 interface AuthStatus {
   needsSetup: boolean;
@@ -256,16 +257,16 @@ export function App() {
             </div>
           </div>
         </div>
-        <button type="button" onClick={() => openFlow({ mode: 'add' })} className="btn-primary flex h-12 items-center justify-center gap-2 rounded-2xl text-[15px]">
+        <Button type="button" onClick={() => openFlow({ mode: 'add' })} variant="default" className="flex h-12 items-center justify-center gap-2 rounded-2xl text-[15px]">
           <Plus className="h-5 w-5" />
           Add transaction
-        </button>
+        </Button>
         <nav aria-label="Primary" className="flex flex-1 flex-col gap-1">
           {SIDEBAR_NAV.map((item) => {
             const Icon = item.icon;
             const active = tab === item.id;
             return (
-              <button
+              <Button
                 key={item.id}
                 type="button"
                 onClick={() => navigate(item.id)}
@@ -283,7 +284,7 @@ export function App() {
                     {pendingCount}
                   </span>
                 )}
-              </button>
+              </Button>
             );
           })}
         </nav>
@@ -299,7 +300,7 @@ export function App() {
           </h1>
           <div className="flex items-center gap-2">
             {showRefresh && (
-              <button
+              <Button
                 type="button"
                 onClick={() => setRefreshTrigger((n) => n + 1)}
                 aria-label="Refresh prices and balances"
@@ -307,9 +308,9 @@ export function App() {
                 style={{ backgroundColor: 'var(--bg-surface)' }}
               >
                 <RefreshCw className="h-[18px] w-[18px]" />
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               type="button"
               onClick={toggleSettings}
               aria-label={tab === 'settings' ? 'Close settings' : 'Settings'}
@@ -318,7 +319,7 @@ export function App() {
               style={{ backgroundColor: tab === 'settings' ? 'var(--accent)' : 'var(--bg-surface)', color: tab === 'settings' ? 'var(--accent-fg)' : 'var(--text-primary)' }}
             >
               <UserRound className="h-[18px] w-[18px]" />
-            </button>
+            </Button>
           </div>
         </header>
 
@@ -383,7 +384,7 @@ export function App() {
         {MOBILE_NAV.map((item) => {
           if (!item) {
             return (
-              <button
+              <Button
                 key="add"
                 type="button"
                 onClick={() => openFlow({ mode: 'add' })}
@@ -392,13 +393,13 @@ export function App() {
                 style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}
               >
                 <Plus className="h-6 w-6" strokeWidth={2.6} />
-              </button>
+              </Button>
             );
           }
           const Icon = item.icon;
           const active = tab === item.id;
           return (
-            <button
+            <Button
               key={item.id}
               type="button"
               onClick={() => navigate(item.id)}
@@ -416,7 +417,7 @@ export function App() {
                   {pendingCount}
                 </span>
               )}
-            </button>
+            </Button>
           );
         })}
       </nav>

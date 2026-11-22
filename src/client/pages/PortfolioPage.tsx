@@ -26,6 +26,7 @@ import { Sheet } from '../components/Sheet';
 import { RsuGrantSheet } from '../components/RsuGrantSheet';
 import { RsuTrancheSheet } from '../components/RsuTrancheSheet';
 import { RsuSection } from '../components/RsuSection';
+import { Button } from '@client/components/ui/button';
 
 interface PortfolioPageProps {
   accounts: ActualAccount[];
@@ -381,7 +382,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                   24h: {formatSignedMoney(data.totals.dayChangeBase, cur)} ({formatPct(data.totals.dayChangePct)})
                 </span>
                 {rsuSummary.unvestedNetValueBase > 0 && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setFilter('rsu')}
                     className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-medium transition hover:opacity-85"
@@ -389,33 +390,33 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                   >
                     <Award className="h-3 w-3" />
                     Unvested RSUs: {formatMoney(rsuSummary.unvestedNetValueBase, cur, true)}
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
               disabled={refreshing}
               onClick={() => void load(true)}
-              className="btn-secondary flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-medium disabled:opacity-50"
+              variant="secondary" className="flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-medium disabled:opacity-50"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={syncing}
               onClick={handleSyncActual}
-              className="btn-secondary flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-medium disabled:opacity-50"
+              variant="secondary" className="flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-medium disabled:opacity-50"
               style={{ color: 'var(--accent-text)', borderColor: 'var(--accent-border)' }}
               title="Sync linked off-budget accounts in Actual (holdings, liquidity, and vested RSUs)"
             >
               <ArrowLeftRight className={`h-3.5 w-3.5 ${syncing ? 'animate-pulse' : ''}`} />
               Sync Actual
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -471,7 +472,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
           {filterTabs.map((t) => {
             const active = filter === t.id;
             return (
-              <button
+              <Button
                 key={t.id}
                 type="button"
                 onClick={() => setFilter(t.id)}
@@ -483,16 +484,16 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                 }}
               >
                 {t.label}
-              </button>
+              </Button>
             );
           })}
         </div>
 
         <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-1.5">
-          <button
+          <Button
             type="button"
             onClick={() => openCreate('cash')}
-            className="btn-secondary flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-medium sm:shrink-0 sm:px-3"
+            variant="secondary" className="flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-medium sm:shrink-0 sm:px-3"
             style={
               filter === 'cash'
                 ? { backgroundColor: 'var(--accent)', color: 'var(--accent-fg)', fontWeight: 700 }
@@ -501,11 +502,11 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
           >
             <Banknote className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">Liquidity</span>
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={openCreateRsu}
-            className="btn-secondary flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-medium sm:shrink-0 sm:px-3"
+            variant="secondary" className="flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-medium sm:shrink-0 sm:px-3"
             style={
               filter === 'rsu'
                 ? { backgroundColor: 'var(--accent)', color: 'var(--accent-fg)', fontWeight: 700 }
@@ -514,15 +515,15 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
           >
             <Award className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">RSU</span>
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => openCreate(filter === 'etf' || filter === 'crypto' ? filter : 'stock')}
-            className="btn-primary flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-medium sm:shrink-0 sm:px-3"
+            variant="default" className="flex items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-xs font-medium sm:shrink-0 sm:px-3"
           >
             <Plus className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">Holding</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -542,13 +543,13 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                     <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                       Track uninvested {cur} or foreign cash sitting inside your brokerage accounts and sync it with Actual.
                     </p>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => openCreate('cash')}
-                      className="btn-primary mt-4 rounded-xl px-4 py-2 text-xs font-medium"
+                      variant="default" className="mt-4 rounded-xl px-4 py-2 text-xs font-medium"
                     >
                       Add excess liquidity
-                    </button>
+                    </Button>
                   </>
                 ) : (
                   <>
@@ -560,29 +561,29 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                       Add stocks (e.g. ACME, ACME.L, ACME.SI), crypto, excess liquidity ({cur}), or RSU grants to track live values in {cur}.
                     </p>
                     <div className="mt-4 flex flex-wrap justify-center gap-2">
-                      <button
+                      <Button
                         type="button"
                         onClick={() => openCreate(filter === 'etf' || filter === 'crypto' ? filter : 'stock')}
-                        className="btn-primary rounded-xl px-4 py-2 text-xs font-medium"
+                        variant="default" className="rounded-xl px-4 py-2 text-xs font-medium"
                       >
                         Add holding
-                      </button>
+                      </Button>
                       {filter === 'all' && (
                         <>
-                          <button
+                          <Button
                             type="button"
                             onClick={() => openCreate('cash')}
-                            className="btn-secondary rounded-xl px-4 py-2 text-xs font-medium"
+                            variant="secondary" className="rounded-xl px-4 py-2 text-xs font-medium"
                           >
                             Add excess liquidity
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
                             onClick={openCreateRsu}
-                            className="btn-secondary rounded-xl px-4 py-2 text-xs font-medium"
+                            variant="secondary" className="rounded-xl px-4 py-2 text-xs font-medium"
                           >
                             Add RSU grant
-                          </button>
+                          </Button>
                         </>
                       )}
                     </div>
@@ -714,7 +715,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                       </div>
 
                       <div className="flex items-center gap-1">
-                        <button
+                        <Button
                           type="button"
                           onClick={() => openEdit(h)}
                           className="rounded-lg p-1.5 transition hover:opacity-80"
@@ -722,8 +723,8 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                           aria-label={isCash ? 'Edit liquidity' : 'Edit holding'}
                         >
                           <Edit3 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
                           onClick={() => void handleDelete(h)}
                           className="rounded-lg p-1.5 transition hover:opacity-80"
@@ -731,7 +732,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                           aria-label={isCash ? 'Delete liquidity' : 'Delete holding'}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -789,7 +790,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
             ).map((t) => {
               const active = assetType === t.id;
               return (
-                <button
+                <Button
                   key={t.id}
                   type="button"
                   onClick={() => {
@@ -810,7 +811,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                   }}
                 >
                   {t.label}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -943,7 +944,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                         </div>
                       )}
                       {searchResults.map((hit) => (
-                        <button
+                        <Button
                           key={`${hit.asset_type}:${hit.provider_id}`}
                           type="button"
                           onClick={() => pickSearchHit(hit)}
@@ -961,7 +962,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                           <span className="ml-2 shrink-0 text-[10px]" style={{ color: 'var(--text-muted)' }}>
                             {hit.exchange || hit.currency}
                           </span>
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   )}
@@ -1068,10 +1069,10 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
             </>
           )}
 
-          <button
+          <Button
             type="submit"
             disabled={saving}
-            className="btn-primary w-full rounded-xl py-3 text-sm font-medium disabled:opacity-50"
+            variant="default" className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-50"
           >
             {saving
               ? 'Saving...'
@@ -1080,7 +1081,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                 : assetType === 'cash'
                   ? 'Add Excess Liquidity'
                   : 'Add Holding'}
-          </button>
+          </Button>
         </form>
       </Sheet>
 

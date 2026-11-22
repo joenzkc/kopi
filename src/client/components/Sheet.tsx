@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { SnapshotPoint } from '@shared/types';
+import { Button } from '@client/components/ui/button';
 
 interface SheetProps {
   open: boolean;
@@ -53,7 +54,7 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
               </p>
             )}
           </div>
-          <button
+          <Button
             type="button"
             onClick={onClose}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition"
@@ -61,7 +62,7 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
             aria-label="Close"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
         <div className="overflow-y-auto overflow-x-hidden px-5 py-4 safe-pb">{children}</div>
       </div>

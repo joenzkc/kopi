@@ -4,6 +4,7 @@ import type { AccountLink, ActualAccount, ActualCategory } from '@shared/types';
 import { apiFetch, formatMoney } from '../lib/api';
 import { Sheet } from '../components/Sheet';
 import { Tile } from '../components/Tile';
+import { Button } from '@client/components/ui/button';
 
 type ManagedAccount = ActualAccount & { linkedHoldings: number; autoImport: boolean; links: AccountLink[] };
 
@@ -43,7 +44,7 @@ function Segmented({
       ].map((o) => {
         const on = value === o.off;
         return (
-          <button
+          <Button
             key={o.text}
             type="button"
             role="radio"
@@ -53,7 +54,7 @@ function Segmented({
             style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
           >
             {o.text}
-          </button>
+          </Button>
         );
       })}
     </div>
@@ -301,7 +302,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
             />
           </label>
         )}
-        <button type="button" onClick={() => openManage(a)} className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
+        <Button type="button" onClick={() => openManage(a)} className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
           <Tile colorKey={a.name} label={a.name} size={40} />
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="line-clamp-2 text-[15px] font-semibold leading-snug [overflow-wrap:anywhere]">{a.name}</span>
@@ -321,7 +322,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
             {money(bal)}
           </span>
           <ChevronRight className="h-4 w-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
-        </button>
+        </Button>
       </div>
     );
   };
@@ -332,7 +333,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
         <div className="flex min-w-0 items-center gap-1">
           <h2 className="truncate text-[15px] font-extrabold">{title}</h2>
           {group && (
-            <button
+            <Button
               type="button"
               onClick={() => openGroupSheet(group)}
               aria-label={`Rename or delete ${group.name}`}
@@ -340,7 +341,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
               style={{ color: 'var(--text-muted)' }}
             >
               <Pencil className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           )}
         </div>
         <span className="shrink-0 text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>
@@ -377,26 +378,26 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
 
   return (
     <div className="flex flex-col gap-5">
-      <button
+      <Button
         type="button"
         onClick={() => {
           setSheetError(null);
           setAddOpen(true);
         }}
-        className="btn-primary flex h-12 items-center justify-center gap-2 rounded-2xl text-[15px]"
+        variant="default" className="flex h-12 items-center justify-center gap-2 rounded-2xl text-[15px]"
       >
         <Plus className="h-5 w-5" />
         Add account
-      </button>
+      </Button>
 
       <div className="-mt-2 flex items-start justify-between gap-3 px-1">
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
           Ticked accounts appear on Home. Tap an account to rename, regroup, switch type or close it.
         </p>
-        <button type="button" onClick={() => openGroupSheet()} className="flex shrink-0 items-center gap-1 text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+        <Button type="button" onClick={() => openGroupSheet()} className="flex shrink-0 items-center gap-1 text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
           <FolderPlus className="h-4 w-4" />
           New group
-        </button>
+        </Button>
       </div>
 
       {error && (
@@ -414,9 +415,9 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
           {(ungrouped.length > 0 || groups.length === 0) && section(groups.length ? 'No group' : 'Accounts', ungrouped)}
           {closed.length > 0 && (
             <>
-              <button type="button" onClick={() => setShowClosed((v) => !v)} className="self-center text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+              <Button type="button" onClick={() => setShowClosed((v) => !v)} className="self-center text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
                 {showClosed ? 'Hide closed accounts' : `Show ${closed.length} closed account${closed.length === 1 ? '' : 's'}`}
-              </button>
+              </Button>
               {showClosed && section('Closed', closed)}
             </>
           )}
@@ -463,9 +464,9 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
               {sheetError}
             </p>
           )}
-          <button type="submit" disabled={busy} className="btn-primary h-12 rounded-2xl text-[15px] disabled:opacity-50">
+          <Button type="submit" disabled={busy} variant="default" className="h-12 rounded-2xl text-[15px] disabled:opacity-50">
             {busy ? 'Adding…' : 'Add account'}
-          </button>
+          </Button>
         </form>
       </Sheet>
 
@@ -478,9 +479,9 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                   This account is closed. Reopening brings it back into Actual with its history intact.
                 </p>
-                <button type="button" disabled={busy} onClick={reopenAccount} className="btn-primary h-12 rounded-2xl text-[15px] disabled:opacity-50">
+                <Button type="button" disabled={busy} onClick={reopenAccount} variant="default" className="h-12 rounded-2xl text-[15px] disabled:opacity-50">
                   {busy ? 'Reopening…' : 'Reopen account'}
-                </button>
+                </Button>
               </div>
             ) : (
               <>
@@ -491,14 +492,14 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                   </label>
                   <div className="flex gap-2">
                     <input id="acc-edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={100} className="input-field" />
-                    <button
+                    <Button
                       type="button"
                       onClick={saveName}
                       disabled={busy || !editName.trim() || editName.trim() === selected.name}
-                      className="btn-secondary shrink-0 rounded-xl px-4 text-sm font-bold disabled:opacity-40"
+                      variant="secondary" className="shrink-0 rounded-xl px-4 text-sm font-bold disabled:opacity-40"
                     >
                       Save
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -532,19 +533,19 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                         </span>
                       </p>
                       <div className="flex gap-2">
-                        <button
+                        <Button
                           type="button"
                           onClick={() => {
                             setEditOff(selected.offbudget);
                             setConfirmKind(false);
                           }}
-                          className="btn-secondary h-10 flex-1 rounded-xl text-sm font-bold"
+                          variant="secondary" className="h-10 flex-1 rounded-xl text-sm font-bold"
                         >
                           Cancel
-                        </button>
-                        <button type="button" disabled={busy} onClick={saveKind} className="btn-primary h-10 flex-1 rounded-xl text-sm disabled:opacity-50">
+                        </Button>
+                        <Button type="button" disabled={busy} onClick={saveKind} variant="default" className="h-10 flex-1 rounded-xl text-sm disabled:opacity-50">
                           {busy ? 'Switching…' : `Make it ${editOff ? 'tracking' : 'budget'}`}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -574,7 +575,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                               {l.conflicts > 0 ? ' · used for different accounts, always reviewed' : ''}
                             </span>
                           </span>
-                          <button
+                          <Button
                             type="button"
                             onClick={() => unlink(l)}
                             disabled={busy}
@@ -583,7 +584,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                             style={{ color: 'var(--text-muted)' }}
                           >
                             <X className="h-4 w-4" />
-                          </button>
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -617,10 +618,10 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                       className="input-field tabular-nums"
                     />
                   </div>
-                  <button type="button" onClick={addLink} disabled={busy} className="btn-secondary h-10 rounded-xl text-sm font-bold disabled:opacity-50">
+                  <Button type="button" onClick={addLink} disabled={busy} variant="secondary" className="h-10 rounded-xl text-sm font-bold disabled:opacity-50">
                     Link card or account
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     role="switch"
                     aria-checked={selected.autoImport}
@@ -641,20 +642,20 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                     >
                       <span className="h-[22px] w-[22px] rounded-full" style={{ backgroundColor: selected.autoImport ? 'var(--accent-fg)' : 'var(--text-muted)' }} />
                     </span>
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Close */}
                 <div className="flex flex-col gap-3 border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
                   {!closing ? (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setClosing(true)}
                       className="h-12 rounded-2xl text-[15px] font-bold"
                       style={{ backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }}
                     >
                       Close account…
-                    </button>
+                    </Button>
                   ) : (
                     <>
                       <h3 className="text-sm font-extrabold">Close {selected.name}</h3>
@@ -701,10 +702,10 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                         </>
                       )}
                       <div className="flex gap-2">
-                        <button type="button" onClick={() => setClosing(false)} className="btn-secondary h-12 flex-1 rounded-2xl text-sm font-bold">
+                        <Button type="button" onClick={() => setClosing(false)} variant="secondary" className="h-12 flex-1 rounded-2xl text-sm font-bold">
                           Keep open
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
                           disabled={busy || !canClose}
                           onClick={closeAccount}
@@ -712,7 +713,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                           style={{ backgroundColor: 'var(--negative)', color: 'var(--bg-canvas)' }}
                         >
                           {busy ? 'Closing…' : 'Close account'}
-                        </button>
+                        </Button>
                       </div>
                     </>
                   )}
@@ -756,30 +757,30 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                 {sheetError}
               </p>
             )}
-            <button type="submit" disabled={busy} className="btn-primary h-12 rounded-2xl text-[15px] disabled:opacity-50">
+            <Button type="submit" disabled={busy} variant="default" className="h-12 rounded-2xl text-[15px] disabled:opacity-50">
               {busy ? 'Saving…' : groupSheet.mode === 'edit' ? 'Save' : 'Create group'}
-            </button>
+            </Button>
             {groupSheet.mode === 'edit' && (
               <div className="flex flex-col gap-3 border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
                 {!confirmDeleteGroup ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setConfirmDeleteGroup(true)}
                     className="h-12 rounded-2xl text-[15px] font-bold"
                     style={{ backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }}
                   >
                     Delete group…
-                  </button>
+                  </Button>
                 ) : (
                   <>
                     <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                       The accounts in “{groupSheet.group.name}” stay as they are and become ungrouped. Nothing else changes.
                     </p>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => setConfirmDeleteGroup(false)} className="btn-secondary h-12 flex-1 rounded-2xl text-sm font-bold">
+                      <Button type="button" onClick={() => setConfirmDeleteGroup(false)} variant="secondary" className="h-12 flex-1 rounded-2xl text-sm font-bold">
                         Keep group
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         disabled={busy}
                         onClick={deleteGroup}
@@ -787,7 +788,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                         style={{ backgroundColor: 'var(--negative)', color: 'var(--bg-canvas)' }}
                       >
                         {busy ? 'Deleting…' : 'Delete group'}
-                      </button>
+                      </Button>
                     </div>
                   </>
                 )}

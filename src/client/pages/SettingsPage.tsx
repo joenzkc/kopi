@@ -7,6 +7,7 @@ import { NotificationsSection } from '../components/NotificationsSection';
 import { EmailImportSection } from '../components/settings/EmailImportSection';
 import { SecuritySection } from '../components/settings/SecuritySection';
 import { SettingsCard, SettingsGroup } from '../components/settings/SettingsUI';
+import { Button } from '@client/components/ui/button';
 
 interface SettingsPageProps {
   budgets: ActualBudget[];
@@ -139,18 +140,18 @@ export function SettingsPage({
                 </span>
               </p>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setPendingBudget(null)} className="btn-secondary h-10 flex-1 rounded-xl text-sm font-bold">
+                <Button type="button" onClick={() => setPendingBudget(null)} variant="secondary" className="h-10 flex-1 rounded-xl text-sm font-bold">
                   Keep current
-                </button>
-                <button type="button" disabled={saving} onClick={() => void switchBudget()} className="btn-primary h-10 flex-1 rounded-xl text-sm disabled:opacity-50">
+                </Button>
+                <Button type="button" disabled={saving} onClick={() => void switchBudget()} variant="default" className="h-10 flex-1 rounded-xl text-sm disabled:opacity-50">
                   Switch budget
-                </button>
+                </Button>
               </div>
             </div>
           )}
         </SettingsCard>
 
-        <button type="button" onClick={onOpenAccounts} className="card press flex w-full items-center gap-3 rounded-3xl p-5 text-left">
+        <Button type="button" onClick={onOpenAccounts} className="card press flex w-full items-center gap-3 rounded-3xl p-5 text-left">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text)' }}>
             <Landmark className="h-[18px] w-[18px]" />
           </span>
@@ -161,7 +162,7 @@ export function SettingsPage({
             </span>
           </span>
           <ChevronRight className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
-        </button>
+        </Button>
       </SettingsGroup>
 
       <SettingsGroup title="Connections">
@@ -173,7 +174,7 @@ export function SettingsPage({
         <SecuritySection webAuthnSupportedOrigin={webAuthnSupportedOrigin} onToast={onToast} />
       </SettingsGroup>
 
-      <button
+      <Button
         type="button"
         onClick={() => void handleLogout()}
         className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold transition hover:opacity-90"
@@ -181,7 +182,7 @@ export function SettingsPage({
       >
         <LogOut className="h-4 w-4" />
         Sign out
-      </button>
+      </Button>
     </div>
   );
 }

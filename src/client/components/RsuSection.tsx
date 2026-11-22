@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { EnrichedRsuGrant, EnrichedRsuTranche, RsuEffectiveStatus, RsuSummary } from '@shared/types';
 import { formatMoney, formatPct, formatPrice, formatSignedMoney } from '../lib/api';
+import { Button } from '@client/components/ui/button';
 
 interface RsuSectionProps {
   grants: EnrichedRsuGrant[];
@@ -102,13 +103,13 @@ export function RsuSection({
         <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
           Add your equity grants and vesting schedules to track vested shares, upcoming vests, and projected annual equity value in {baseCurrency}.
         </p>
-        <button
+        <Button
           type="button"
           onClick={onAddGrant}
-          className="btn-primary mt-4 rounded-xl px-4 py-2 text-xs font-medium"
+          variant="default" className="mt-4 rounded-xl px-4 py-2 text-xs font-medium"
         >
           Add your first RSU grant
-        </button>
+        </Button>
       </div>
     );
   }
@@ -135,7 +136,7 @@ export function RsuSection({
             )}
           </div>
           {onViewAllRsu && (
-            <button
+            <Button
               type="button"
               onClick={onViewAllRsu}
               className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap text-xs font-semibold transition hover:opacity-80"
@@ -143,7 +144,7 @@ export function RsuSection({
             >
               Schedule
               <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -341,7 +342,7 @@ export function RsuSection({
             })}
           </div>
           {summary.upcomingTranches.length > 5 && (
-            <button
+            <Button
               type="button"
               onClick={() => setShowAllUpcoming((v) => !v)}
               className="w-full py-2.5 text-center text-xs font-semibold transition hover:opacity-80"
@@ -352,7 +353,7 @@ export function RsuSection({
               }}
             >
               {showAllUpcoming ? 'Show fewer' : `Show all ${summary.upcomingTranches.length} upcoming vests`}
-            </button>
+            </Button>
           )}
         </section>
       )}
@@ -473,7 +474,7 @@ export function RsuSection({
                 </div>
 
                 <div className="ml-auto flex shrink-0 items-center gap-1">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => toggleExpand(g.id)}
                     className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition hover:opacity-80"
@@ -481,8 +482,8 @@ export function RsuSection({
                   >
                     {g.tranches.length} vest{g.tranches.length === 1 ? '' : 's'}
                     {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={() => onEditGrant(g)}
                     className="rounded-lg p-1.5 transition hover:opacity-80"
@@ -490,8 +491,8 @@ export function RsuSection({
                     aria-label="Edit RSU grant"
                   >
                     <Edit3 className="h-3.5 w-3.5" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={() => onDeleteGrant(g)}
                     className="rounded-lg p-1.5 transition hover:opacity-80"
@@ -499,7 +500,7 @@ export function RsuSection({
                     aria-label="Delete RSU grant"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -553,7 +554,7 @@ export function RsuSection({
 
                             <div className="flex shrink-0 items-center gap-1.5">
                               {(t.effectiveStatus === 'vested' || t.effectiveStatus === 'sold') && (
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() => onQuickToggleSold(g, t)}
                                   className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition hover:opacity-80"
@@ -565,10 +566,10 @@ export function RsuSection({
                                 >
                                   <CheckCircle2 className="h-3 w-3" />
                                   {t.effectiveStatus === 'sold' ? 'Sold' : 'Mark sold'}
-                                </button>
+                                </Button>
                               )}
 
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() => onEditTranche(g, t)}
                                 className="rounded-lg p-1 transition hover:opacity-80"
@@ -576,7 +577,7 @@ export function RsuSection({
                                 aria-label="Edit tranche"
                               >
                                 <Edit3 className="h-3.5 w-3.5" />
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -591,7 +592,7 @@ export function RsuSection({
                     <span className="text-[11px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
                       Total: {formatUnits(g.totalUnits)} shares
                     </span>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => onAddTranche(g)}
                       className="inline-flex items-center gap-1 text-[11px] font-semibold transition hover:opacity-80"
@@ -599,7 +600,7 @@ export function RsuSection({
                     >
                       <Plus className="h-3 w-3" />
                       Add tranche
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}

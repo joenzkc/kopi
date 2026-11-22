@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react';
 import type { EnrichedRsuGrant, EnrichedRsuTranche, RsuTrancheStatus } from '@shared/types';
 import { apiFetch } from '../lib/api';
 import { Sheet } from './Sheet';
+import { Button } from '@client/components/ui/button';
 
 interface RsuTrancheSheetProps {
   open: boolean;
@@ -143,7 +144,7 @@ export function RsuTrancheSheet({ open, onClose, grant, tranche, onSaved, onErro
             {STATUS_OPTIONS.map((opt) => {
               const active = status === opt.id;
               return (
-                <button
+                <Button
                   key={opt.id}
                   type="button"
                   onClick={() => setStatus(opt.id)}
@@ -155,7 +156,7 @@ export function RsuTrancheSheet({ open, onClose, grant, tranche, onSaved, onErro
                   }}
                 >
                   {opt.label}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -195,14 +196,14 @@ export function RsuTrancheSheet({ open, onClose, grant, tranche, onSaved, onErro
                 Tax Withheld Shares
               </label>
               {grant.tax_withhold_pct > 0 && unitsNum > 0 && (
-                <button
+                <Button
                   type="button"
                   onClick={() => setWithheldUnits(String(Math.round(unitsNum * (grant.tax_withhold_pct / 100) * 1000) / 1000))}
                   className="shrink-0 text-[10px] font-semibold"
                   style={{ color: 'var(--accent-text)' }}
                 >
                   Apply {grant.tax_withhold_pct}%
-                </button>
+                </Button>
               )}
             </div>
             <input
@@ -253,24 +254,24 @@ export function RsuTrancheSheet({ open, onClose, grant, tranche, onSaved, onErro
 
         <div className="flex items-center gap-2">
           {tranche && (
-            <button
+            <Button
               type="button"
               disabled={saving}
               onClick={() => void handleDelete()}
-              className="btn-secondary flex items-center gap-1.5 rounded-xl px-4 py-3 text-sm font-medium disabled:opacity-50"
+              variant="secondary" className="flex items-center gap-1.5 rounded-xl px-4 py-3 text-sm font-medium disabled:opacity-50"
               style={{ color: 'var(--negative)' }}
             >
               <Trash2 className="h-4 w-4" />
               Delete
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             type="submit"
             disabled={saving}
-            className="btn-primary flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-50"
+            variant="default" className="flex-1 rounded-xl py-3 text-sm font-medium disabled:opacity-50"
           >
             {saving ? 'Saving...' : tranche ? 'Save Tranche' : 'Add Tranche'}
-          </button>
+          </Button>
         </div>
       </form>
     </Sheet>

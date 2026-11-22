@@ -7,6 +7,7 @@ import { Sheet } from '../components/Sheet';
 import { Tile } from '../components/Tile';
 import { LinkPayeeSheet } from '../components/LinkPayeeSheet';
 import type { FlowRequest } from '../components/TransactionFlow';
+import { Button } from '@client/components/ui/button';
 
 interface ActivityPageProps {
   accounts: ActualAccount[];
@@ -205,16 +206,16 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
             style={{ color: 'var(--text-primary)' }}
           />
           {query && (
-            <button type="button" onClick={() => setQuery('')} aria-label="Clear search" className="flex h-8 w-8 items-center justify-center rounded-full">
+            <Button type="button" onClick={() => setQuery('')} aria-label="Clear search" className="flex h-8 w-8 items-center justify-center rounded-full">
               <X className="h-4 w-4" />
-            </button>
+            </Button>
           )}
         </label>
         <div role="radiogroup" aria-label="Filter" className="grid grid-cols-4 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-surface)' }}>
           {filters.map((f) => {
             const on = filter === f.id;
             return (
-              <button
+              <Button
                 key={f.id}
                 type="button"
                 role="radio"
@@ -224,7 +225,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                 style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
               >
                 {f.label}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -238,7 +239,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
           </h2>
           <div className="flex items-center gap-4">
             {toReview.length > 0 && (
-              <button
+              <Button
                 type="button"
                 onClick={() => void rescan()}
                 disabled={rescanning}
@@ -248,9 +249,9 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
               >
                 <RefreshCw className={`h-4 w-4 ${rescanning ? 'animate-spin' : ''}`} />
                 Re-read
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               type="button"
               onClick={() => setTestOpen(true)}
               className="flex items-center gap-1 text-sm font-bold"
@@ -258,7 +259,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
             >
               <FlaskConical className="h-4 w-4" />
               Test parser
-            </button>
+            </Button>
           </div>
         </div>
         {queued > 0 && (
@@ -340,17 +341,17 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                 </p>
               )}
               <div className="grid grid-cols-4 gap-2">
-                <button type="button" disabled={busy} onClick={() => void skip(ev)} className="btn-secondary h-12 rounded-2xl text-sm font-bold disabled:opacity-50">
+                <Button type="button" disabled={busy} onClick={() => void skip(ev)} variant="secondary" className="h-12 rounded-2xl text-sm font-bold disabled:opacity-50">
                   Skip
-                </button>
-                <button type="button" disabled={busy} onClick={() => onOpenFlow({ mode: 'review', event: ev })} className="btn-secondary h-12 rounded-2xl text-sm font-bold disabled:opacity-50">
+                </Button>
+                <Button type="button" disabled={busy} onClick={() => onOpenFlow({ mode: 'review', event: ev })} variant="secondary" className="h-12 rounded-2xl text-sm font-bold disabled:opacity-50">
                   Edit
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   disabled={busy}
                   onClick={() => void quickAdd(ev)}
-                  className="btn-primary col-span-2 h-12 rounded-2xl text-sm disabled:opacity-50"
+                  variant="default" className="col-span-2 h-12 rounded-2xl text-sm disabled:opacity-50"
                 >
                   {busy
                     ? 'Saving…'
@@ -363,7 +364,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                           : p.transferAccountId
                             ? 'Add transfer'
                             : 'Add to Actual'}
-                </button>
+                </Button>
               </div>
             </article>
           );
@@ -397,7 +398,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
             </span>
           </div>
           {g.items.map((t) => (
-            <button
+            <Button
               key={t.id}
               type="button"
               disabled={t.isTransfer || !t.payee}
@@ -417,7 +418,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
               <span className="text-[15px] font-bold tabular-nums" style={{ color: t.amount > 0 ? 'var(--positive)' : 'var(--text-primary)' }}>
                 {formatSignedMoney(t.amount / 100, baseCurrency)}
               </span>
-            </button>
+            </Button>
           ))}
         </section>
       ))}
@@ -447,9 +448,9 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
             <label htmlFor="test-body" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Email body</label>
             <textarea id="test-body" rows={4} value={testBody} onChange={(e) => setTestBody(e.target.value)} className="input-field" />
           </div>
-          <button type="submit" disabled={testBusy} className="btn-primary h-12 w-full rounded-2xl text-sm disabled:opacity-50">
+          <Button type="submit" disabled={testBusy} variant="default" className="h-12 w-full rounded-2xl text-sm disabled:opacity-50">
             {testBusy ? 'Parsing…' : 'Queue & parse test email'}
-          </button>
+          </Button>
         </form>
       </Sheet>
     </div>

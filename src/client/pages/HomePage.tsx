@@ -6,6 +6,7 @@ import { fetchRecent, formatWhole, friendlyDate } from '../lib/recent';
 import { Tile } from '../components/Tile';
 import type { FlowRequest } from '../components/TransactionFlow';
 import { ProgressBar, currentMonthKey } from './BudgetPage';
+import { Button } from '@client/components/ui/button';
 
 export type AppTab = 'home' | 'activity' | 'budget' | 'accounts' | 'invest' | 'bills' | 'settings';
 
@@ -106,9 +107,9 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
     return (
       <div className="card rounded-3xl p-6 text-center">
         <p className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>{error}</p>
-        <button type="button" onClick={() => void load(true)} className="btn-secondary mt-3 rounded-xl px-4 py-2 text-sm font-bold">
+        <Button type="button" onClick={() => void load(true)} variant="secondary" className="mt-3 rounded-xl px-4 py-2 text-sm font-bold">
           Retry
-        </button>
+        </Button>
       </div>
     );
   }
@@ -198,9 +199,9 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
             </>
           );
           return s.onClick ? (
-            <button key={s.label} type="button" onClick={s.onClick} className="press flex flex-col gap-0.5 rounded-2xl p-3 text-left" style={{ backgroundColor: 'var(--bg-surface)' }}>
+            <Button key={s.label} type="button" onClick={s.onClick} className="press flex flex-col gap-0.5 rounded-2xl p-3 text-left" style={{ backgroundColor: 'var(--bg-surface)' }}>
               {inner}
-            </button>
+            </Button>
           ) : (
             <div key={s.label} className="flex flex-col gap-0.5 rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-surface)' }}>
               {inner}
@@ -212,7 +213,7 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
       {/* Quick actions */}
       <div className="grid grid-cols-4 gap-2">
         {actions.map((a) => (
-          <button key={a.label} type="button" onClick={a.onClick} className="press relative flex flex-col items-center gap-2 text-xs font-bold">
+          <Button key={a.label} type="button" onClick={a.onClick} className="press relative flex flex-col items-center gap-2 text-xs font-bold">
             <span
               className="flex h-14 w-14 items-center justify-center rounded-[20px]"
               style={a.primary ? { backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' } : { backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)' }}
@@ -228,14 +229,14 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
                 {a.badge}
               </span>
             )}
-          </button>
+          </Button>
         ))}
       </div>
 
 
       {/* This month's budget */}
       {budget && (
-        <button
+        <Button
           type="button"
           onClick={() => onNavigate('budget')}
           className="press flex flex-col gap-3 rounded-[26px] p-4 text-left"
@@ -282,7 +283,7 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
               </span>
             )}
           </span>
-        </button>
+        </Button>
       )}
 
       {!data.actualConnected && (
@@ -300,14 +301,14 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
         <section className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between">
             <h2 className="text-lg font-extrabold">Accounts</h2>
-            <button type="button" onClick={() => onNavigate('accounts')} className="text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+            <Button type="button" onClick={() => onNavigate('accounts')} className="text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
               Manage
-            </button>
+            </Button>
           </div>
           {accounts.length === 0 && (
-            <button type="button" onClick={() => onNavigate('accounts')} className="rounded-3xl p-4 text-left text-sm" style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-muted)' }}>
+            <Button type="button" onClick={() => onNavigate('accounts')} className="rounded-3xl p-4 text-left text-sm" style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-muted)' }}>
               All accounts are hidden from Home. Tap to choose which to show.
-            </button>
+            </Button>
           )}
           {chips.length > 2 && (
             <div className="flex flex-col gap-2">
@@ -315,7 +316,7 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
                 {chips.map((c) => {
                   const on = c.id === activeGroup;
                   return (
-                    <button
+                    <Button
                       key={c.id}
                       type="button"
                       role="radio"
@@ -325,7 +326,7 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
                       style={{ backgroundColor: on ? 'var(--accent)' : 'var(--bg-surface)', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
                     >
                       {c.label}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -380,9 +381,9 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
         <section className="flex flex-col gap-1">
           <div className="mb-1 flex items-baseline justify-between">
             <h2 className="text-lg font-extrabold">Coming up</h2>
-            <button type="button" onClick={() => onNavigate('bills')} className="text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+            <Button type="button" onClick={() => onNavigate('bills')} className="text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
               All bills
-            </button>
+            </Button>
           </div>
           {data.upcomingSchedules.slice(0, 4).map((s) => {
             const badge = formatDueBadge(s.daysUntilNext);
@@ -410,9 +411,9 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
       <section className="flex flex-col gap-1">
         <div className="mb-1 flex items-baseline justify-between">
           <h2 className="text-lg font-extrabold">Recent</h2>
-          <button type="button" onClick={() => onNavigate('activity')} className="text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+          <Button type="button" onClick={() => onNavigate('activity')} className="text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
             All activity
-          </button>
+          </Button>
         </div>
         {recent.length === 0 ? (
           <p className="py-4 text-sm" style={{ color: 'var(--text-muted)' }}>

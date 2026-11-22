@@ -4,6 +4,7 @@ import type { AccountLink, ActualAccount, EmailRuleRecord } from '@shared/types'
 import { apiFetch } from '../../lib/api';
 import { relativeTime } from '../../lib/recent';
 import { ConfirmAction, CopyField, Disclosure, SettingsCard } from './SettingsUI';
+import { Button } from '@client/components/ui/button';
 
 interface EmailImportSectionProps {
   accounts: ActualAccount[];
@@ -177,9 +178,9 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
             className="input-field min-w-0 flex-1"
           />
           {forwarding.trim() !== savedForwarding && (
-            <button type="button" onClick={() => void saveForwarding()} className="btn-primary shrink-0 rounded-xl px-4 text-sm">
+            <Button type="button" onClick={() => void saveForwarding()} variant="default" className="shrink-0 rounded-xl px-4 text-sm">
               Save
-            </button>
+            </Button>
           )}
         </div>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -218,7 +219,7 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
       </div>
 
       {/* Linked cards */}
-      <button
+      <Button
         type="button"
         onClick={onOpenAccounts}
         className="flex min-h-[52px] items-center justify-between gap-3 rounded-2xl px-3.5 text-left text-sm"
@@ -234,14 +235,14 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
           Manage
           <ChevronRight className="h-4 w-4" />
         </span>
-      </button>
+      </Button>
 
       <Disclosure title="Advanced" description="Cloudflare worker connection and legacy per-bank rules">
         <CopyField label="Worker endpoint (INGEST_URL)" value={`${origin}/api/v1/events/email`} />
 
         <div className="flex flex-col gap-1.5">
           <CopyField label="Webhook secret (WEBHOOK_SECRET)" value={secret} display={showSecret ? secret : '•'.repeat(24)} />
-          <button
+          <Button
             type="button"
             onClick={() => setShowSecret((v) => !v)}
             aria-pressed={showSecret}
@@ -250,7 +251,7 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
           >
             {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             {showSecret ? 'Hide secret' : 'Show secret'}
-          </button>
+          </Button>
           <ConfirmAction
             label={
               <>

@@ -12,6 +12,7 @@ import {
 import type { ActualAccount, ActualPayee, EnrichedSchedule, RecurConfig } from '@shared/types';
 import { apiFetch, formatDueBadge, formatMoney, formatSignedMoney } from '../lib/api';
 import { Sheet } from '../components/Sheet';
+import { Button } from '@client/components/ui/button';
 
 interface SchedulesPageProps {
   accounts: ActualAccount[];
@@ -206,14 +207,14 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
               {data ? formatMoney(data.summary.monthlyOutflowCents / 100, baseCurrency) : '—'}
             </div>
           </div>
-          <button
+          <Button
             type="button"
             onClick={openCreate}
-            className="btn-primary flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-xs font-bold"
+            variant="default" className="flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-xs font-bold"
           >
             <Plus className="h-4 w-4" />
             New Schedule
-          </button>
+          </Button>
         </div>
 
         {data && (
@@ -254,7 +255,7 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
         ).map(([k, label]) => {
           const active = tab === k;
           return (
-            <button
+            <Button
               key={k}
               type="button"
               onClick={() => setTab(k)}
@@ -266,7 +267,7 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
               }}
             >
               {label}
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -348,16 +349,16 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
                   </span>
                   <div className="flex items-center gap-1.5">
                     {!s.completed && (
-                      <button
+                      <Button
                         type="button"
                         onClick={() => void handlePostNow(s)}
-                        className="btn-secondary inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium"
+                        variant="secondary" className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium"
                       >
                         <Play className="h-3 w-3" style={{ color: 'var(--accent-text)' }} />
                         Post Now
-                      </button>
+                      </Button>
                     )}
-                    <button
+                    <Button
                       type="button"
                       onClick={() => openEdit(s)}
                       className="rounded-lg p-1.5 hover:opacity-80"
@@ -365,8 +366,8 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
                       aria-label="Edit schedule"
                     >
                       <Edit3 className="h-3.5 w-3.5" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => void handleDelete(s)}
                       className="rounded-lg p-1.5 hover:opacity-80"
@@ -374,7 +375,7 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
                       aria-label="Delete schedule"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -395,7 +396,7 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
             {(['expense', 'income'] as const).map((dir) => {
               const active = direction === dir;
               return (
-                <button
+                <Button
                   key={dir}
                   type="button"
                   onClick={() => setDirection(dir)}
@@ -414,7 +415,7 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
                   }}
                 >
                   {dir}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -449,7 +450,7 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
               ).map(([p, label]) => {
                 const active = preset === p;
                 return (
-                  <button
+                  <Button
                     key={p}
                     type="button"
                     onClick={() => setPreset(p)}
@@ -461,7 +462,7 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
                     }}
                   >
                     {label}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -501,10 +502,10 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
             )}
           </div>
 
-          <button type="submit" disabled={saving} className="btn-primary flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold disabled:opacity-50">
+          <Button type="submit" disabled={saving} variant="default" className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold disabled:opacity-50">
             <CheckCircle2 className="h-4 w-4" />
             {saving ? 'Saving...' : editing ? 'Update Schedule' : 'Create Schedule'}
-          </button>
+          </Button>
         </form>
       </Sheet>
     </div>

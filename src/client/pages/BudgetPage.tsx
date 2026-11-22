@@ -4,6 +4,7 @@ import type { BudgetCategory, BudgetMonthResponse } from '@shared/types';
 import { apiFetch, formatMoney } from '../lib/api';
 import { Tile } from '../components/Tile';
 import { BudgetCategorySheet } from '../components/BudgetCategorySheet';
+import { Button } from '@client/components/ui/button';
 
 interface BudgetPageProps {
   baseCurrency: string;
@@ -142,7 +143,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
 
   const monthNav = (
     <div className="flex items-center justify-between gap-2">
-      <button
+      <Button
         type="button"
         onClick={() => setMonth((m) => shiftMonth(m, -1))}
         disabled={!canPrev}
@@ -151,16 +152,16 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
         style={{ backgroundColor: 'var(--bg-surface)' }}
       >
         <ChevronLeft className="h-5 w-5" />
-      </button>
+      </Button>
       <div className="flex flex-col items-center">
         <span className="text-[17px] font-extrabold">{monthLabel(month)}</span>
         {!isCurrent && (
-          <button type="button" onClick={() => setMonth(currentMonthKey())} className="text-xs font-bold" style={{ color: 'var(--accent-text)' }}>
+          <Button type="button" onClick={() => setMonth(currentMonthKey())} className="text-xs font-bold" style={{ color: 'var(--accent-text)' }}>
             Back to this month
-          </button>
+          </Button>
         )}
       </div>
-      <button
+      <Button
         type="button"
         onClick={() => setMonth((m) => shiftMonth(m, 1))}
         disabled={!canNext}
@@ -169,7 +170,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
         style={{ backgroundColor: 'var(--bg-surface)' }}
       >
         <ChevronRight className="h-5 w-5" />
-      </button>
+      </Button>
     </div>
   );
 
@@ -179,9 +180,9 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
         {monthNav}
         <div className="card rounded-3xl p-6 text-center">
           <p className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>{error}</p>
-          <button type="button" onClick={() => void load(month)} className="btn-secondary mt-3 rounded-xl px-4 py-2 text-sm font-bold">
+          <Button type="button" onClick={() => void load(month)} variant="secondary" className="mt-3 rounded-xl px-4 py-2 text-sm font-bold">
             Retry
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -251,7 +252,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
       </section>
 
       {data.overspentCount > 0 && filter !== 'overspent' && (
-        <button
+        <Button
           type="button"
           onClick={() => setFilter('overspent')}
           className="press flex items-center gap-3 rounded-3xl p-4 text-left"
@@ -262,7 +263,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
             {data.overspentCount} categor{data.overspentCount === 1 ? 'y is' : 'ies are'} overspent
           </span>
           <span className="text-sm font-bold">Show</span>
-        </button>
+        </Button>
       )}
 
       <div role="radiogroup" aria-label="Filter categories" className="grid grid-cols-3 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-surface)' }}>
@@ -275,7 +276,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
         ).map(([id, label]) => {
           const on = filter === id;
           return (
-            <button
+            <Button
               key={id}
               type="button"
               role="radio"
@@ -285,7 +286,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
               style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
             >
               {label}
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -309,7 +310,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
               const ratio = spentRatio(c.spent, c.balance);
               const over = c.balance < 0;
               return (
-                <button
+                <Button
                   key={c.id}
                   type="button"
                   onClick={() => setEditingId(c.id)}
@@ -336,7 +337,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
                       {money(c.spent)} spent · {money(c.budgeted)} budgeted{over ? ' · overspent' : ''}
                     </span>
                   </div>
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -344,9 +345,9 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
       ))}
 
       {filter === 'all' && emptyTotal > 0 && (
-        <button type="button" onClick={() => setShowEmpty((v) => !v)} className="self-center text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+        <Button type="button" onClick={() => setShowEmpty((v) => !v)} className="self-center text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
           {showEmpty ? 'Hide empty categories' : `Show ${emptyTotal} empty categor${emptyTotal === 1 ? 'y' : 'ies'}`}
-        </button>
+        </Button>
       )}
 
       {filter === 'all' && incomeGroups.length > 0 && (

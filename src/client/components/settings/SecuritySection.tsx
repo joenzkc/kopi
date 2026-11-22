@@ -6,6 +6,7 @@ import type { ApiKeyRecord } from '@shared/types';
 import { apiFetch } from '../../lib/api';
 import { relativeTime } from '../../lib/recent';
 import { ConfirmAction, CopyField, Disclosure, SettingsCard, describeDevice } from './SettingsUI';
+import { Button } from '@client/components/ui/button';
 
 interface SecuritySectionProps {
   webAuthnSupportedOrigin: boolean;
@@ -148,10 +149,10 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
           </label>
           <div className="flex gap-2">
             <input id="passkey-name" value={passkeyName} onChange={(e) => setPasskeyName(e.target.value)} maxLength={60} className="input-field min-w-0 flex-1" />
-            <button type="submit" disabled={busy || !webAuthnSupportedOrigin} className="btn-primary flex shrink-0 items-center gap-1.5 rounded-xl px-4 text-sm disabled:opacity-40">
+            <Button type="submit" disabled={busy || !webAuthnSupportedOrigin} variant="default" className="flex shrink-0 items-center gap-1.5 rounded-xl px-4 text-sm disabled:opacity-40">
               <Plus className="h-4 w-4" />
               Add
-            </button>
+            </Button>
           </div>
         </form>
       </SettingsCard>
@@ -163,9 +164,9 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
         description="You stay signed in on this device after changing it."
         right={
           !pwOpen ? (
-            <button type="button" onClick={() => setPwOpen(true)} className="btn-secondary h-10 shrink-0 rounded-xl px-3 text-sm font-bold">
+            <Button type="button" onClick={() => setPwOpen(true)} variant="secondary" className="h-10 shrink-0 rounded-xl px-3 text-sm font-bold">
               Change…
-            </button>
+            </Button>
           ) : undefined
         }
       >
@@ -197,24 +198,24 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
             </p>
           )}
           <div className="flex gap-2">
-            <button
+            <Button
               type="button"
               onClick={() => {
                 setPwOpen(false);
                 setPw({ current: '', next: '', confirm: '' });
                 setPwError(null);
               }}
-              className="btn-secondary h-11 flex-1 rounded-xl text-sm font-bold"
+              variant="secondary" className="h-11 flex-1 rounded-xl text-sm font-bold"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={busy || !pw.current || !pw.next || !pw.confirm}
-              className="btn-primary h-11 flex-1 rounded-xl text-sm disabled:opacity-40"
+              variant="default" className="h-11 flex-1 rounded-xl text-sm disabled:opacity-40"
             >
               Change password
-            </button>
+            </Button>
           </div>
         </form>
         )}
@@ -244,14 +245,14 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
                 </span>
               </span>
               {!s.current && (
-                <button
+                <Button
                   type="button"
                   disabled={busy}
                   onClick={() => void act(() => apiFetch(`/api/auth/sessions/${encodeURIComponent(s.id)}`, { method: 'DELETE' }), 'Signed out that device')}
-                  className="btn-secondary h-10 shrink-0 rounded-xl px-3 text-sm font-bold disabled:opacity-50"
+                  variant="secondary" className="h-10 shrink-0 rounded-xl px-3 text-sm font-bold disabled:opacity-50"
                 >
                   Sign out
-                </button>
+                </Button>
               )}
             </div>
           ))}
@@ -286,18 +287,18 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
               placeholder="e.g. Apple Shortcuts"
               className="input-field min-w-0 flex-1"
             />
-            <button type="submit" disabled={busy || !newKeyName.trim()} className="btn-primary flex shrink-0 items-center gap-1.5 rounded-xl px-4 text-sm disabled:opacity-40">
+            <Button type="submit" disabled={busy || !newKeyName.trim()} variant="default" className="flex shrink-0 items-center gap-1.5 rounded-xl px-4 text-sm disabled:opacity-40">
               <KeyRound className="h-4 w-4" />
               Create
-            </button>
+            </Button>
           </div>
         </form>
         {revealedKey && (
           <div className="flex flex-col gap-2 rounded-2xl p-3" style={{ backgroundColor: 'var(--positive-soft)' }}>
             <CopyField label="Your new key, shown only once" value={revealedKey} />
-            <button type="button" onClick={() => setRevealedKey(null)} className="self-start text-xs font-bold" style={{ color: 'var(--accent-text)' }}>
+            <Button type="button" onClick={() => setRevealedKey(null)} className="self-start text-xs font-bold" style={{ color: 'var(--accent-text)' }}>
               I’ve copied it
-            </button>
+            </Button>
           </div>
         )}
         {apiKeys.length > 0 && (

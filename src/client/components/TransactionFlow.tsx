@@ -12,6 +12,7 @@ import { apiFetch, formatMoney } from '../lib/api';
 import { fetchRecent, friendlyDate, invalidateRecent, localISODate, senderLabel, shiftDays } from '../lib/recent';
 import { Tile } from './Tile';
 import { LinkPayeeSheet } from './LinkPayeeSheet';
+import { Button } from '@client/components/ui/button';
 
 export type FlowKind = 'expense' | 'income' | 'transfer';
 export type FlowRequest = { mode: 'add'; kind?: FlowKind } | { mode: 'review'; event: EmailEventRecord };
@@ -384,13 +385,13 @@ export function TransactionFlow({
   const header = (title: string, onBack: (() => void) | null, sub?: string) => (
     <header className="flex items-center gap-3 px-4 pb-2 pt-4 safe-pt">
       {onBack ? (
-        <button type="button" onClick={onBack} aria-label="Back" className={iconBtn} style={{ backgroundColor: 'var(--bg-surface)' }}>
+        <Button type="button" onClick={onBack} aria-label="Back" className={iconBtn} style={{ backgroundColor: 'var(--bg-surface)' }}>
           <ChevronLeft className="h-5 w-5" />
-        </button>
+        </Button>
       ) : (
-        <button type="button" onClick={onClose} aria-label="Close" className={iconBtn} style={{ backgroundColor: 'var(--bg-surface)' }}>
+        <Button type="button" onClick={onClose} aria-label="Close" className={iconBtn} style={{ backgroundColor: 'var(--bg-surface)' }}>
           <X className="h-5 w-5" />
-        </button>
+        </Button>
       )}
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-xl font-extrabold tracking-tight">{title}</h1>
@@ -401,9 +402,9 @@ export function TransactionFlow({
         )}
       </div>
       {onBack && (
-        <button type="button" onClick={onClose} aria-label="Close" className={iconBtn} style={{ color: 'var(--text-muted)' }}>
+        <Button type="button" onClick={onClose} aria-label="Close" className={iconBtn} style={{ color: 'var(--text-muted)' }}>
           <X className="h-5 w-5" />
-        </button>
+        </Button>
       )}
     </header>
   );
@@ -437,7 +438,7 @@ export function TransactionFlow({
                 {kinds.map((k) => {
                   const on = kind === k.id;
                   return (
-                    <button
+                    <Button
                       key={k.id}
                       type="button"
                       role="radio"
@@ -447,7 +448,7 @@ export function TransactionFlow({
                       style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
                     >
                       {k.label}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -492,7 +493,7 @@ export function TransactionFlow({
 
               <div className="grid grid-cols-3 gap-2">
                 {KEYS.map((k) => (
-                  <button
+                  <Button
                     key={k}
                     type="button"
                     onClick={() => press(k)}
@@ -501,17 +502,17 @@ export function TransactionFlow({
                     style={{ backgroundColor: 'var(--bg-surface)' }}
                   >
                     {k === 'back' ? <Delete className="h-6 w-6" /> : k}
-                  </button>
+                  </Button>
                 ))}
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={goFromAmount}
                 disabled={n <= 0}
-                className="btn-primary h-14 rounded-2xl text-base disabled:opacity-40"
+                variant="default" className="h-14 rounded-2xl text-base disabled:opacity-40"
               >
                 Continue
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -555,7 +556,7 @@ export function TransactionFlow({
               </span>
               <div className="no-scrollbar -mx-1 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-1">
                 {!isTransfer && query.trim() && !exactPayee && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => pickPayee(query.trim())}
                     className="press flex w-full items-center gap-3 rounded-2xl border border-dashed p-3 text-left text-[15px] font-bold"
@@ -563,13 +564,13 @@ export function TransactionFlow({
                   >
                     <Plus className="h-5 w-5" />
                     Create “{query.trim()}”
-                  </button>
+                  </Button>
                 )}
                 {isTransfer
                   ? openAccounts
                       .filter((a) => a.id !== accountId)
                       .map((a) => (
-                        <button
+                        <Button
                           key={a.id}
                           type="button"
                           onClick={() => {
@@ -587,10 +588,10 @@ export function TransactionFlow({
                             </span>
                           </span>
                           <ChevronRight className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
-                        </button>
+                        </Button>
                       ))
                   : payeeOptions.map((p) => (
-                      <button
+                      <Button
                         key={p.name}
                         type="button"
                         onClick={() => pickPayee(p.name)}
@@ -605,7 +606,7 @@ export function TransactionFlow({
                           </span>
                         </span>
                         <ChevronRight className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
-                      </button>
+                      </Button>
                     ))}
                 {!isTransfer && !query.trim() && payeeOptions.length === 0 && (
                   <p className="px-1 py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -646,7 +647,7 @@ export function TransactionFlow({
                     </span>
                   )}
                   {review.parsed?.counterRef && !isTransfer && (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => chooseKind('transfer')}
                       className="flex items-center gap-1.5 self-start text-xs font-bold"
@@ -654,7 +655,7 @@ export function TransactionFlow({
                     >
                       <ArrowLeftRight className="h-3.5 w-3.5" />
                       Other side is {review.parsed.counterRef.label}. Is it one of your accounts? Make it a transfer
-                    </button>
+                    </Button>
                   )}
                   {review.parsed?.matchedRuleName && (
                     <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -680,7 +681,7 @@ export function TransactionFlow({
                           “{review.body_text.replace(/\s+/g, ' ').trim().slice(0, 240)}”
                         </p>
                       )}
-                      <button
+                      <Button
                         type="button"
                         onClick={() => setShowEmail((v) => !v)}
                         aria-expanded={showEmail}
@@ -689,7 +690,7 @@ export function TransactionFlow({
                       >
                         <ChevronDown className="h-3.5 w-3.5 transition-transform" style={{ transform: showEmail ? 'rotate(180deg)' : 'none' }} />
                         {showEmail ? 'Hide full email' : 'Show full email'}
-                      </button>
+                      </Button>
                     </div>
                   )}
                   {review.error && (
@@ -701,7 +702,7 @@ export function TransactionFlow({
               )}
 
               <div className="flex items-stretch gap-2">
-                <button
+                <Button
                   type="button"
                   onClick={() => setStep('payee')}
                   className="press flex min-w-0 flex-1 flex-col items-start gap-0.5 rounded-3xl border p-4 text-left"
@@ -718,8 +719,8 @@ export function TransactionFlow({
                       Renamed by your Actual rule from “{rawPayee}”
                     </span>
                   )}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => setStep('amount')}
                   className="press flex shrink-0 flex-col items-end justify-center gap-0.5 rounded-3xl border px-4 text-right"
@@ -735,7 +736,7 @@ export function TransactionFlow({
                   >
                     {n > 0 ? amountSummary : 'Add amount'}
                   </span>
-                </button>
+                </Button>
               </div>
               {review && n <= 0 && (
                 <p className="-mt-2 px-1 text-xs" style={{ color: 'var(--warning)' }}>
@@ -744,14 +745,14 @@ export function TransactionFlow({
               )}
 
               {!isTransfer && review && rawPayee && !review.parsed?.payeeFromRule && (
-                <button
+                <Button
                   type="button"
                   onClick={() => setLinkOpen(true)}
                   className="-mt-2 self-start px-1 text-xs font-bold"
                   style={{ color: 'var(--accent-text)' }}
                 >
                   Always rename “{rawPayee}” to an existing payee…
-                </button>
+                </Button>
               )}
 
               {!isTransfer && (
@@ -770,7 +771,7 @@ export function TransactionFlow({
                     {quickCats.map((id) => {
                       const on = id === categoryId;
                       return (
-                        <button
+                        <Button
                           key={id}
                           type="button"
                           aria-pressed={on}
@@ -782,10 +783,10 @@ export function TransactionFlow({
                           style={chip(on)}
                         >
                           {catMap.get(id)?.name}
-                        </button>
+                        </Button>
                       );
                     })}
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setStep('category')}
                       className="press flex h-10 items-center gap-1 rounded-xl border px-3 text-sm font-bold"
@@ -793,7 +794,7 @@ export function TransactionFlow({
                     >
                       All categories
                       <ChevronRight className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </div>
                 </section>
               )}
@@ -855,7 +856,7 @@ export function TransactionFlow({
                     {[today, shiftDays(today, -1)].map((d) => {
                       const on = d === date;
                       return (
-                        <button
+                        <Button
                           key={d}
                           type="button"
                           aria-pressed={on}
@@ -864,7 +865,7 @@ export function TransactionFlow({
                           style={chip(on)}
                         >
                           {friendlyDate(d)}
-                        </button>
+                        </Button>
                       );
                     })}
                     <label
@@ -896,7 +897,7 @@ export function TransactionFlow({
                   />
                 </label>
                 {!review && (
-                  <button
+                  <Button
                     type="button"
                     role="switch"
                     aria-checked={cleared}
@@ -911,7 +912,7 @@ export function TransactionFlow({
                     >
                       <span className="h-[22px] w-[22px] rounded-full" style={{ backgroundColor: cleared ? 'var(--accent-fg)' : 'var(--text-muted)' }} />
                     </span>
-                  </button>
+                  </Button>
                 )}
               </section>
             </div>
@@ -923,13 +924,13 @@ export function TransactionFlow({
               )}
               <div className="flex gap-2">
                 {review && (
-                  <button type="button" onClick={() => void dismiss()} disabled={busy} className="btn-secondary h-14 flex-1 rounded-2xl text-[15px] font-bold disabled:opacity-50">
+                  <Button type="button" onClick={() => void dismiss()} disabled={busy} variant="secondary" className="h-14 flex-1 rounded-2xl text-[15px] font-bold disabled:opacity-50">
                     Dismiss
-                  </button>
+                  </Button>
                 )}
-                <button type="button" onClick={() => void save()} disabled={busy} className="btn-primary h-14 flex-[2] rounded-2xl text-base disabled:opacity-50">
+                <Button type="button" onClick={() => void save()} disabled={busy} variant="default" className="h-14 flex-[2] rounded-2xl text-base disabled:opacity-50">
                   {busy ? 'Saving…' : review ? 'Import to Actual' : 'Add to Actual'}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -956,7 +957,7 @@ export function TransactionFlow({
                 />
               </label>
               <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     setCategoryId('');
@@ -968,7 +969,7 @@ export function TransactionFlow({
                 >
                   Uncategorized
                   {!categoryId && <Check className="h-4 w-4" style={{ color: 'var(--accent-text)' }} />}
-                </button>
+                </Button>
                 {groupedCategories.map((g) => (
                   <section key={g.id} className="flex flex-col gap-1.5">
                     <h2 className={sectionLabel} style={{ color: 'var(--text-muted)' }}>
@@ -976,7 +977,7 @@ export function TransactionFlow({
                     </h2>
                     <div className="flex flex-col overflow-hidden rounded-2xl border" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
                       {g.cats.map((c, i) => (
-                        <button
+                        <Button
                           key={c.id}
                           type="button"
                           onClick={() => {
@@ -990,7 +991,7 @@ export function TransactionFlow({
                           <Tile colorKey={c.name} label={c.name} size={30} />
                           <span className="flex-1 truncate">{c.name}</span>
                           {c.id === categoryId && <Check className="h-4 w-4" style={{ color: 'var(--accent-text)' }} />}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </section>
@@ -1034,13 +1035,13 @@ export function TransactionFlow({
             </div>
             <div className="mt-3 flex w-full gap-2">
               {!review && (
-                <button type="button" onClick={addAnother} className="btn-secondary h-14 flex-1 rounded-2xl text-[15px] font-bold">
+                <Button type="button" onClick={addAnother} variant="secondary" className="h-14 flex-1 rounded-2xl text-[15px] font-bold">
                   Add another
-                </button>
+                </Button>
               )}
-              <button type="button" onClick={onClose} className="btn-primary h-14 flex-1 rounded-2xl text-base">
+              <Button type="button" onClick={onClose} variant="default" className="h-14 flex-1 rounded-2xl text-base">
                 Done
-              </button>
+              </Button>
             </div>
           </div>
         )}

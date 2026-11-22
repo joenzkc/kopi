@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import type { BudgetCategory, BudgetMonthResponse } from '@shared/types';
 import { apiFetch, formatMoney } from '../lib/api';
 import { Sheet } from './Sheet';
+import { Button } from '@client/components/ui/button';
 
 interface BudgetCategorySheetProps {
   category: BudgetCategory | null;
@@ -31,14 +32,14 @@ const labelStyle = { color: 'var(--text-secondary)' };
 
 function Chip({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
+    <Button
       type="button"
       onClick={onClick}
       className="press rounded-full px-3 py-1.5 text-xs font-bold tabular-nums"
       style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -161,9 +162,9 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
               placeholder="0.00"
               className="input-field flex-1 tabular-nums"
             />
-            <button type="submit" disabled={busy !== null || newBudgeted === null} className="btn-primary h-12 shrink-0 rounded-2xl px-5 text-[15px] disabled:opacity-50">
+            <Button type="submit" disabled={busy !== null || newBudgeted === null} variant="default" className="h-12 shrink-0 rounded-2xl px-5 text-[15px] disabled:opacity-50">
               {busy === 'budget' ? 'Saving…' : 'Save'}
-            </button>
+            </Button>
           </div>
           <div className="flex flex-wrap gap-2">
             {over && <Chip onClick={() => setBudgetInput(centsToInput(category.budgeted - category.balance))}>Cover overspending</Chip>}
@@ -194,7 +195,7 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
             ).map(([id, text]) => {
               const on = moveDir === id;
               return (
-                <button
+                <Button
                   key={id}
                   type="button"
                   role="radio"
@@ -204,7 +205,7 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
                   style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
                 >
                   {text}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -239,13 +240,13 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
               placeholder="0.00"
               className="input-field flex-1 tabular-nums"
             />
-            <button
+            <Button
               type="submit"
               disabled={busy !== null || moveCents === null || moveCents <= 0}
-              className="btn-secondary h-12 shrink-0 rounded-2xl px-5 text-[15px] font-bold disabled:opacity-50"
+              variant="secondary" className="h-12 shrink-0 rounded-2xl px-5 text-[15px] font-bold disabled:opacity-50"
             >
               {busy === 'move' ? 'Moving…' : 'Move'}
-            </button>
+            </Button>
           </div>
           <div className="flex flex-wrap gap-2">
             {moveDir === 'in' && over && <Chip onClick={() => setMoveInput(centsToInput(-category.balance))}>Overspent · {money(-category.balance)}</Chip>}
@@ -265,7 +266,7 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
         </form>
 
         {/* Rollover */}
-        <button
+        <Button
           type="button"
           role="switch"
           aria-checked={category.carryover}
@@ -286,7 +287,7 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
           >
             <span className="h-[22px] w-[22px] rounded-full" style={{ backgroundColor: category.carryover ? 'var(--accent-fg)' : 'var(--text-muted)' }} />
           </span>
-        </button>
+        </Button>
 
         {error && (
           <p role="alert" className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>

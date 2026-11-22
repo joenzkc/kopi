@@ -4,6 +4,7 @@ import type { ActualPayee } from '@shared/types';
 import { apiFetch } from '../lib/api';
 import { Sheet } from './Sheet';
 import { Tile } from './Tile';
+import { Button } from '@client/components/ui/button';
 
 interface LinkPayeeSheetProps {
   open: boolean;
@@ -101,12 +102,12 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
             Match
           </span>
           <div role="radiogroup" aria-label="Match type" className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-subtle)' }}>
-            <button type="button" role="radio" aria-checked={match === 'exact'} onClick={() => setMatch('exact')} className="h-10 rounded-xl text-sm font-bold" style={chip(match === 'exact')}>
+            <Button type="button" role="radio" aria-checked={match === 'exact'} onClick={() => setMatch('exact')} className="h-10 rounded-xl text-sm font-bold" style={chip(match === 'exact')}>
               Exactly this
-            </button>
-            <button type="button" role="radio" aria-checked={match === 'contains'} onClick={() => setMatch('contains')} className="h-10 rounded-xl text-sm font-bold" style={chip(match === 'contains')}>
+            </Button>
+            <Button type="button" role="radio" aria-checked={match === 'contains'} onClick={() => setMatch('contains')} className="h-10 rounded-xl text-sm font-bold" style={chip(match === 'contains')}>
               Contains…
-            </button>
+            </Button>
           </div>
           {match === 'contains' && (
             <>
@@ -144,7 +145,7 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
           </label>
           <div className="flex max-h-56 flex-col gap-1 overflow-y-auto">
             {candidates.map((p) => (
-              <button
+              <Button
                 key={p.id}
                 type="button"
                 onClick={() => {
@@ -157,10 +158,10 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
                 <Tile colorKey={p.name} label={p.name} size={32} />
                 <span className="flex-1 truncate text-sm font-semibold">{p.name}</span>
                 {targetId === p.id && <Check className="h-4 w-4" style={{ color: 'var(--accent-text)' }} />}
-              </button>
+              </Button>
             ))}
             {query.trim() && !exact && (
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   setNewName(query.trim());
@@ -172,7 +173,7 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
                 <Plus className="h-4 w-4" />
                 New payee “{query.trim()}”
                 {newName && <Check className="ml-auto h-4 w-4" />}
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -194,9 +195,9 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
             {error}
           </p>
         )}
-        <button type="button" disabled={busy || !targetLabel} onClick={() => void save()} className="btn-primary h-12 rounded-2xl text-[15px] disabled:opacity-40">
+        <Button type="button" disabled={busy || !targetLabel} onClick={() => void save()} variant="default" className="h-12 rounded-2xl text-[15px] disabled:opacity-40">
           {busy ? 'Saving…' : targetLabel ? `Always use “${targetLabel}”` : 'Choose a payee'}
-        </button>
+        </Button>
       </div>
     </Sheet>
   );

@@ -3,6 +3,7 @@ import { Check, Palette } from 'lucide-react';
 import type { Appearance } from '@shared/types';
 import { ACCENTS, BASES, DEFAULT_APPEARANCE, accentHex, contrast, readableOn, resolveBase } from '../lib/theme';
 import { Tile } from './Tile';
+import { Button } from '@client/components/ui/button';
 
 interface AppearanceSectionProps {
   appearance: Appearance;
@@ -65,7 +66,7 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
           {BASES.map((b) => {
             const on = appearance.base === b.id;
             return (
-              <button
+              <Button
                 key={b.id}
                 type="button"
                 role="radio"
@@ -80,7 +81,7 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
                 </span>
                 <span className="text-xs font-bold">{b.label}</span>
                 <span className="-mt-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>{b.sub}</span>
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -93,7 +94,7 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
           {[...ACCENTS.map((a) => ({ id: a.id as Appearance['accent'], label: a.label, hex: a.hex })), { id: 'custom' as const, label: 'Custom', hex: appearance.custom }].map((a) => {
             const on = appearance.accent === a.id;
             return (
-              <button
+              <Button
                 key={a.id}
                 type="button"
                 role="radio"
@@ -107,7 +108,7 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
                   {on && <Check className="h-[18px] w-[18px]" strokeWidth={3} />}
                 </span>
                 {a.label}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -148,7 +149,7 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
           ).map(([id, label]) => {
             const on = appearance.tiles === id;
             return (
-              <button
+              <Button
                 key={id}
                 type="button"
                 role="radio"
@@ -158,14 +159,14 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
                 style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
               >
                 {label}
-              </button>
+              </Button>
             );
           })}
         </div>
       </div>
 
       <div className="flex flex-col rounded-2xl px-4" style={{ backgroundColor: 'var(--bg-subtle)' }}>
-        <button
+        <Button
           type="button"
           role="switch"
           aria-checked={appearance.followSystem}
@@ -182,15 +183,15 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
           >
             <span className="h-[22px] w-[22px] rounded-full" style={{ backgroundColor: appearance.followSystem ? 'var(--accent-fg)' : 'var(--text-muted)' }} />
           </span>
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={() => onChange({ ...DEFAULT_APPEARANCE, custom: appearance.custom })}
           className="min-h-[52px] border-t text-left text-sm font-bold"
           style={{ borderColor: 'var(--border-subtle)', color: 'var(--accent-text)' }}
         >
           Reset to Midnight + Lime
-        </button>
+        </Button>
       </div>
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
         Saved to your server, so every device uses the same scheme.

@@ -3,6 +3,7 @@ import { Fingerprint, Lock, ShieldCheck } from 'lucide-react';
 import { startAuthentication } from '@simplewebauthn/browser';
 import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
 import { apiFetch } from '../lib/api';
+import { Button } from '@client/components/ui/button';
 
 interface AuthPageProps {
   needsSetup: boolean;
@@ -85,15 +86,15 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
         <div className="card rounded-2xl p-6">
           {!needsSetup && hasPasskeys && (
             <>
-              <button
+              <Button
                 type="button"
                 disabled={loading}
                 onClick={handlePasskeyLogin}
-                className="btn-primary flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+                variant="default" className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
               >
                 <Fingerprint className="h-4 w-4" />
                 Sign in with Passkey
-              </button>
+              </Button>
               <div className="my-5 flex items-center gap-3">
                 <div className="h-px flex-1" style={{ backgroundColor: 'var(--border-subtle)' }} />
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -163,14 +164,14 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
               </div>
             )}
 
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              className="btn-primary flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+              variant="default" className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
             >
               {needsSetup ? <ShieldCheck className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
               {loading ? 'Please wait...' : needsSetup ? 'Create Owner Account' : 'Sign In'}
-            </button>
+            </Button>
           </form>
         </div>
 
