@@ -13,6 +13,10 @@ import { fetchRecent, friendlyDate, invalidateRecent, localISODate, senderLabel,
 import { Tile } from './Tile';
 import { LinkPayeeSheet } from './LinkPayeeSheet';
 import { Button } from '@client/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
+import { Switch, SwitchThumb } from '@client/components/ui/switch';
+import { Toggle } from '@client/components/ui/toggle';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@client/components/ui/collapsible';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
@@ -438,24 +442,21 @@ export function TransactionFlow({
           <div className="flex min-h-0 flex-1 flex-col">
             {header(review ? 'Edit amount' : 'New transaction', review || payeeName ? () => setStep('details') : null)}
             <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 pb-5 safe-pb">
-              <div role="radiogroup" aria-label="Transaction type" className="grid gap-1 rounded-2xl p-1" style={{ gridTemplateColumns: `repeat(${kinds.length}, minmax(0, 1fr))`, backgroundColor: 'var(--bg-surface)' }}>
+              <RadioGroup value={kind} onValueChange={(value) => chooseKind(value as FlowKind)} aria-label="Transaction type" className="grid gap-1 rounded-2xl p-1" style={{ gridTemplateColumns: `repeat(${kinds.length}, minmax(0, 1fr))`, backgroundColor: 'var(--bg-surface)' }}>
                 {kinds.map((k) => {
                   const on = kind === k.id;
                   return (
-                    <Button
+                    <RadioGroupItem
                       key={k.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      onClick={() => chooseKind(k.id)}
+                      value={k.id}
                       className="h-10 rounded-xl text-sm font-bold transition"
                       style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
                     >
                       {k.label}
-                    </Button>
+                    </RadioGroupItem>
                   );
                 })}
-              </div>
+              </RadioGroup>
 
               <div className="flex min-h-[140px] flex-1 flex-col items-center justify-center gap-4">
                 <span className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
@@ -669,9 +670,9 @@ export function TransactionFlow({
                     </span>
                   )}
                   {review.body_text && (
-                    <div className="flex flex-col gap-1.5">
+                    <Collapsible open={showEmail} onOpenChange={setShowEmail} className="flex flex-col gap-1.5">
                       {showEmail ? (
-                        <div
+                        <CollapsibleContent
                           className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-2xl p-3 text-xs leading-relaxed [overflow-wrap:anywhere]"
                           style={{ backgroundColor: 'var(--bg-canvas)', color: 'var(--text-secondary)' }}
                         >
@@ -681,23 +682,20 @@ export function TransactionFlow({
                             </div>
                           )}
                           <EmailText text={review.body_text} />
-                        </div>
+                        </CollapsibleContent>
                       ) : (
                         <p className="line-clamp-3 text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                           “{review.body_text.replace(/\s+/g, ' ').trim().slice(0, 240)}”
                         </p>
                       )}
-                      <Button
-                        type="button"
-                        onClick={() => setShowEmail((v) => !v)}
-                        aria-expanded={showEmail}
+                      <CollapsibleTrigger
                         className="flex items-center gap-1 self-start text-xs font-bold"
                         style={{ color: 'var(--accent-text)' }}
                       >
                         <ChevronDown className="h-3.5 w-3.5 transition-transform" style={{ transform: showEmail ? 'rotate(180deg)' : 'none' }} />
                         {showEmail ? 'Hide full email' : 'Show full email'}
-                      </Button>
-                    </div>
+                      </CollapsibleTrigger>
+                    </Collapsible>
                   )}
                   {review.error && (
                     <p className="text-xs font-semibold" style={{ color: 'var(--negative)' }}>
@@ -777,19 +775,18 @@ export function TransactionFlow({
                     {quickCats.map((id) => {
                       const on = id === categoryId;
                       return (
-                        <Button
+                        <Toggle
                           key={id}
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() => {
-                            setCategoryId(on ? '' : id);
+                          pressed={on}
+                          onPressedChange={(pressed) => {
+                            setCategoryId(pressed ? id : '');
                             setSuggested(false);
                           }}
                           className="press h-10 rounded-xl border px-3 text-sm font-bold"
                           style={chip(on)}
                         >
                           {catMap.get(id)?.name}
-                        </Button>
+                        </Toggle>
                       );
                     })}
                     <Button
@@ -864,16 +861,15 @@ export function TransactionFlow({
                     {[today, shiftDays(today, -1)].map((d) => {
                       const on = d === date;
                       return (
-                        <Button
+                        <Toggle
                           key={d}
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() => setDate(d)}
+                          pressed={on}
+                          onPressedChange={() => setDate(d)}
                           className="press h-9 rounded-xl border px-3 text-xs font-bold"
                           style={chip(on)}
                         >
                           {friendlyDate(d)}
-                        </Button>
+                        </Toggle>
                       );
                     })}
                     <Label
@@ -907,22 +903,15 @@ export function TransactionFlow({
                   />
                 </Label>
                 {!review && (
-                  <Button
-                    type="button"
-                    role="switch"
-                    aria-checked={cleared}
-                    onClick={() => setCleared((c) => !c)}
+                  <Switch
+                    checked={cleared}
+                    onCheckedChange={setCleared}
                     className="flex min-h-[54px] items-center justify-between border-t text-sm"
                     style={{ borderColor: 'var(--border-subtle)' }}
                   >
                     <span style={{ color: 'var(--text-muted)' }}>Cleared</span>
-                    <span
-                      className="flex h-7 w-12 rounded-full p-[3px] transition"
-                      style={{ backgroundColor: cleared ? 'var(--accent)' : 'var(--bg-hover)', justifyContent: cleared ? 'flex-end' : 'flex-start' }}
-                    >
-                      <span className="h-[22px] w-[22px] rounded-full" style={{ backgroundColor: cleared ? 'var(--accent-fg)' : 'var(--text-muted)' }} />
-                    </span>
-                  </Button>
+                    <SwitchThumb />
+                  </Switch>
                 )}
               </section>
             </div>

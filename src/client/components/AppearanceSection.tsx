@@ -4,6 +4,8 @@ import type { Appearance } from '@shared/types';
 import { ACCENTS, BASES, DEFAULT_APPEARANCE, accentHex, contrast, readableOn, resolveBase } from '../lib/theme';
 import { Tile } from './Tile';
 import { Button } from '@client/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
+import { Switch, SwitchThumb } from '@client/components/ui/switch';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { Badge } from '@client/components/ui/badge';
@@ -66,16 +68,14 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
       {/* Base */}
       <div className="flex flex-col gap-2.5">
         <h3 className="text-sm font-extrabold">Base</h3>
-        <div role="radiogroup" aria-label="Base colours" className="grid grid-cols-4 gap-2">
+        <RadioGroup value={appearance.base} onValueChange={(base) => set({ base: base as Appearance['base'] })} aria-label="Base colours" className="grid grid-cols-4 gap-2">
           {BASES.map((b) => {
             const on = appearance.base === b.id;
             return (
-              <Button
+              <RadioGroupItem
                 key={b.id}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => set({ base: b.id })}
+                value={b.id}
+                onClick={on ? () => set({ base: b.id }) : undefined}
                 className="press flex flex-col items-center gap-1.5 rounded-2xl border-2 p-2"
                 style={{ borderColor: on ? 'var(--accent-text)' : 'transparent', backgroundColor: 'var(--bg-subtle)' }}
               >
@@ -85,26 +85,24 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
                 </span>
                 <span className="text-xs font-bold">{b.label}</span>
                 <span className="-mt-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>{b.sub}</span>
-              </Button>
+              </RadioGroupItem>
             );
           })}
-        </div>
+        </RadioGroup>
       </div>
 
       {/* Accent */}
       <div className="flex flex-col gap-2.5">
         <h3 className="text-sm font-extrabold">Accent</h3>
-        <div role="radiogroup" aria-label="Accent colour" className="grid grid-cols-7 gap-1">
+        <RadioGroup value={appearance.accent} onValueChange={(accent) => set({ accent: accent as Appearance['accent'] })} aria-label="Accent colour" className="grid grid-cols-7 gap-1">
           {[...ACCENTS.map((a) => ({ id: a.id as Appearance['accent'], label: a.label, hex: a.hex })), { id: 'custom' as const, label: 'Custom', hex: appearance.custom }].map((a) => {
             const on = appearance.accent === a.id;
             return (
-              <Button
+              <RadioGroupItem
                 key={a.id}
-                type="button"
-                role="radio"
-                aria-checked={on}
+                value={a.id}
                 aria-label={a.label}
-                onClick={() => set({ accent: a.id })}
+                onClick={on ? () => set({ accent: a.id }) : undefined}
                 className="flex flex-col items-center gap-1.5 py-0.5 text-[10px] font-semibold"
                 style={{ color: 'var(--text-muted)' }}
               >
@@ -112,10 +110,10 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
                   {on && <Check className="h-[18px] w-[18px]" strokeWidth={3} />}
                 </span>
                 {a.label}
-              </Button>
+              </RadioGroupItem>
             );
           })}
-        </div>
+        </RadioGroup>
         {appearance.accent === 'custom' && (
           <Label className="flex items-center gap-3 rounded-2xl border p-2.5" style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border-subtle)' }}>
             <Input
@@ -144,7 +142,7 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
       {/* Tiles */}
       <div className="flex flex-col gap-2.5">
         <h3 className="text-sm font-extrabold">Category icons</h3>
-        <div role="radiogroup" aria-label="Category icon style" className="grid grid-cols-3 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-subtle)' }}>
+        <RadioGroup value={appearance.tiles} onValueChange={(tiles) => set({ tiles: tiles as Appearance['tiles'] })} aria-label="Category icon style" className="grid grid-cols-3 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-subtle)' }}>
           {(
             [
               ['colour', 'Colourful'],
@@ -154,41 +152,32 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
           ).map(([id, label]) => {
             const on = appearance.tiles === id;
             return (
-              <Button
+              <RadioGroupItem
                 key={id}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => set({ tiles: id })}
+                value={id}
+                onClick={on ? () => set({ tiles: id }) : undefined}
                 className="h-10 rounded-xl text-sm font-bold transition"
                 style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
               >
                 {label}
-              </Button>
+              </RadioGroupItem>
             );
           })}
-        </div>
+        </RadioGroup>
       </div>
 
       <div className="flex flex-col rounded-2xl px-4" style={{ backgroundColor: 'var(--bg-subtle)' }}>
-        <Button
-          type="button"
-          role="switch"
-          aria-checked={appearance.followSystem}
-          onClick={() => set({ followSystem: !appearance.followSystem })}
+        <Switch
+          checked={appearance.followSystem}
+          onCheckedChange={(followSystem) => set({ followSystem })}
           className="flex min-h-[60px] items-center justify-between gap-3 text-left"
         >
           <span className="flex flex-col">
             <span className="text-sm font-bold">Follow system light mode</span>
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Use Day when your device is in light mode</span>
           </span>
-          <span
-            className="flex h-7 w-12 shrink-0 rounded-full p-[3px] transition"
-            style={{ backgroundColor: appearance.followSystem ? 'var(--accent)' : 'var(--bg-hover)', justifyContent: appearance.followSystem ? 'flex-end' : 'flex-start' }}
-          >
-            <span className="h-[22px] w-[22px] rounded-full" style={{ backgroundColor: appearance.followSystem ? 'var(--accent-fg)' : 'var(--text-muted)' }} />
-          </span>
-        </Button>
+          <SwitchThumb className="shrink-0" />
+        </Switch>
         <Button
           type="button"
           onClick={() => onChange({ ...DEFAULT_APPEARANCE, custom: appearance.custom })}

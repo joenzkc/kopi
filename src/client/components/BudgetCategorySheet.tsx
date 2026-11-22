@@ -3,6 +3,8 @@ import type { BudgetCategory, BudgetMonthResponse } from '@shared/types';
 import { apiFetch, formatMoney } from '../lib/api';
 import { Sheet } from './Sheet';
 import { Button } from '@client/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
+import { Switch, SwitchThumb } from '@client/components/ui/switch';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from '@client/components/ui/native-select';
@@ -119,8 +121,7 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
     );
   };
 
-  const toggleRollover = () => {
-    const next = !category.carryover;
+  const toggleRollover = (next: boolean) => {
     void run(
       'rollover',
       () =>
@@ -190,7 +191,7 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
         {/* Move money */}
         <form onSubmit={moveMoney} className="flex flex-col gap-2">
           <span className="text-xs font-bold" style={labelStyle}>Move money</span>
-          <div role="radiogroup" aria-label="Move direction" className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-subtle)' }}>
+          <RadioGroup value={moveDir} onValueChange={(value) => setMoveDir(value as MoveDir)} aria-label="Move direction" className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-subtle)' }}>
             {(
               [
                 ['in', `Into ${category.name}`],
@@ -199,20 +200,17 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
             ).map(([id, text]) => {
               const on = moveDir === id;
               return (
-                <Button
+                <RadioGroupItem
                   key={id}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => setMoveDir(id)}
+                  value={id}
                   className="h-10 truncate rounded-xl px-2 text-sm font-bold transition"
                   style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
                 >
                   {text}
-                </Button>
+                </RadioGroupItem>
               );
             })}
-          </div>
+          </RadioGroup>
           <Label htmlFor="move-other" className="sr-only">
             {moveDir === 'in' ? 'Take money from' : 'Send money to'}
           </Label>
@@ -270,12 +268,10 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
         </form>
 
         {/* Rollover */}
-        <Button
-          type="button"
-          role="switch"
-          aria-checked={category.carryover}
+        <Switch
+          checked={category.carryover}
           disabled={busy !== null}
-          onClick={toggleRollover}
+          onCheckedChange={toggleRollover}
           className="flex items-center justify-between gap-3 rounded-2xl p-3 text-left disabled:opacity-60"
           style={{ backgroundColor: 'var(--bg-subtle)' }}
         >
@@ -285,13 +281,8 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
               Carry a negative balance into next month instead of taking it from To budget.
             </span>
           </span>
-          <span
-            className="flex h-7 w-12 shrink-0 rounded-full p-[3px] transition"
-            style={{ backgroundColor: category.carryover ? 'var(--accent)' : 'var(--bg-hover)', justifyContent: category.carryover ? 'flex-end' : 'flex-start' }}
-          >
-            <span className="h-[22px] w-[22px] rounded-full" style={{ backgroundColor: category.carryover ? 'var(--accent-fg)' : 'var(--text-muted)' }} />
-          </span>
-        </Button>
+          <SwitchThumb className="shrink-0" />
+        </Switch>
 
         {error && (
           <Alert as="p" variant="destructive">

@@ -5,6 +5,7 @@ import { apiFetch } from '../lib/api';
 import { Sheet } from './Sheet';
 import { Tile } from './Tile';
 import { Button } from '@client/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { Alert } from '@client/components/ui/alert';
@@ -104,14 +105,14 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
           <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
             Match
           </span>
-          <div role="radiogroup" aria-label="Match type" className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-subtle)' }}>
-            <Button type="button" role="radio" aria-checked={match === 'exact'} onClick={() => setMatch('exact')} className="h-10 rounded-xl text-sm font-bold" style={chip(match === 'exact')}>
+          <RadioGroup value={match} onValueChange={(value) => setMatch(value as typeof match)} aria-label="Match type" className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-subtle)' }}>
+            <RadioGroupItem value="exact" className="h-10 rounded-xl text-sm font-bold" style={chip(match === 'exact')}>
               Exactly this
-            </Button>
-            <Button type="button" role="radio" aria-checked={match === 'contains'} onClick={() => setMatch('contains')} className="h-10 rounded-xl text-sm font-bold" style={chip(match === 'contains')}>
+            </RadioGroupItem>
+            <RadioGroupItem value="contains" className="h-10 rounded-xl text-sm font-bold" style={chip(match === 'contains')}>
               Contains…
-            </Button>
-          </div>
+            </RadioGroupItem>
+          </RadioGroup>
           {match === 'contains' && (
             <>
               <Input

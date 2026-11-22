@@ -17,6 +17,7 @@ import { Button } from '@client/components/ui/button';
 import { Badge } from '@client/components/ui/badge';
 import { Card } from '@client/components/ui/card';
 import { Progress } from '@client/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@client/components/ui/collapsible';
 
 interface RsuSectionProps {
   grants: EnrichedRsuGrant[];
@@ -91,8 +92,8 @@ export function RsuSection({
   );
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
 
-  const toggleExpand = (id: string) => {
-    setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  const setGrantExpanded = (id: string, expanded: boolean) => {
+    setExpandedIds((prev) => ({ ...prev, [id]: expanded }));
   };
 
   if (grants.length === 0) {
@@ -369,7 +370,7 @@ export function RsuSection({
           const upPnl = (g.unrealizedPnlBase ?? 0) >= 0;
 
           return (
-            <div key={g.id} className="p-4">
+            <Collapsible key={g.id} open={isExpanded} onOpenChange={(open) => setGrantExpanded(g.id, open)} className="p-4">
               {/* Top row: symbol + grant name + live values */}
               <div className="flex items-start justify-between gap-2.5">
                 <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -478,15 +479,13 @@ export function RsuSection({
                 </div>
 
                 <div className="ml-auto flex shrink-0 items-center gap-1">
-                  <Button
-                    type="button"
-                    onClick={() => toggleExpand(g.id)}
+                  <CollapsibleTrigger
                     className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition hover:opacity-80"
                     style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
                   >
                     {g.tranches.length} vest{g.tranches.length === 1 ? '' : 's'}
                     {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                  </Button>
+                  </CollapsibleTrigger>
                   <Button
                     type="button"
                     onClick={() => onEditGrant(g)}
@@ -510,7 +509,7 @@ export function RsuSection({
 
               {/* Expanded Tranche Schedule */}
               {isExpanded && (
-                <div
+                <CollapsibleContent
                   className="mt-3 overflow-hidden rounded-xl"
                   style={{ backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)' }}
                 >
@@ -606,9 +605,9 @@ export function RsuSection({
                       Add tranche
                     </Button>
                   </div>
-                </div>
+                </CollapsibleContent>
               )}
-            </div>
+            </Collapsible>
           );
         })}
       </Card>

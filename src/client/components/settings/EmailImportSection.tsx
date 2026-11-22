@@ -5,6 +5,7 @@ import { apiFetch } from '../../lib/api';
 import { relativeTime } from '../../lib/recent';
 import { ConfirmAction, CopyField, Disclosure, SettingsCard } from './SettingsUI';
 import { Button } from '@client/components/ui/button';
+import { Toggle } from '@client/components/ui/toggle';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
@@ -244,16 +245,15 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
 
         <div className="flex flex-col gap-1.5">
           <CopyField label="Webhook secret (WEBHOOK_SECRET)" value={secret} display={showSecret ? secret : '•'.repeat(24)} />
-          <Button
-            type="button"
-            onClick={() => setShowSecret((v) => !v)}
-            aria-pressed={showSecret}
+          <Toggle
+            onPressedChange={setShowSecret}
+            pressed={showSecret}
             className="flex min-h-[44px] items-center gap-1.5 self-start px-1 text-sm font-bold"
             style={{ color: 'var(--accent-text)' }}
           >
             {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             {showSecret ? 'Hide secret' : 'Show secret'}
-          </Button>
+          </Toggle>
           <ConfirmAction
             label={
               <>

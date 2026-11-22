@@ -5,6 +5,9 @@ import { apiFetch, formatMoney } from '../lib/api';
 import { Sheet } from '../components/Sheet';
 import { Tile } from '../components/Tile';
 import { Button } from '@client/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
+import { Switch, SwitchThumb } from '@client/components/ui/switch';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@client/components/ui/collapsible';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
@@ -42,27 +45,24 @@ function Segmented({
   label: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-subtle)' }}>
+    <RadioGroup value={value ? 'tracking' : 'budget'} onValueChange={(kind) => onChange(kind === 'tracking')} aria-label={label} className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-subtle)' }}>
       {[
         { off: false, text: 'Budget' },
         { off: true, text: 'Tracking' },
       ].map((o) => {
         const on = value === o.off;
         return (
-          <Button
+          <RadioGroupItem
             key={o.text}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            onClick={() => onChange(o.off)}
+            value={o.off ? 'tracking' : 'budget'}
             className="h-10 rounded-xl text-sm font-bold transition"
             style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
           >
             {o.text}
-          </Button>
+          </RadioGroupItem>
         );
       })}
-    </div>
+    </RadioGroup>
   );
 }
 
@@ -272,9 +272,8 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
     );
   }
 
-  function toggleAutoImport() {
+  function toggleAutoImport(on: boolean) {
     if (!selected) return;
-    const on = !selected.autoImport;
     void run(
       () => apiFetch(`/api/accounts/${selected.id}/prefs`, { method: 'PATCH', body: JSON.stringify({ autoImport: on }) }),
       on ? `Emails for ${selected.name} will import automatically` : `Emails for ${selected.name} will wait for review`,
@@ -383,7 +382,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <Collapsible open={showClosed} onOpenChange={setShowClosed} className="flex flex-col gap-5">
       <Button
         type="button"
         onClick={() => {
@@ -421,10 +420,10 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
           {(ungrouped.length > 0 || groups.length === 0) && section(groups.length ? 'No group' : 'Accounts', ungrouped)}
           {closed.length > 0 && (
             <>
-              <Button type="button" onClick={() => setShowClosed((v) => !v)} className="self-center text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+              <CollapsibleTrigger className="self-center text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
                 {showClosed ? 'Hide closed accounts' : `Show ${closed.length} closed account${closed.length === 1 ? '' : 's'}`}
-              </Button>
-              {showClosed && section('Closed', closed)}
+              </CollapsibleTrigger>
+              {showClosed && <CollapsibleContent asChild>{section('Closed', closed)}</CollapsibleContent>}
             </>
           )}
         </>
@@ -626,11 +625,9 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                   <Button type="button" onClick={addLink} disabled={busy} variant="secondary" className="h-10 rounded-xl text-sm font-bold disabled:opacity-50">
                     Link card or account
                   </Button>
-                  <Button
-                    type="button"
-                    role="switch"
-                    aria-checked={selected.autoImport}
-                    onClick={toggleAutoImport}
+                  <Switch
+                    checked={selected.autoImport}
+                    onCheckedChange={toggleAutoImport}
                     disabled={busy}
                     className="flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-left"
                     style={{ backgroundColor: 'var(--bg-subtle)' }}
@@ -641,13 +638,8 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                         Skip review when a linked card’s email is read cleanly. Foreign-currency and transfer emails still wait for you.
                       </span>
                     </span>
-                    <span
-                      className="flex h-7 w-12 shrink-0 rounded-full p-[3px] transition"
-                      style={{ backgroundColor: selected.autoImport ? 'var(--accent)' : 'var(--bg-hover)', justifyContent: selected.autoImport ? 'flex-end' : 'flex-start' }}
-                    >
-                      <span className="h-[22px] w-[22px] rounded-full" style={{ backgroundColor: selected.autoImport ? 'var(--accent-fg)' : 'var(--text-muted)' }} />
-                    </span>
-                  </Button>
+                    <SwitchThumb className="shrink-0" />
+                  </Switch>
                 </div>
 
                 {/* Close */}
@@ -801,6 +793,6 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
           </form>
         )}
       </Sheet>
-    </div>
+    </Collapsible>
   );
 }

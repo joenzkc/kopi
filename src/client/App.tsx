@@ -14,6 +14,7 @@ import { SchedulesPage } from './pages/SchedulesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TransactionFlow, type FlowRequest } from './components/TransactionFlow';
 import { Button } from '@client/components/ui/button';
+import { Toggle } from '@client/components/ui/toggle';
 import { Badge } from '@client/components/ui/badge';
 
 interface AuthStatus {
@@ -311,16 +312,15 @@ export function App() {
                 <RefreshCw className="h-[18px] w-[18px]" />
               </Button>
             )}
-            <Button
-              type="button"
-              onClick={toggleSettings}
+            <Toggle
+              onPressedChange={toggleSettings}
               aria-label={tab === 'settings' ? 'Close settings' : 'Settings'}
-              aria-pressed={tab === 'settings'}
+              pressed={tab === 'settings'}
               className="press flex h-11 w-11 items-center justify-center rounded-full md:hidden"
               style={{ backgroundColor: tab === 'settings' ? 'var(--accent)' : 'var(--bg-surface)', color: tab === 'settings' ? 'var(--accent-fg)' : 'var(--text-primary)' }}
             >
               <UserRound className="h-[18px] w-[18px]" />
-            </Button>
+            </Toggle>
           </div>
         </header>
 

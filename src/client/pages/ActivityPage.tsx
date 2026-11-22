@@ -8,6 +8,7 @@ import { Tile } from '../components/Tile';
 import { LinkPayeeSheet } from '../components/LinkPayeeSheet';
 import type { FlowRequest } from '../components/TransactionFlow';
 import { Button } from '@client/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { Textarea } from '@client/components/ui/textarea';
@@ -218,24 +219,21 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
             </Button>
           )}
         </Label>
-        <div role="radiogroup" aria-label="Filter" className="grid grid-cols-4 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-surface)' }}>
+        <RadioGroup value={filter} onValueChange={(value) => setFilter(value as Filter)} aria-label="Filter" className="grid grid-cols-4 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-surface)' }}>
           {filters.map((f) => {
             const on = filter === f.id;
             return (
-              <Button
+              <RadioGroupItem
                 key={f.id}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => setFilter(f.id)}
+                value={f.id}
                 className="h-10 rounded-xl text-sm font-bold transition"
                 style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
               >
                 {f.label}
-              </Button>
+              </RadioGroupItem>
             );
           })}
-        </div>
+        </RadioGroup>
       </div>
 
       {/* Review queue (email imports) */}

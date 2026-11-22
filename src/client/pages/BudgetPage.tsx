@@ -5,6 +5,7 @@ import { apiFetch, formatMoney } from '../lib/api';
 import { Tile } from '../components/Tile';
 import { BudgetCategorySheet } from '../components/BudgetCategorySheet';
 import { Button } from '@client/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
 import { Badge } from '@client/components/ui/badge';
 import { Card } from '@client/components/ui/card';
 import { Progress } from '@client/components/ui/progress';
@@ -266,7 +267,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
         </Button>
       )}
 
-      <div role="radiogroup" aria-label="Filter categories" className="grid grid-cols-3 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-surface)' }}>
+      <RadioGroup value={filter} onValueChange={(value) => setFilter(value as Filter)} aria-label="Filter categories" className="grid grid-cols-3 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-surface)' }}>
         {(
           [
             ['all', 'All'],
@@ -276,20 +277,17 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
         ).map(([id, label]) => {
           const on = filter === id;
           return (
-            <Button
+            <RadioGroupItem
               key={id}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => setFilter(id)}
+              value={id}
               className="h-10 rounded-xl text-sm font-bold transition"
               style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
             >
               {label}
-            </Button>
+            </RadioGroupItem>
           );
         })}
-      </div>
+      </RadioGroup>
 
       {expenseGroups.length === 0 && (
         <p className="py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>

@@ -3,6 +3,7 @@ import { Check, ChevronDown, Copy } from 'lucide-react';
 import { Button } from '@client/components/ui/button';
 import { Alert } from '@client/components/ui/alert';
 import { Card } from '@client/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@client/components/ui/collapsible';
 
 /** A labelled group of settings cards ("General", "Security", …). */
 export function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
@@ -58,11 +59,8 @@ export function SettingsCard({
 export function Disclosure({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-2xl" style={{ backgroundColor: 'var(--bg-subtle)' }}>
-      <Button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-2xl" style={{ backgroundColor: 'var(--bg-subtle)' }}>
+      <CollapsibleTrigger
         className="flex min-h-[48px] w-full items-center justify-between gap-3 px-4 py-2 text-left"
       >
         <span className="flex flex-col">
@@ -74,9 +72,13 @@ export function Disclosure({ title, description, children }: { title: string; de
           )}
         </span>
         <ChevronDown className="h-4 w-4 shrink-0 transition-transform" style={{ transform: open ? 'rotate(180deg)' : 'none', color: 'var(--text-muted)' }} />
-      </Button>
-      {open && <div className="flex flex-col gap-4 border-t px-4 pb-4 pt-4" style={{ borderColor: 'var(--border-subtle)' }}>{children}</div>}
-    </div>
+      </CollapsibleTrigger>
+      {open && (
+        <CollapsibleContent className="flex flex-col gap-4 border-t px-4 pb-4 pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
+          {children}
+        </CollapsibleContent>
+      )}
+    </Collapsible>
   );
 }
 

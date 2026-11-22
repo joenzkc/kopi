@@ -7,6 +7,7 @@ import { Tile } from '../components/Tile';
 import type { FlowRequest } from '../components/TransactionFlow';
 import { ProgressBar, currentMonthKey } from './BudgetPage';
 import { Button } from '@client/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
 import { Badge } from '@client/components/ui/badge';
 import { Card } from '@client/components/ui/card';
 import { Skeleton } from '@client/components/ui/skeleton';
@@ -318,24 +319,22 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
           )}
           {chips.length > 2 && (
             <div className="flex flex-col gap-2">
-              <div role="radiogroup" aria-label="Account group" className="no-scrollbar -mx-5 flex gap-1.5 overflow-x-auto px-5 md:mx-0 md:flex-wrap md:px-0">
+              <RadioGroup value={activeGroup} onValueChange={chooseGroup} aria-label="Account group" className="no-scrollbar -mx-5 flex gap-1.5 overflow-x-auto px-5 md:mx-0 md:flex-wrap md:px-0">
                 {chips.map((c) => {
                   const on = c.id === activeGroup;
                   return (
-                    <Button
+                    <RadioGroupItem
                       key={c.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      onClick={() => chooseGroup(c.id)}
+                      value={c.id}
+                      onClick={on ? () => chooseGroup(c.id) : undefined}
                       className="h-9 shrink-0 rounded-full px-3.5 text-sm font-bold transition"
                       style={{ backgroundColor: on ? 'var(--accent)' : 'var(--bg-surface)', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
                     >
                       {c.label}
-                    </Button>
+                    </RadioGroupItem>
                   );
                 })}
-              </div>
+              </RadioGroup>
               {activeGroup !== 'all' && (
                 <span className="px-1 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                   {shownAccounts.length} account{shownAccounts.length === 1 ? '' : 's'} ·{' '}

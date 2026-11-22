@@ -8,6 +8,8 @@ import type {
 } from '@shared/types';
 import { apiFetch } from '../lib/api';
 import { Button } from '@client/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
+import { Switch, SwitchThumb } from '@client/components/ui/switch';
 import { Badge } from '@client/components/ui/badge';
 import { Card } from '@client/components/ui/card';
 
@@ -73,12 +75,10 @@ function SwitchRow({
   onToggle: () => void;
 }) {
   return (
-    <Button
-      type="button"
-      role="switch"
-      aria-checked={checked}
+    <Switch
+      checked={checked}
       disabled={disabled}
-      onClick={onToggle}
+      onCheckedChange={onToggle}
       className={`flex min-h-[60px] w-full items-center justify-between gap-3 py-2.5 text-left disabled:opacity-45 ${borderTop ? 'border-t' : ''}`}
       style={borderTop ? { borderColor: 'var(--border-subtle)' } : undefined}
     >
@@ -86,19 +86,8 @@ function SwitchRow({
         <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{title}</span>
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{subtitle}</span>
       </span>
-      <span
-        className="flex h-7 w-12 shrink-0 rounded-full p-[3px] transition"
-        style={{
-          backgroundColor: checked ? 'var(--accent)' : 'var(--bg-hover)',
-          justifyContent: checked ? 'flex-end' : 'flex-start',
-        }}
-      >
-        <span
-          className="h-[22px] w-[22px] rounded-full"
-          style={{ backgroundColor: checked ? 'var(--accent-fg)' : 'var(--text-muted)' }}
-        />
-      </span>
-    </Button>
+      <SwitchThumb className="shrink-0" />
+    </Switch>
   );
 }
 
@@ -432,9 +421,11 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
 
         {prefs.emailTransactions && (
           <div className={`pb-3.5 ${!prefs.enabled ? 'opacity-45' : ''}`}>
-            <div
-              role="radiogroup"
+            <RadioGroup
+              value={prefs.emailMode}
+              onValueChange={(value) => void updatePrefs({ emailMode: value as NotificationPrefs['emailMode'] })}
               aria-label="Email notification filter"
+              disabled={!prefs.enabled}
               className="grid grid-cols-3 gap-1 rounded-xl p-1"
               style={{ backgroundColor: 'var(--bg-surface)' }}
             >
@@ -447,13 +438,10 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
               ).map(([mode, label]) => {
                 const on = prefs.emailMode === mode;
                 return (
-                  <Button
+                  <RadioGroupItem
                     key={mode}
-                    type="button"
-                    role="radio"
-                    aria-checked={on}
-                    disabled={!prefs.enabled}
-                    onClick={() => void updatePrefs({ emailMode: mode })}
+                    value={mode}
+                    onClick={on ? () => void updatePrefs({ emailMode: mode }) : undefined}
                     className="h-8 rounded-lg text-xs font-bold transition"
                     style={{
                       backgroundColor: on ? 'var(--accent)' : 'transparent',
@@ -461,10 +449,10 @@ export function NotificationsSection({ onToast }: NotificationsSectionProps) {
                     }}
                   >
                     {label}
-                  </Button>
+                  </RadioGroupItem>
                 );
               })}
-            </div>
+            </RadioGroup>
           </div>
         )}
 
