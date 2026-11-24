@@ -1,3 +1,4 @@
+import { useFinancialValues } from '../lib/valueVisibility';
 import { useState } from 'react';
 import { CalendarCheck, Mail } from 'lucide-react';
 import type { EmailEventRecord } from '@shared/types';
@@ -5,7 +6,6 @@ import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
-import { formatSignedMoney } from '../lib/api';
 import { friendlyDate } from '../lib/recent';
 import { Sheet } from './Sheet';
 
@@ -19,6 +19,7 @@ interface BillMatchSheetProps {
 }
 
 export function BillMatchSheet({ event, accountName, currency, busy, onClose, onDecision }: BillMatchSheetProps) {
+  const { formatSignedMoney } = useFinancialValues();
   const [selected, setSelected] = useState('');
   const [remember, setRemember] = useState(false);
   const parsed = event.parsed;

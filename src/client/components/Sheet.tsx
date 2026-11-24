@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import type { SnapshotPoint } from '@shared/types';
 import { Button } from '@client/components/ui/button';
+import { useFinancialValues } from '../lib/valueVisibility';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogOverlay, DialogTitle } from '@client/components/ui/dialog';
 
 interface SheetProps {
@@ -9,10 +10,22 @@ interface SheetProps {
   onClose: () => void;
   title: string;
   subtitle?: string;
+  financialForm?: boolean;
   children: ReactNode;
 }
 
-export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) {
+function HiddenForm({ children }: { children: ReactNode }) {
+  const [revealed, setRevealed] = useState(false);
+  if (revealed) return children;
+  return (
+    <Button type="button" variant="secondary" className="min-h-11 rounded-xl px-4 text-sm" onClick={() => setRevealed(true)}>
+      Show values in this form
+    </Button>
+  );
+}
+
+export function Sheet({ open, onClose, title, subtitle, financialForm, children }: SheetProps) {
+  const { valuesHidden } = useFinancialValues();
   if (!open) return null;
 
   return (
@@ -45,7 +58,7 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
             <DialogClose asChild>
               <Button
                 type="button"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
                 style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
                 aria-label="Close"
               >
@@ -53,7 +66,9 @@ export function Sheet({ open, onClose, title, subtitle, children }: SheetProps) 
               </Button>
             </DialogClose>
           </div>
-          <div className="overflow-y-auto overflow-x-hidden px-5 py-4 safe-pb">{children}</div>
+          <div className="overflow-y-auto overflow-x-hidden px-5 py-4 safe-pb">
+            {financialForm && valuesHidden ? <HiddenForm>{children}</HiddenForm> : children}
+          </div>
         </DialogContent>
       </div>
     </Dialog>

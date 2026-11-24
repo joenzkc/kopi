@@ -1,7 +1,8 @@
+import { useFinancialValues } from '../lib/valueVisibility';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ChevronLeft, ChevronRight, Repeat } from 'lucide-react';
 import type { BudgetCategory, BudgetMonthResponse } from '@shared/types';
-import { apiFetch, formatMoney } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { Tile } from '../components/Tile';
 import { BudgetCategorySheet } from '../components/BudgetCategorySheet';
 import { Button } from '@client/components/ui/button';
@@ -15,7 +16,7 @@ interface BudgetPageProps {
   baseCurrency: string;
   refreshTrigger: number;
   dataVersion: number;
-  onToast: (msg: string, tone?: 'success' | 'error') => void;
+  onToast: (msg: string, tone?: 'success' | 'error', privateMessage?: string) => void;
 }
 
 type Filter = 'all' | 'overspent' | 'available';
@@ -55,6 +56,8 @@ function isEmpty(c: BudgetCategory): boolean {
 }
 
 export function ProgressBar({ ratio, color, label }: { ratio: number; color: string; label: string }) {
+  const { valuesHidden } = useFinancialValues();
+  if (valuesHidden) return null;
   const percentage = ratio * 100;
   return (
     <Progress
@@ -67,6 +70,7 @@ export function ProgressBar({ ratio, color, label }: { ratio: number; color: str
 }
 
 export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast }: BudgetPageProps) {
+  const { formatMoney } = useFinancialValues();
   const [month, setMonth] = useState(currentMonthKey);
   const [data, setData] = useState<BudgetMonthResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,7 +79,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
   const [showEmpty, setShowEmpty] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const money = useCallback((cents: number) => formatMoney(cents / 100, baseCurrency), [baseCurrency]);
+  const money = useCallback((cents: number) => formatMoney(cents / 100, baseCurrency), [baseCurrency, formatMoney]);
 
   const load = useCallback(async (m: string) => {
     setLoading(true);
@@ -136,7 +140,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
   const handleSaved = useCallback(
     (message: string, close: boolean) => {
       if (close) setEditingId(null);
-      onToast(message);
+      onToast(message, 'success', 'Budget updated');
       void load(month);
     },
     [load, month, onToast],

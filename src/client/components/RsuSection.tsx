@@ -1,3 +1,4 @@
+import { HIDDEN_VALUE, useFinancialValues } from '../lib/valueVisibility';
 import React, { useState } from 'react';
 import {
   Award,
@@ -12,7 +13,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import type { EnrichedRsuGrant, EnrichedRsuTranche, RsuEffectiveStatus, RsuSummary } from '@shared/types';
-import { formatMoney, formatPct, formatPrice, formatSignedMoney } from '../lib/api';
 import { Button } from '@client/components/ui/button';
 import { Badge } from '@client/components/ui/badge';
 import { Card } from '@client/components/ui/card';
@@ -34,7 +34,7 @@ interface RsuSectionProps {
   onQuickToggleSold: (grant: EnrichedRsuGrant, tranche: EnrichedRsuTranche) => void;
 }
 
-function formatUnits(n: number): string {
+function visibleUnits(n: number): string {
   if (!Number.isFinite(n)) return '0';
   return Number.isInteger(n) ? n.toLocaleString('en-US') : Number(n.toFixed(3)).toLocaleString('en-US');
 }
@@ -87,6 +87,8 @@ export function RsuSection({
   onEditTranche,
   onQuickToggleSold,
 }: RsuSectionProps) {
+  const { valuesHidden, formatMoney, formatPct, formatPrice, formatSignedMoney } = useFinancialValues();
+  const formatUnits = valuesHidden ? () => HIDDEN_VALUE : visibleUnits;
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>(() =>
     grants.length === 1 ? { [grants[0].id]: true } : {},
   );
@@ -227,7 +229,7 @@ export function RsuSection({
       )}
 
       {/* Full mode: Vesting by Year */}
-      {mode === 'full' && summary.byYear.length > 0 && (
+      {mode === 'full' && !valuesHidden && summary.byYear.length > 0 && (
         <Card as="section" className="rounded-2xl p-4 sm:p-5">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
@@ -433,7 +435,7 @@ export function RsuSection({
               <div className="mt-3">
                 <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-[11px] tabular-nums">
                   <span style={{ color: 'var(--text-secondary)' }}>
-                    <strong style={{ color: 'var(--text-primary)' }}>{g.vestedPct.toFixed(0)}% vested</strong> ·{' '}
+                    <strong style={{ color: 'var(--text-primary)' }}>{valuesHidden ? HIDDEN_VALUE : g.vestedPct.toFixed(0) + '%'} vested</strong> ·{' '}
                     {formatUnits(g.heldUnits)} held
                     {g.soldUnits > 0 && ` · ${formatUnits(g.soldUnits)} sold`}
                     {g.unvestedUnits > 0 && ` · ${formatUnits(g.unvestedUnits)} unvested`}
@@ -444,13 +446,13 @@ export function RsuSection({
                     </span>
                   )}
                 </div>
-                <Progress
+                {!valuesHidden && <Progress
                   aria-label={`Vesting progress for ${g.grant_name || g.symbol}`}
                   value={Math.min(100, Math.max(0, g.vestedPct))}
                   className="bg-secondary"
                   indicatorClassName="transition-all"
                   indicatorStyle={{ backgroundColor: '#8B6BB1' }}
-                />
+                />}
               </div>
 
               {/* Footer metadata + actions */}
@@ -475,7 +477,7 @@ export function RsuSection({
                       P&amp;L {formatSignedMoney(g.unrealizedPnlBase, baseCurrency)} ({formatPct(g.unrealizedPnlPct)})
                     </span>
                   )}
-                  {g.tax_withhold_pct > 0 && <span>Tax est. {g.tax_withhold_pct}%</span>}
+                  {!valuesHidden && g.tax_withhold_pct > 0 && <span>Tax est. {g.tax_withhold_pct}%</span>}
                 </div>
 
                 <div className="ml-auto flex shrink-0 items-center gap-1">
@@ -552,7 +554,7 @@ export function RsuSection({
                               {formatUnits(t.units)} sh
                               {t.netUnits < t.units - 0.001 && ` · ${formatUnits(t.netUnits)} net`}
                               {t.vested_price !== null && ` · FMV ${formatPrice(t.vested_price, g.currency)}`}
-                              {t.notes && ` · ${t.notes}`}
+                              {!valuesHidden && t.notes && ` · ${t.notes}`}
                             </div>
 
                             <div className="flex shrink-0 items-center gap-1.5">

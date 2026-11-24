@@ -135,7 +135,7 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
   };
 
   return (
-    <Sheet open onClose={onClose} title={category.name} subtitle={`${groupName} · ${monthName}`}>
+    <Sheet financialForm open onClose={onClose} title={category.name} subtitle={`${groupName} · ${monthName}`}>
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-3 gap-2">
           {[

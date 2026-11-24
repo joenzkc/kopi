@@ -102,6 +102,16 @@
   }
 }
 
+/* Size the actual control so neighboring targets never share an invisible hit area. */
+@layer base {
+  @media (any-pointer: coarse) {
+    button {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;

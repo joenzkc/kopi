@@ -13,6 +13,7 @@ import { PortfolioPage } from './pages/PortfolioPage';
 import { SchedulesPage } from './pages/SchedulesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TransactionFlow, type FlowRequest } from './components/TransactionFlow';
+import { ValueVisibilityButton } from './components/ValueVisibilityButton';
 import { Button } from '@client/components/ui/button';
 import { Toggle } from '@client/components/ui/toggle';
 import { Badge } from '@client/components/ui/badge';
@@ -105,8 +106,8 @@ export function App() {
     return () => mq.removeEventListener('change', onChange);
   }, [appearance]);
 
-  const showToast = useCallback((msg: string, tone: 'success' | 'error' = 'success') => {
-    setToast({ msg, tone });
+  const showToast = useCallback((msg: string, tone: 'success' | 'error' = 'success', privateMessage?: string) => {
+    setToast({ msg, tone, privateMessage });
     setTimeout(() => {
       setToast((prev) => (prev?.msg === msg ? null : prev));
     }, 3400);
@@ -314,6 +315,7 @@ export function App() {
                 <RefreshCw className="h-[18px] w-[18px]" />
               </Button>
             )}
+            <ValueVisibilityButton />
             <Toggle
               onPressedChange={toggleSettings}
               aria-label={tab === 'settings' ? 'Close settings' : 'Settings'}

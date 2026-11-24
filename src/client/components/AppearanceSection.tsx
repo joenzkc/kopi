@@ -94,7 +94,7 @@ export function AppearanceSection({ appearance, onChange }: AppearanceSectionPro
       {/* Accent */}
       <div className="flex flex-col gap-2.5">
         <h3 className="text-sm font-extrabold">Accent</h3>
-        <RadioGroup value={appearance.accent} onValueChange={(accent) => set({ accent: accent as Appearance['accent'] })} aria-label="Accent colour" className="grid grid-cols-7 gap-1">
+        <RadioGroup value={appearance.accent} onValueChange={(accent) => set({ accent: accent as Appearance['accent'] })} aria-label="Accent colour" className="grid grid-cols-[repeat(auto-fit,minmax(44px,1fr))] gap-1">
           {[...ACCENTS.map((a) => ({ id: a.id as Appearance['accent'], label: a.label, hex: a.hex })), { id: 'custom' as const, label: 'Custom', hex: appearance.custom }].map((a) => {
             const on = appearance.accent === a.id;
             return (

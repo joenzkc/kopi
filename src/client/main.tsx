@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { App } from './App';
+import { ValueVisibilityProvider } from './lib/valueVisibility';
 import './index.css';
 
 // Keep installed copies current: check for a new deploy on launch, whenever the app comes back to the
@@ -23,6 +24,8 @@ registerSW({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <ValueVisibilityProvider>
+      <App />
+    </ValueVisibilityProvider>
   </React.StrictMode>,
 );

@@ -1,3 +1,4 @@
+import { useFinancialValues } from '../lib/valueVisibility';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   CalendarClock,
@@ -10,7 +11,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { ActualAccount, ActualPayee, EnrichedSchedule, RecurConfig } from '@shared/types';
-import { apiFetch, formatDueBadge, formatMoney, formatSignedMoney } from '../lib/api';
+import { apiFetch, formatDueBadge } from '../lib/api';
 import { Sheet } from '../components/Sheet';
 import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
@@ -41,6 +42,7 @@ interface SchedulesRes {
 type Preset = 'monthly' | 'biweekly' | 'weekly' | 'yearly' | 'once';
 
 export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: SchedulesPageProps) {
+  const { formatMoney, formatSignedMoney } = useFinancialValues();
   const [data, setData] = useState<SchedulesRes | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'upcoming' | 'all' | 'completed'>('upcoming');
@@ -396,6 +398,7 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
 
       {/* Create / Edit Schedule Sheet */}
       <Sheet
+        financialForm
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         title={editing ? 'Edit Schedule' : 'New Scheduled Transaction'}

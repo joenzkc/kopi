@@ -339,6 +339,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
 
   return (
     <Sheet
+      financialForm
       open={open}
       onClose={onClose}
       title={editing ? `Edit ${editing.symbol} RSU Grant` : 'Add RSU Grant & Vesting'}

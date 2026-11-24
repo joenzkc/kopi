@@ -186,7 +186,7 @@ export function CopyField({
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          className="flex min-h-[36px] items-center gap-1 self-start text-xs font-bold"
+          className="flex min-h-11 items-center gap-1 self-start text-xs font-bold"
           style={{ color: 'var(--accent-text)' }}
         >
           <ChevronDown className="h-3.5 w-3.5 transition-transform" style={{ transform: expanded ? 'rotate(180deg)' : 'none' }} />

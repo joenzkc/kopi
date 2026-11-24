@@ -1,7 +1,8 @@
+import { useFinancialValues } from '../lib/valueVisibility';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeftRight, CalendarCheck, CreditCard, FlaskConical, Mail, RefreshCw, Search, X } from 'lucide-react';
 import type { ActualAccount, ActualCategory, ActualPayee, EmailEventRecord, RecentTransaction } from '@shared/types';
-import { ApiError, apiFetch, formatMoney, formatSignedMoney } from '../lib/api';
+import { ApiError, apiFetch } from '../lib/api';
 import { fetchRecent, friendlyDate, localISODate, relativeTime, senderLabel } from '../lib/recent';
 import { Sheet } from '../components/Sheet';
 import { Tile } from '../components/Tile';
@@ -32,6 +33,7 @@ interface ActivityPageProps {
 type Filter = 'all' | 'out' | 'in' | 'transfers';
 
 export function ActivityPage({ accounts, categories, payees, baseCurrency, dataVersion, onOpenFlow, onChanged, onToast }: ActivityPageProps) {
+  const { valuesHidden, formatMoney, formatSignedMoney } = useFinancialValues();
   const [events, setEvents] = useState<EmailEventRecord[]>([]);
   const [txs, setTxs] = useState<RecentTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -237,7 +239,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
             style={{ color: 'var(--text-primary)' }}
           />
           {query && (
-            <Button type="button" onClick={() => setQuery('')} aria-label="Clear search" className="flex h-8 w-8 items-center justify-center rounded-full">
+            <Button type="button" onClick={() => setQuery('')} aria-label="Clear search" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full">
               <X className="h-4 w-4" />
             </Button>
           )}
@@ -304,7 +306,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
         {toReview.map((ev, i) => {
           const p = ev.parsed;
           const failed = ev.status === 'failed';
-          const payee = p?.payee || ev.subject || 'Email transaction';
+          const payee = p?.payee || (!valuesHidden && ev.subject) || 'Email transaction';
           const cat = categoryName(p?.categoryId);
           const acct = accountName(p?.accountId);
           const busy = busyId === ev.id;
@@ -357,7 +359,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                       New: {p.accountRef.label}
                     </Badge>
                   )}
-                  {p?.fxEstimated && p.amount !== null && (
+                  {!valuesHidden && p?.fxEstimated && p.amount !== null && (
                     <span className="mt-0.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
                       ≈ from {p.currency} {Math.abs(p.amount).toLocaleString('en-SG')} at today’s rate
                     </span>
@@ -367,12 +369,12 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
                   {p?.amountBase !== null && p?.amountBase !== undefined ? formatSignedMoney(p.amountBase, baseCurrency) : '—'}
                 </span>
               </div>
-              {i === 0 && ev.body_text && (
+              {!valuesHidden && i === 0 && ev.body_text && (
                 <p className="line-clamp-2 rounded-2xl px-3 py-2.5 text-xs leading-relaxed" style={{ backgroundColor: 'var(--bg-canvas)', color: 'var(--text-muted)' }}>
                   “{ev.body_text.replace(/\s+/g, ' ').trim().slice(0, 200)}”
                 </p>
               )}
-              {ev.error && (
+              {!valuesHidden && ev.error && (
                 <p className="text-xs font-semibold" style={{ color: 'var(--negative)' }}>
                   {ev.error}
                 </p>
@@ -451,7 +453,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
             return (
               <Card key={event.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl p-3.5">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold">{event.parsed?.payee || event.subject}</p>
+                  <p className="text-sm font-bold">{event.parsed?.payee || (valuesHidden ? 'Email transaction' : event.subject)}</p>
                   <p className="text-xs text-muted-foreground">
                     {bill ? bill.scheduleName + ' · ' + friendlyDate(bill.date) : 'Same bank reference · ' + friendlyDate(event.received_at.slice(0, 10))}
                   </p>
@@ -533,7 +535,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
         }
       />
 
-      <Sheet open={testOpen} onClose={() => setTestOpen(false)} title="Test email parser" subtitle="Simulates an incoming bank alert email">
+      <Sheet financialForm open={testOpen} onClose={() => setTestOpen(false)} title="Test email parser" subtitle="Simulates an incoming bank alert email">
         <form onSubmit={runTest} className="space-y-3.5">
           <div>
             <Label htmlFor="test-from" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>From</Label>

@@ -1,3 +1,4 @@
+import { HIDDEN_VALUE, useFinancialValues } from '../lib/valueVisibility';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ArrowLeftRight,
@@ -21,7 +22,7 @@ import type {
   EnrichedRsuTranche,
   PortfolioResponse,
 } from '@shared/types';
-import { apiFetch, formatMoney, formatPct, formatPrice, formatSignedMoney } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { Sheet } from '../components/Sheet';
 import { RsuGrantSheet } from '../components/RsuGrantSheet';
 import { RsuTrancheSheet } from '../components/RsuTrancheSheet';
@@ -35,7 +36,7 @@ import { Card } from '@client/components/ui/card';
 
 interface PortfolioPageProps {
   accounts: ActualAccount[];
-  onToast: (msg: string, tone?: 'success' | 'error') => void;
+  onToast: (msg: string, tone?: 'success' | 'error', privateMessage?: string) => void;
   refreshTrigger: number;
 }
 
@@ -51,6 +52,7 @@ interface SearchHit {
 type PortfolioFilter = 'all' | 'stock' | 'etf' | 'crypto' | 'rsu' | 'cash';
 
 export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPageProps) {
+  const { valuesHidden, formatMoney, formatPct, formatPrice, formatSignedMoney } = useFinancialValues();
   const [data, setData] = useState<PortfolioResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -274,9 +276,9 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
         body: JSON.stringify({ status: nextStatus }),
       });
       onToast(
-        nextStatus === 'sold'
-          ? `Marked ${tranche.units} ${grant.symbol} (${tranche.vest_date}) as sold`
-          : `Marked ${tranche.units} ${grant.symbol} (${tranche.vest_date}) as vested`,
+        `Marked ${tranche.units} ${grant.symbol} (${tranche.vest_date}) as ${nextStatus}`,
+        'success',
+        `Marked ${grant.symbol} tranche as ${nextStatus}`,
       );
       await load(false);
     } catch (err) {
@@ -300,7 +302,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
               `${s.accountName} (${s.deltaCents === 0 ? 'up to date' : formatSignedMoney(s.deltaCents / 100, cur)})`,
           )
           .join(', ');
-        onToast(`Synced to Actual: ${summary}`);
+        onToast(`Synced to Actual: ${summary}`, 'success', 'Synced to Actual');
       }
     } catch (err) {
       onToast(err instanceof Error ? err.message : 'Sync failed', 'error');
@@ -426,7 +428,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
         </div>
 
         {/* Calm Editorial Allocation Bar */}
-        {totalVal > 0 && (
+        {!valuesHidden && totalVal > 0 && (
           <div className="mt-5">
             <div className="flex h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'var(--bg-subtle)' }}>
               {stockPct > 0 && <div style={{ width: `${stockPct}%`, backgroundColor: '#3B5B7C' }} />}
@@ -651,7 +653,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                           </div>
                           <div className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>
                             {isCash
-                              ? h.currency !== cur
+                              ? h.currency !== cur && !valuesHidden
                                 ? `${formatMoney(h.quantity, h.currency)} · FX ${h.fxRateToBase.toFixed(4)}`
                                 : `Cash balance (${h.currency})`
                               : h.name}
@@ -691,14 +693,14 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
                                 {formatMoney(h.quantity, h.currency)}
                               </strong>
                             </span>
-                            {h.notes && <span>{h.notes}</span>}
+                            {!valuesHidden && h.notes && <span>{h.notes}</span>}
                           </>
                         ) : (
                           <>
                             <span>
                               Qty:{' '}
                               <strong className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                                {h.quantity}
+                                {valuesHidden ? HIDDEN_VALUE : h.quantity}
                               </strong>
                             </span>
                             {h.avg_cost > 0 && (
@@ -768,6 +770,7 @@ export function PortfolioPage({ accounts, onToast, refreshTrigger }: PortfolioPa
 
       {/* Add / Edit Holding or Excess Liquidity Sheet */}
       <Sheet
+        financialForm
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         title={

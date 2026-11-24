@@ -1,8 +1,9 @@
+import { useFinancialValues } from '../lib/valueVisibility';
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, ArrowLeftRight, CalendarClock, ChevronRight, Mail, Plus } from 'lucide-react';
 import type { BudgetMonthResponse, OverviewResponse, RecentTransaction, SnapshotPoint } from '@shared/types';
-import { apiFetch, formatDueBadge, formatMoney, formatPct, formatSignedMoney } from '../lib/api';
-import { fetchRecent, formatWhole, friendlyDate } from '../lib/recent';
+import { apiFetch, formatDueBadge } from '../lib/api';
+import { fetchRecent, friendlyDate } from '../lib/recent';
 import { Tile } from '../components/Tile';
 import type { FlowRequest } from '../components/TransactionFlow';
 import { ProgressBar, currentMonthKey } from './BudgetPage';
@@ -50,6 +51,7 @@ function Sparkline({ snapshots }: { snapshots: SnapshotPoint[] }) {
 }
 
 export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, pendingCount, hiddenAccountIds }: HomePageProps) {
+  const { valuesHidden, formatMoney, formatPct, formatSignedMoney, formatWhole } = useFinancialValues();
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [recent, setRecent] = useState<RecentTransaction[]>([]);
   const [budget, setBudget] = useState<BudgetMonthResponse | null>(null);
@@ -167,7 +169,7 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
         </div>
         <div className="text-[40px] font-extrabold leading-none tracking-[-0.04em] tabular-nums sm:text-5xl">
           {formatMoney(whole, cur).replace(/\.00$/, '')}
-          <span style={{ color: 'var(--text-muted)' }}>{cents}</span>
+          {!valuesHidden && <span style={{ color: 'var(--text-muted)' }}>{cents}</span>}
         </div>
         <Badge
           className="mt-1 self-start px-2.5 py-1 text-xs font-extrabold tabular-nums"
@@ -181,7 +183,7 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
         </Badge>
       </section>
 
-      {data.snapshots.length >= 2 && (
+      {!valuesHidden && data.snapshots.length >= 2 && (
         <div className="-mx-5 md:mx-0">
           <Sparkline snapshots={data.snapshots} />
         </div>
@@ -308,7 +310,7 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
         <section className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between">
             <h2 className="text-lg font-extrabold">Accounts</h2>
-            <Button type="button" onClick={() => onNavigate('accounts')} className="text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+            <Button type="button" onClick={() => onNavigate('accounts')} className="min-h-11 min-w-11 text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
               Manage
             </Button>
           </div>
@@ -386,7 +388,7 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
         <section className="flex flex-col gap-1">
           <div className="mb-1 flex items-baseline justify-between">
             <h2 className="text-lg font-extrabold">Coming up</h2>
-            <Button type="button" onClick={() => onNavigate('bills')} className="text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+            <Button type="button" onClick={() => onNavigate('bills')} className="min-h-11 min-w-11 text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
               All bills
             </Button>
           </div>
@@ -416,7 +418,7 @@ export function HomePage({ onNavigate, onOpenFlow, refreshTrigger, dataVersion, 
       <section className="flex flex-col gap-1">
         <div className="mb-1 flex items-baseline justify-between">
           <h2 className="text-lg font-extrabold">Recent</h2>
-          <Button type="button" onClick={() => onNavigate('activity')} className="text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+          <Button type="button" onClick={() => onNavigate('activity')} className="min-h-11 min-w-11 text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
             All activity
           </Button>
         </div>

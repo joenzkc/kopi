@@ -132,6 +132,7 @@ export function RsuTrancheSheet({ open, onClose, grant, tranche, onSaved, onErro
 
   return (
     <Sheet
+      financialForm
       open={open}
       onClose={onClose}
       title={tranche ? `Edit Vesting Tranche · ${grant.symbol}` : `Add Vesting Tranche · ${grant.symbol}`}

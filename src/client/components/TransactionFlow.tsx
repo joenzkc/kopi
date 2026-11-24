@@ -8,7 +8,9 @@ import type {
   EmailEventRecord,
   RecentTransaction,
 } from '@shared/types';
-import { apiFetch, formatMoney } from '../lib/api';
+import { apiFetch } from '../lib/api';
+import { HIDDEN_VALUE, useFinancialValues } from '../lib/valueVisibility';
+import { ValueVisibilityButton } from './ValueVisibilityButton';
 import { fetchRecent, friendlyDate, invalidateRecent, localISODate, senderLabel, shiftDays } from '../lib/recent';
 import { Tile } from './Tile';
 import { LinkPayeeSheet } from './LinkPayeeSheet';
@@ -91,6 +93,7 @@ export function TransactionFlow({
   const defaultAccountId = openAccounts.find((a) => !a.offbudget)?.id || openAccounts[0]?.id || '';
   const today = localISODate();
 
+  const { valuesHidden, formatMoney, formatSignedMoney } = useFinancialValues();
   const [step, setStep] = useState<Step>(review ? 'details' : 'amount');
   const [kind, setKind] = useState<FlowKind>(() => {
     if (review) {
@@ -120,7 +123,8 @@ export function TransactionFlow({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState<RecentTransaction[]>([]);
-  const [done, setDone] = useState<{ title: string; line1: string; line2: string; amount: string } | null>(null);
+  const [done, setDone] = useState<{ title: string; line1: string; line2: string } | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const payeeInputRef = useRef<HTMLInputElement>(null);
   const linkPayeeOpenerRef = useRef<HTMLButtonElement>(null);
 
@@ -162,19 +166,25 @@ export function TransactionFlow({
     else setStep('payee');
   }, [n, review, payeeName, isTransfer, toAccountId]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (step !== 'amount') return;
-      if (/^[0-9]$/.test(e.key)) press(e.key);
-      else if (e.key === '.' || e.key === ',') press('.');
-      else if (e.key === 'Backspace') press('back');
-      else if (e.key === 'Enter') goFromAmount();
-      else return;
-      e.preventDefault();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [step, press, goFromAmount]);
+  function handleAmountKey(e: React.KeyboardEvent) {
+    if (step !== 'amount' || (review && valuesHidden) || e.defaultPrevented || e.nativeEvent.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
+    const target = e.target;
+    if (!(target instanceof HTMLElement) || target.isContentEditable || target.closest('input, textarea, select')) return;
+
+    if (/^[0-9]$/.test(e.key)) press(e.key);
+    else if (e.key === '.' || e.key === ',') press('.');
+    else if (e.key === 'Backspace') press('back');
+    else if (e.key === 'Enter' && !target.closest('button, a, [role="button"]')) goFromAmount();
+    else return;
+    e.preventDefault();
+  }
+
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (step === 'amount' && dialog && document.activeElement === document.body) {
+      dialog.focus({ preventScroll: true });
+    }
+  }, [step]);
 
   useEffect(() => {
     if (step === 'payee' && !isTransfer) payeeInputRef.current?.focus();
@@ -325,7 +335,6 @@ export function TransactionFlow({
       const who = isTransfer ? `${accountName(accountId)} → ${accountName(toAccountId)}` : payeeName.trim();
       setDone({
         title,
-        amount: isTransfer ? formatMoney(n, baseCurrency) : `${signed > 0 ? '+' : ''}${formatMoney(signed, baseCurrency)}`,
         line1: isTransfer ? who : `${who} · ${catName}`,
         line2: `${isTransfer ? 'From ' : ''}${accountName(accountId)} · ${friendlyDate(date)}${!review && !cleared ? ' · Uncleared' : ''}`,
       });
@@ -407,6 +416,7 @@ export function TransactionFlow({
           </p>
         )}
       </div>
+      <ValueVisibilityButton />
       {onBack && (
         <DialogClose asChild>
           <Button type="button" aria-label="Close" className={iconBtn} style={{ color: 'var(--text-muted)' }}>
@@ -423,13 +433,16 @@ export function TransactionFlow({
     borderColor: on ? 'var(--accent)' : 'var(--border-subtle)',
   });
 
-  const amountSummary = isTransfer ? formatMoney(n, baseCurrency) : `${signed > 0 ? '+' : ''}${formatMoney(signed, baseCurrency)}`;
+  const amountSummary = isTransfer ? formatMoney(n, baseCurrency) : formatSignedMoney(signed, baseCurrency);
   const dialogTitle = review ? 'Review email transaction' : 'New transaction';
+  const visibleStep = review && valuesHidden ? 'privateReview' : step;
 
   const panel = (
     <div className="fixed inset-0 z-50 flex items-stretch justify-center md:items-center md:p-6">
       <DialogOverlay className="absolute inset-0 hidden bg-black/60 md:block" onClick={onClose} />
       <DialogContent
+        ref={dialogRef}
+        onKeyDown={handleAmountKey}
         aria-label={dialogTitle}
         aria-describedby={undefined}
         className="rise-in relative flex h-full w-full flex-col overflow-hidden md:h-[min(860px,92dvh)] md:max-w-[440px] md:rounded-[28px] md:border"
@@ -440,10 +453,11 @@ export function TransactionFlow({
           <span className="sr-only">{dialogTitle}</span>
         </DialogTitle>
         {/* ---------- AMOUNT ---------- */}
-        {step === 'amount' && (
+        {visibleStep === 'privateReview' && header('Review import', null, 'Show financial values to review this email.')}
+        {visibleStep === 'amount' && (
           <div className="flex min-h-0 flex-1 flex-col">
             {header(review ? 'Edit amount' : 'New transaction', review || payeeName ? () => setStep('details') : null)}
-            <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 pb-5 safe-pb">
+            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-5 safe-pb">
               <RadioGroup value={kind} onValueChange={(value) => chooseKind(value as FlowKind)} aria-label="Transaction type" className="grid gap-1 rounded-2xl p-1" style={{ gridTemplateColumns: `repeat(${kinds.length}, minmax(0, 1fr))`, backgroundColor: 'var(--bg-surface)' }}>
                 {kinds.map((k) => {
                   const on = kind === k.id;
@@ -451,6 +465,12 @@ export function TransactionFlow({
                     <RadioGroupItem
                       key={k.id}
                       value={k.id}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && !event.altKey && !event.ctrlKey && !event.metaKey) {
+                          event.preventDefault();
+                          event.currentTarget.click();
+                        }
+                      }}
                       className="h-10 rounded-xl text-sm font-bold transition"
                       style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
                     >
@@ -473,7 +493,7 @@ export function TransactionFlow({
                     {kind === 'income' ? '+' : kind === 'expense' ? '−' : ''}
                     {sym}
                   </span>
-                  <span className="truncate text-6xl font-extrabold tracking-tight">{displayAmount(amt)}</span>
+                  <span className="truncate text-6xl font-extrabold tracking-tight">{valuesHidden ? HIDDEN_VALUE : displayAmount(amt)}</span>
                 </div>
                 <Label
                   className="relative flex h-10 items-center gap-1.5 rounded-full border pl-4 pr-3 text-sm font-semibold"
@@ -517,7 +537,7 @@ export function TransactionFlow({
                 type="button"
                 onClick={goFromAmount}
                 disabled={n <= 0}
-                variant="default" className="h-14 rounded-2xl text-base disabled:opacity-40"
+                variant="default" className="h-14 shrink-0 rounded-2xl text-base disabled:opacity-40"
               >
                 Continue
               </Button>
@@ -526,7 +546,7 @@ export function TransactionFlow({
         )}
 
         {/* ---------- PAYEE / DESTINATION ---------- */}
-        {step === 'payee' && (
+        {visibleStep === 'payee' && (
           <div className="flex min-h-0 flex-1 flex-col">
             {header(
               isTransfer ? 'Move to which account?' : kind === 'income' ? 'Who paid you?' : 'Who was it?',
@@ -628,7 +648,7 @@ export function TransactionFlow({
         )}
 
         {/* ---------- DETAILS ---------- */}
-        {step === 'details' && (
+        {visibleStep === 'details' && (
           <div className="flex min-h-0 flex-1 flex-col">
             {header(review ? 'Review import' : 'Details', review ? null : () => setStep('payee'))}
             <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-6">
@@ -939,7 +959,7 @@ export function TransactionFlow({
         )}
 
         {/* ---------- CATEGORY PICKER ---------- */}
-        {step === 'category' && (
+        {visibleStep === 'category' && (
           <div className="flex min-h-0 flex-1 flex-col">
             {header('Category', () => setStep('details'))}
             <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-5 safe-pb">
@@ -1005,7 +1025,7 @@ export function TransactionFlow({
         )}
 
         {/* ---------- DONE ---------- */}
-        {step === 'done' && done && (
+        {visibleStep === 'done' && done && (
           <div className="flex flex-1 flex-col items-center justify-center gap-5 px-8 text-center safe-pb">
             <span className="flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}>
               <Check className="h-10 w-10" strokeWidth={2.6} />
@@ -1016,7 +1036,7 @@ export function TransactionFlow({
                 className="text-3xl font-extrabold tabular-nums"
                 style={{ color: kind === 'income' ? 'var(--positive)' : 'var(--text-primary)' }}
               >
-                {done.amount}
+                {amountSummary}
               </span>
               <span className="text-[15px] font-bold">{done.line1}</span>
               <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -1038,7 +1058,7 @@ export function TransactionFlow({
           </div>
         )}
       </DialogContent>
-      {review && rawPayee && (
+      {review && !valuesHidden && rawPayee && (
         <LinkPayeeSheet
           open={linkOpen}
           onClose={() => setLinkOpen(false)}

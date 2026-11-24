@@ -1,7 +1,8 @@
+import { useFinancialValues } from '../lib/valueVisibility';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ChevronRight, CreditCard, FolderPlus, Pencil, Plus, X } from 'lucide-react';
 import type { AccountLink, ActualAccount, ActualCategory } from '@shared/types';
-import { apiFetch, formatMoney } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { Sheet } from '../components/Sheet';
 import { Tile } from '../components/Tile';
 import { Button } from '@client/components/ui/button';
@@ -67,6 +68,7 @@ function Segmented({
 }
 
 export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHomeAccounts, onToggleHome, onChanged, onToast }: AccountsPageProps) {
+  const { formatMoney } = useFinancialValues();
   const [accounts, setAccounts] = useState<ManagedAccount[]>([]);
   const [groups, setGroups] = useState<AccountGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +101,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
   const [linkKind, setLinkKind] = useState<'card' | 'account' | 'wallet'>('card');
   const [linkLast4, setLinkLast4] = useState('');
 
-  const money = useCallback((cents: number) => formatMoney(cents / 100, baseCurrency), [baseCurrency]);
+  const money = useCallback((cents: number) => formatMoney(cents / 100, baseCurrency), [baseCurrency, formatMoney]);
 
   const load = useCallback(async () => {
     try {
@@ -430,7 +432,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
       )}
 
       {/* ---------- Add account ---------- */}
-      <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Add account" subtitle="Creates the account in Actual">
+      <Sheet financialForm open={addOpen} onClose={() => setAddOpen(false)} title="Add account" subtitle="Creates the account in Actual">
         <form onSubmit={createAccount} className="flex flex-col gap-4">
           <div>
             <Label htmlFor="acc-name" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
