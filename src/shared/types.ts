@@ -56,6 +56,10 @@ export interface ActualTransaction {
   notes?: string | null;
   imported_id?: string | null;
   cleared?: boolean;
+  reconciled?: boolean;
+  is_parent?: boolean;
+  is_child?: boolean;
+  subtransactions?: ActualTransaction[];
   transfer_id?: string | null;
   schedule?: string | null;
 }
@@ -595,7 +599,19 @@ export interface RecentTransaction extends ActualTransaction {
   payeeName: string;
   categoryName: string | null;
   isTransfer: boolean;
+  transferAccountId?: string | null;
 }
+
+export const transactionChangesSchema = z.object({
+  amount: z.number().int().safe().optional(), // minor units
+  date: z.string().date().optional(),
+  payeeName: z.string().trim().min(1).max(120).nullable().optional(),
+  category: z.string().min(1).nullable().optional(),
+  notes: z.string().max(500).nullable().optional(),
+  cleared: z.boolean().optional(),
+}).strict().refine((changes) => Object.keys(changes).length > 0, { message: 'Change at least one field' });
+
+export type TransactionChanges = z.infer<typeof transactionChangesSchema>;
 
 // --- Monthly envelope budget (all amounts in cents) ---
 

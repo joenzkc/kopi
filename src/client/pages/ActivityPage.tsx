@@ -1,5 +1,5 @@
 import { useFinancialValues } from '../lib/valueVisibility';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeftRight, CalendarCheck, CreditCard, FlaskConical, Mail, RefreshCw, Search, X } from 'lucide-react';
 import type { ActualAccount, ActualCategory, ActualPayee, EmailEventRecord, RecentTransaction } from '@shared/types';
 import { ApiError, apiFetch } from '../lib/api';
@@ -8,6 +8,7 @@ import { Sheet } from '../components/Sheet';
 import { Tile } from '../components/Tile';
 import { LinkPayeeSheet } from '../components/LinkPayeeSheet';
 import { BillMatchSheet } from '../components/BillMatchSheet';
+import { EditTransactionSheet } from '../components/EditTransactionSheet';
 import type { FlowRequest } from '../components/TransactionFlow';
 import { Button } from '@client/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
@@ -41,7 +42,9 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [editTx, setEditTx] = useState<RecentTransaction | null>(null);
   const [linkTx, setLinkTx] = useState<RecentTransaction | null>(null);
+  const transactionTrigger = useRef<HTMLButtonElement | null>(null);
   const [reviewBillId, setReviewBillId] = useState<string | null>(null);
   const [rescanning, setRescanning] = useState(false);
 
@@ -83,6 +86,14 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
   const billEmail = toReview.find((e) => e.id === reviewBillId);
   const resolvedBills = events.filter((e) => e.status === 'imported' && e.parsed?.billReview?.outcome);
   const queued = events.filter((e) => e.status === 'queued').length;
+
+  function closeTransactionSheet() {
+    setEditTx(null);
+    setLinkTx(null);
+    const trigger = transactionTrigger.current;
+    transactionTrigger.current = null;
+    requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
+  }
 
   async function decideBill(ev: EmailEventRecord, action: 'link' | 'reject' | 'restore', transactionId?: string, remember = false) {
     setBusyId(ev.id);
@@ -497,10 +508,12 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
             <Button
               key={t.id}
               type="button"
-              disabled={t.isTransfer || !t.payee}
-              onClick={() => setLinkTx(t)}
-              className="flex w-full items-center gap-3 py-2 text-left disabled:cursor-default"
-              title={t.isTransfer ? undefined : 'Link this payee to another, e.g. “McDonalds JE” → “McDonalds”'}
+              onClick={(event) => {
+                transactionTrigger.current = event.currentTarget;
+                setEditTx(t);
+              }}
+              className="flex w-full items-center gap-3 py-2 text-left"
+              title="Edit transaction"
             >
               <Tile colorKey={t.categoryName || t.payeeName} label={t.payeeName} transfer={t.isTransfer} />
               <div className="flex min-w-0 flex-1 flex-col">
@@ -524,9 +537,28 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
           busy={busyId === billEmail.id} onClose={() => setReviewBillId(null)}
           onDecision={(action, transactionId, remember) => void decideBill(billEmail, action, transactionId, remember)} />
       )}
+      {editTx && (
+        <EditTransactionSheet
+          key={editTx.id}
+          transaction={editTx}
+          accounts={accounts}
+          categories={categories}
+          payees={payees}
+          baseCurrency={baseCurrency}
+          onClose={closeTransactionSheet}
+          onSaved={() => {
+            closeTransactionSheet();
+            onChanged('Transaction updated');
+          }}
+          onLinkPayee={editTx.payee && !editTx.isTransfer ? () => {
+            setLinkTx(editTx);
+            setEditTx(null);
+          } : undefined}
+        />
+      )}
       <LinkPayeeSheet
         open={Boolean(linkTx)}
-        onClose={() => setLinkTx(null)}
+        onClose={closeTransactionSheet}
         raw={linkTx ? linkTx.imported_payee || linkTx.payeeName : ''}
         payees={payees}
         mergePayeeId={linkTx?.payee || null}

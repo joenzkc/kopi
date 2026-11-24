@@ -241,6 +241,18 @@ export async function addTransaction(
   invalidateActualCache();
 }
 
+export async function updateTransaction(
+  id: string,
+  transaction: Partial<Pick<ActualTransaction, 'amount' | 'date' | 'payee' | 'category' | 'notes' | 'cleared'>>,
+): Promise<void> {
+  const { syncId } = await resolveBudgetSyncId();
+  await request(`/budgets/${encodeURIComponent(syncId)}/transactions/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ transaction }),
+  });
+  invalidateActualCache();
+}
+
 export async function importTransactions(
   accountId: string,
   transactions: Array<{

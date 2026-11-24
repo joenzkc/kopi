@@ -8,7 +8,7 @@ import { localISODate } from '../dates';
 import { getEnrichedPortfolio } from '../portfolio/prices';
 import { getEnrichedSchedules } from '../schedules/routes';
 import { normalizeBudgetMonth } from './budget';
-import { appearanceSchema, DEFAULT_APPEARANCE } from '../../shared/types';
+import { appearanceSchema, DEFAULT_APPEARANCE, transactionChangesSchema } from '../../shared/types';
 import type {
   ActualAccount,
   Appearance,
@@ -218,6 +218,7 @@ overviewRoutes.get('/transactions/recent', requireSession, async (c) => {
         payeeName,
         categoryName: t.category ? catMap.get(t.category) || null : null,
         isTransfer,
+        transferAccountId: transferAcct,
       };
     })
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -277,6 +278,60 @@ overviewRoutes.post('/transactions', requireSession, async (c) => {
     cleared: d.cleared,
   });
   return c.json({ ok: true }, 201);
+});
+
+const transactionEditSchema = z.object({
+  accountId: z.string().min(1),
+  originalDate: z.string().date(),
+  changes: transactionChangesSchema,
+});
+
+overviewRoutes.patch('/transactions/:id', requireSession, async (c) => {
+  const parsed = transactionEditSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues[0]?.message || 'Invalid transaction edit' }, 400);
+  }
+
+  const id = c.req.param('id');
+  const { accountId, originalDate, changes: { payeeName, ...fields } } = parsed.data;
+  const transactions = await actual.getAccountTransactions(accountId, originalDate, originalDate);
+  const current = transactions.find((tx) => tx.id === id && tx.account === accountId && tx.date === originalDate);
+  if (!current) {
+    return c.json({ error: 'This transaction changed or was removed. Refresh Activity and try again.' }, 409);
+  }
+
+  if ((current.is_parent || current.subtransactions?.length) && (fields.amount !== undefined || fields.category !== undefined)) {
+    return c.json({ error: 'Change split amounts and categories in Actual.' }, 400);
+  }
+  if (current.reconciled && fields.cleared !== undefined) {
+    return c.json({ error: 'Change the cleared status of reconciled transactions in Actual.' }, 400);
+  }
+
+  const payee = current.payee && (payeeName !== undefined || fields.category !== undefined)
+    ? (await actual.getPayees()).find((p) => p.id === current.payee)
+    : undefined;
+  const isTransfer = Boolean(current.transfer_id || payee?.transfer_acct);
+  if (isTransfer && payeeName !== undefined) {
+    return c.json({ error: 'Change the transfer account in Actual.' }, 400);
+  }
+  if (fields.category !== undefined) {
+    const accounts = await actual.getAccounts(false);
+    const account = accounts.find((a) => a.id === accountId);
+    const counterpart = accounts.find((a) => a.id === payee?.transfer_acct);
+    if (account?.offbudget !== false || (isTransfer && counterpart?.offbudget !== true)) {
+      return c.json({ error: 'This transaction does not have an editable budget category.' }, 400);
+    }
+    if (fields.category && !(await actual.getCategories()).some((cat) => cat.id === fields.category)) {
+      return c.json({ error: 'This category no longer exists. Pick another category.' }, 400);
+    }
+  }
+
+  const payload: Parameters<typeof actual.updateTransaction>[1] = fields;
+  if (payeeName !== undefined) {
+    payload.payee = payeeName ? await actual.ensurePayeeByName(payeeName) : null;
+  }
+  await actual.updateTransaction(id, payload);
+  return c.json({ ok: true });
 });
 
 function readAppearance(): Appearance {
