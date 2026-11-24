@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { db, getSetting, setSetting } from '../db';
 import { requireSession } from '../auth/service';
 import * as actual from '../actual/client';
+import { localISODate } from '../dates';
 import { getEnrichedPortfolio } from '../portfolio/prices';
 import { getEnrichedSchedules } from '../schedules/routes';
 import { normalizeBudgetMonth } from './budget';
@@ -183,7 +184,10 @@ overviewRoutes.get('/actual/meta', requireSession, async (c) => {
 
 overviewRoutes.get('/transactions/recent', requireSession, async (c) => {
   const days = Math.min(90, Math.max(7, Number(c.req.query('days') || 30)));
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const now = new Date();
+  const since = localISODate(-days, now);
+  // Actual's default end date can still be yesterday in Kopi's time zone.
+  const until = localISODate(0, now);
 
   const [accounts, payees, categories] = await Promise.all([
     actual.getAccounts(false),
@@ -196,7 +200,7 @@ overviewRoutes.get('/transactions/recent', requireSession, async (c) => {
   const catMap = new Map(categories.map((cat) => [cat.id, cat.name]));
 
   const perAccount = await Promise.all(
-    activeAccounts.slice(0, 12).map((a) => actual.getAccountTransactions(a.id, since).catch(() => [])),
+    activeAccounts.slice(0, 12).map((a) => actual.getAccountTransactions(a.id, since, until).catch(() => [])),
   );
 
   const merged: RecentTransaction[] = perAccount

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import * as actual from '../actual/client';
 import { requireApiKeyOrSession } from '../auth/service';
+import { localISODate } from '../dates';
 import { notifyScheduledPosted } from '../notifications/service';
 import { postedScheduleId, scheduleImportId } from './occurrence';
 import {
@@ -58,7 +59,7 @@ function toMonthlyEquivalentCents(amountCents: number, date: ActualSchedule['dat
 
 function computeDaysUntil(nextDate?: string): number | null {
   if (!nextDate) return null;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localISODate();
   const todayMs = new Date(`${todayStr}T00:00:00Z`).getTime();
   const nextMs = new Date(`${nextDate}T00:00:00Z`).getTime();
   if (!Number.isFinite(nextMs)) return null;
@@ -202,7 +203,7 @@ scheduleRoutes.post('/:id/post-now', requireApiKeyOrSession('schedules:write'), 
   if (!target) return c.json({ error: 'Schedule not found' }, 404);
   if (!target.account) return c.json({ error: 'Schedule has no account assigned' }, 400);
 
-  const date = target.next_date || new Date().toISOString().slice(0, 10);
+  const date = target.next_date || localISODate();
   const { syncId } = await actual.resolveBudgetSyncId();
   const importedId = scheduleImportId(id, date);
   const occurrence = syncId + ':' + importedId;

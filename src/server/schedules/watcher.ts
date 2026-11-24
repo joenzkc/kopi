@@ -1,16 +1,11 @@
 import { config } from '../config';
 import { db, getSetting, setSetting } from '../db';
 import * as actual from '../actual/client';
+import { localISODate } from '../dates';
 import { notifyScheduledPosted } from '../notifications/service';
 import type { ActualSchedule, ActualTransaction } from '../../shared/types';
 
 let polling = false;
-
-function localISODate(offsetDays = 0): string {
-  const d = new Date();
-  if (offsetDays !== 0) d.setDate(d.getDate() + offsetDays);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 function extractAmountCents(amount: ActualSchedule['amount']): number {
   if (typeof amount === 'number') return amount;
@@ -117,13 +112,14 @@ export async function pollScheduledPosts(): Promise<void> {
       ),
     );
 
-    const sinceDate = localISODate(-14);
-    const todayStr = localISODate(0);
+    const now = new Date();
+    const sinceDate = localISODate(-14, now);
+    const todayStr = localISODate(0, now);
 
     const txByAccount = new Map<string, ActualTransaction[]>();
     await Promise.all(
       watchedAccountIds.map(async (accountId) => {
-        const txs = await actual.getAccountTransactions(accountId, sinceDate).catch(() => []);
+        const txs = await actual.getAccountTransactions(accountId, sinceDate, todayStr).catch(() => []);
         txByAccount.set(accountId, txs);
       }),
     );
