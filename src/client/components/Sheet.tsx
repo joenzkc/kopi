@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { Drawer } from '@base-ui/react/drawer';
 import type { SnapshotPoint } from '@shared/types';
@@ -32,11 +32,45 @@ export function Sheet({ open, onClose, title, subtitle, financialForm, children 
   const { valuesHidden } = useFinancialValues();
   const popupRef = useRef<HTMLDivElement>(null);
 
+  // Pages often mount a sheet already open (`{x && <Sheet open …/>}`) and unmount it on close.
+  // The drawer only animates a closed→open change, so open one frame after mount, and on dismiss
+  // play the exit first and only then tell the page (which may unmount us).
+  const [shown, setShown] = useState(false);
+  const openRef = useRef(open);
+  openRef.current = open;
+  const dismissing = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (!open) {
+      setShown(false);
+      return;
+    }
+    const id = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+
   return (
     <Drawer.Root
-      open={open}
+      open={shown}
       onOpenChange={(next) => {
-        if (!next) onClose();
+        if (next) return;
+        dismissing.current = true;
+        setShown(false);
+      }}
+      onOpenChangeComplete={(isOpen) => {
+        if (isOpen || !dismissing.current) return;
+        dismissing.current = false;
+        onClose();
+        // The page can refuse to close (e.g. while saving): if it still wants us open, come back.
+        setTimeout(() => {
+          if (mounted.current && openRef.current) setShown(true);
+        }, 0);
       }}
       swipeDirection="down"
     >
