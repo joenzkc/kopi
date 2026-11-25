@@ -13,6 +13,7 @@ import type {
   ActualAccount,
   Appearance,
   OverviewResponse,
+  ActualTransaction,
   RecentTransaction,
   SnapshotPoint,
 } from '../../shared/types';
@@ -182,6 +183,79 @@ overviewRoutes.get('/actual/meta', requireSession, async (c) => {
   }
 });
 
+type PayeeLike = { name?: string | null; transfer_acct?: string | null };
+
+/** Adds display names (account, payee, category) and transfer info to a raw Actual transaction. */
+function enrichTransaction(
+  t: ActualTransaction,
+  accountMap: Map<string, string>,
+  payeeMap: Map<string, PayeeLike>,
+  catMap: Map<string, string>,
+): RecentTransaction {
+  const payee = t.payee ? payeeMap.get(t.payee) : undefined;
+  const transferAcct = payee?.transfer_acct || null;
+  const isTransfer = Boolean(transferAcct || t.transfer_id);
+  const payeeName = transferAcct
+    ? `Transfer · ${accountMap.get(transferAcct) || 'Account'}`
+    : payee?.name || t.imported_payee || 'Unknown';
+  return {
+    ...t,
+    accountName: accountMap.get(t.account) || 'Account',
+    payeeName,
+    categoryName: t.category ? catMap.get(t.category) || null : null,
+    isTransfer,
+    transferAccountId: transferAcct,
+  };
+}
+
+/** One budget category's transactions for a month (any month, not just the recent window).
+ *  Split transactions contribute only the parts in this category. */
+overviewRoutes.get('/budget/:month/categories/:categoryId/transactions', requireSession, async (c) => {
+  const month = c.req.param('month');
+  const categoryId = c.req.param('categoryId');
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return c.json({ error: 'Month must look like 2026-11' }, 400);
+  const [y, m] = month.split('-').map(Number);
+  const since = `${month}-01`;
+  const until = `${month}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+
+  try {
+    const [accounts, payees, categories] = await Promise.all([
+      actual.getAccounts(false),
+      actual.getPayees(),
+      actual.getCategories(),
+    ]);
+    const accountMap = new Map(accounts.map((a) => [a.id, a.name]));
+    const payeeMap = new Map(payees.map((p) => [p.id, p]));
+    const catMap = new Map(categories.map((cat) => [cat.id, cat.name]));
+    // Category spending only happens in on-budget accounts.
+    const budgetAccounts = accounts.filter((a) => !a.closed && !a.offbudget);
+    const perAccount = await Promise.all(
+      budgetAccounts.map((a) => actual.getAccountTransactions(a.id, since, until).catch(() => [] as ActualTransaction[])),
+    );
+
+    const matches: ActualTransaction[] = [];
+    for (const t of perAccount.flat()) {
+      if (t.is_child) continue; // children are reached through their parent below
+      if (t.subtransactions?.length) {
+        for (const sub of t.subtransactions) {
+          if (sub.category === categoryId) {
+            matches.push({ ...sub, account: t.account, date: t.date, payee: sub.payee ?? t.payee, imported_payee: t.imported_payee, cleared: t.cleared });
+          }
+        }
+      } else if (t.category === categoryId) {
+        matches.push(t);
+      }
+    }
+
+    const transactions = matches
+      .map((t) => enrichTransaction(t, accountMap, payeeMap, catMap))
+      .sort((a, b) => b.date.localeCompare(a.date) || a.amount - b.amount);
+    return c.json({ month, categoryId, transactions });
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : 'Could not load transactions from Actual' }, 502);
+  }
+});
+
 overviewRoutes.get('/transactions/recent', requireSession, async (c) => {
   const days = Math.min(90, Math.max(7, Number(c.req.query('days') || 30)));
   const now = new Date();
@@ -205,22 +279,7 @@ overviewRoutes.get('/transactions/recent', requireSession, async (c) => {
 
   const merged: RecentTransaction[] = perAccount
     .flat()
-    .map((t) => {
-      const payee = t.payee ? payeeMap.get(t.payee) : undefined;
-      const transferAcct = payee?.transfer_acct || null;
-      const isTransfer = Boolean(transferAcct || t.transfer_id);
-      const payeeName = transferAcct
-        ? `Transfer · ${accountMap.get(transferAcct) || 'Account'}`
-        : payee?.name || t.imported_payee || 'Unknown';
-      return {
-        ...t,
-        accountName: accountMap.get(t.account) || 'Account',
-        payeeName,
-        categoryName: t.category ? catMap.get(t.category) || null : null,
-        isTransfer,
-        transferAccountId: transferAcct,
-      };
-    })
+    .map((t) => enrichTransaction(t, accountMap, payeeMap, catMap))
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 120);
 

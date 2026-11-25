@@ -389,7 +389,7 @@ export function App() {
             />
           </TabPanel>
           <TabPanel id="budget" active={tab} visited={visited}>
-            <BudgetPage baseCurrency={baseCurrency} refreshTrigger={refreshTrigger} dataVersion={dataVersion} onToast={showToast} />
+            <BudgetPage baseCurrency={baseCurrency} accounts={meta.accounts} categories={meta.categories} payees={meta.payees} onChanged={handleChanged} refreshTrigger={refreshTrigger} dataVersion={dataVersion} onToast={showToast} />
           </TabPanel>
           <TabPanel id="accounts" active={tab} visited={visited}>
             <AccountsPage

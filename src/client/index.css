@@ -517,6 +517,17 @@ html {
   animation: tab-in 220ms var(--ease-out);
 }
 
+/* Switching views inside a sheet (e.g. category overview → change budget). */
+.view-in {
+  animation: tab-in 200ms var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-in {
+    animation: tab-fade 140ms ease;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tab-panel:not([hidden]) {
     animation: tab-fade 160ms ease;

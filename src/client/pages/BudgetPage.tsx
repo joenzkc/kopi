@@ -1,7 +1,7 @@
 import { useFinancialValues } from '../lib/valueVisibility';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Repeat } from 'lucide-react';
-import type { BudgetCategory, BudgetMonthResponse } from '@shared/types';
+import type { ActualAccount, ActualCategory, ActualPayee, BudgetCategory, BudgetMonthResponse } from '@shared/types';
 import { apiFetch } from '../lib/api';
 import { Tile } from '../components/Tile';
 import { BudgetCategorySheet } from '../components/BudgetCategorySheet';
@@ -17,6 +17,11 @@ export { ProgressBar, spentRatio };
 
 interface BudgetPageProps {
   baseCurrency: string;
+  accounts: ActualAccount[];
+  categories: ActualCategory[];
+  payees: ActualPayee[];
+  /** A transaction was edited from a category sheet. */
+  onChanged: (message: string) => void;
   refreshTrigger: number;
   dataVersion: number;
   onToast: (msg: string, tone?: 'success' | 'error', privateMessage?: string) => void;
@@ -44,7 +49,7 @@ function isEmpty(c: BudgetCategory): boolean {
   return c.budgeted === 0 && c.spent === 0 && c.balance === 0;
 }
 
-export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast }: BudgetPageProps) {
+export function BudgetPage({ baseCurrency, accounts, categories, payees, onChanged, refreshTrigger, dataVersion, onToast }: BudgetPageProps) {
   const { formatMoney } = useFinancialValues();
   const [month, setMonth] = useState(currentMonthKey);
   const [data, setData] = useState<BudgetMonthResponse | null>(null);
@@ -413,8 +418,12 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
           data={data}
           monthName={monthLabel(month)}
           baseCurrency={baseCurrency}
+          accounts={accounts}
+          categories={categories}
+          payees={payees}
           onClose={closeEditor}
           onSaved={handleSaved}
+          onTransactionChanged={onChanged}
         />
       )}
 

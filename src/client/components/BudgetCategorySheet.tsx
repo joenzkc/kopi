@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import type { BudgetCategory, BudgetMonthResponse } from '@shared/types';
+import React, { useMemo, useRef, useState } from 'react';
+import { ArrowLeftRight, ChevronLeft, PencilLine } from 'lucide-react';
+import type { ActualAccount, ActualCategory, ActualPayee, BudgetCategory, BudgetMonthResponse, RecentTransaction } from '@shared/types';
 import { apiFetch, formatMoney } from '../lib/api';
 import { Sheet } from './Sheet';
 import { ProgressBar, barColor, spentRatio } from './budget/ProgressBar';
+import { CategoryTransactions } from './budget/CategoryTransactions';
+import { EditTransactionSheet } from './EditTransactionSheet';
 import { Button } from '@client/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
 import { Switch, SwitchThumb } from '@client/components/ui/switch';
@@ -17,12 +20,19 @@ interface BudgetCategorySheetProps {
   data: BudgetMonthResponse;
   monthName: string;
   baseCurrency: string;
+  accounts: ActualAccount[];
+  categories: ActualCategory[];
+  payees: ActualPayee[];
   onClose: () => void;
   /** Called after Actual accepted a change. `close` is false for edits that keep the sheet open. */
   onSaved: (message: string, close: boolean) => void;
+  /** A transaction was edited from this sheet (refreshes the rest of the app). */
+  onTransactionChanged: (message: string) => void;
 }
 
 type MoveDir = 'in' | 'out';
+/** The sheet opens on what was spent; changing the budget or moving money are one tap away. */
+type View = 'overview' | 'budget' | 'move';
 
 /** Parses a typed amount like "1,234.50" or "-20" into cents; null when it isn't a number. */
 export function parseCents(input: string): number | null {
@@ -86,7 +96,22 @@ function AmountInput({
   );
 }
 
-export function BudgetCategorySheet({ category, groupName, data, monthName, baseCurrency, onClose, onSaved }: BudgetCategorySheetProps) {
+export function BudgetCategorySheet({
+  category,
+  groupName,
+  data,
+  monthName,
+  baseCurrency,
+  accounts,
+  categories,
+  payees,
+  onClose,
+  onSaved,
+  onTransactionChanged,
+}: BudgetCategorySheetProps) {
+  const [view, setView] = useState<View>('overview');
+  const [editTx, setEditTx] = useState<RecentTransaction | null>(null);
+  const txTrigger = useRef<HTMLElement | null>(null);
   const [nameInput, setNameInput] = useState(() => category?.name ?? '');
   const [budgetInput, setBudgetInput] = useState(() => (category ? centsToInput(category.budgeted) : ''));
   const [moveDir, setMoveDir] = useState<MoveDir>(() => (category && category.balance < 0 ? 'in' : 'out'));
@@ -133,7 +158,7 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
     if (newBudgeted === null) return setError('Enter an amount, e.g. 250 or 250.50');
     if (!newName) return setError('Give the category a name');
     const budgetChanged = newBudgeted !== category.budgeted;
-    if (!budgetChanged && !nameChanged) return onClose();
+    if (!budgetChanged && !nameChanged) return setView('overview');
 
     setBusy('save');
     setError(null);
@@ -153,7 +178,8 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
         });
         done.push(budgetChanged ? `renamed to ${newName}` : `${category.name} renamed to ${newName}`);
       }
-      onSaved(done.join(', '), true);
+      onSaved(done.join(', '), false);
+      setView('overview');
     } catch (err) {
       // Keep the sheet open on a partial save, but still refresh what did land.
       if (done.length > 0) onSaved(done.join(', '), false);
@@ -169,6 +195,10 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
     try {
       await fn();
       onSaved(message, close);
+      if (kind === 'move') {
+        setMoveInput('');
+        setView('overview');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -185,7 +215,7 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
       'move',
       () => apiFetch(`/api/budget/${data.month}/move`, { method: 'POST', body: JSON.stringify({ fromCategoryId, toCategoryId, amount: moveCents }) }),
       moveDir === 'in' ? `Moved ${money(moveCents)} from ${otherName} to ${category.name}` : `Moved ${money(moveCents)} from ${category.name} to ${otherName}`,
-      true,
+      false,
     );
   };
 
@@ -226,165 +256,273 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
 
   return (
     <Sheet financialForm open onClose={onClose} title={category.name} subtitle={`${groupName} · ${monthName}`}>
-      <div className="flex flex-col gap-6">
-        {/* Summary */}
-        <section className="flex flex-col gap-2" aria-label="This month">
-          <span className="text-label" style={mutedStyle}>
-            {over ? 'Overspent' : 'Available'}
-          </span>
-          <span className="text-title tabular-nums" style={{ color: over ? 'var(--negative)' : 'var(--text-primary)' }}>
-            {over ? `−${money(-category.balance)}` : money(category.balance)}
-          </span>
-          <ProgressBar ratio={ratio} color={barColor(category.balance, ratio)} label={`${Math.round(ratio * 100)}% spent`} />
-          <span className="text-caption tabular-nums" style={mutedStyle}>
-            {money(category.spent)} spent of {money(category.budgeted)} budgeted
-          </span>
-        </section>
+      {view === 'overview' && (
+        <div key="overview" className="view-in flex flex-col gap-6">
+          {/* Summary */}
+          <section className="flex flex-col gap-2" aria-label="This month">
+            <span className="text-label" style={mutedStyle}>
+              {over ? 'Overspent' : 'Available'}
+            </span>
+            <span className="text-title tabular-nums" style={{ color: over ? 'var(--negative)' : 'var(--text-primary)' }}>
+              {over ? `−${money(-category.balance)}` : money(category.balance)}
+            </span>
+            <ProgressBar ratio={ratio} color={barColor(category.balance, ratio)} label={`${Math.round(ratio * 100)}% spent`} />
+            <span className="text-caption tabular-nums" style={mutedStyle}>
+              {money(category.spent)} spent of {money(category.budgeted)} budgeted
+            </span>
+          </section>
 
-        {/* Budgeted (saved by the Save button at the bottom) */}
-        <form id="budget-category-form" onSubmit={save} className="flex flex-col gap-1.5">
-          <Label htmlFor="budget-amount" className="text-label" style={mutedStyle}>
-            Budgeted for {monthName}
-          </Label>
-          <AmountInput id="budget-amount" value={budgetInput} onChange={setBudgetInput} currency={baseCurrency} />
-          {budgetChips.length > 0 && (
-            <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pt-1">
-              {budgetChips.map((c) => (
-                <Chip key={c.key} onClick={() => setBudgetInput(centsToInput(c.value))}>
-                  {c.text}
-                </Chip>
-              ))}
-            </div>
-          )}
-          {budgetDelta !== 0 && (
-            <p className="text-caption tabular-nums" style={{ color: toBudgetAfter < 0 ? 'var(--negative)' : 'var(--text-muted)' }}>
-              {toBudgetAfter < 0 ? `This overbudgets the month by ${money(-toBudgetAfter)}` : `To budget after saving: ${money(toBudgetAfter)}`}
-            </p>
-          )}
-        </form>
-
-        {/* Move money */}
-        <form onSubmit={moveMoney} className="flex flex-col gap-4 pt-6" style={sectionDivider} aria-labelledby="move-money-label">
-          <span id="move-money-label" className="text-label" style={mutedStyle}>
-            Move money
-          </span>
-          <RadioGroup
-            value={moveDir}
-            onValueChange={(value) => setMoveDir(value as MoveDir)}
-            aria-label="Move direction"
-            className="grid grid-cols-2 gap-1 rounded-2xl p-1"
-            style={{ backgroundColor: 'var(--bg-subtle)' }}
-          >
-            {(
-              [
-                ['in', `Into ${category.name}`],
-                ['out', `Out of ${category.name}`],
-              ] as const
-            ).map(([id, text]) => {
-              const on = moveDir === id;
-              return (
-                <RadioGroupItem
-                  key={id}
-                  value={id}
-                  className="h-10 truncate rounded-xl px-2 text-label transition"
-                  style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
-                >
-                  {text}
-                </RadioGroupItem>
-              );
-            })}
-          </RadioGroup>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="move-other" className="text-label" style={mutedStyle}>
-              {moveDir === 'in' ? 'Take from' : 'Send to'}
-            </Label>
-            <Select
-              id="move-other"
-              aria-label={moveDir === 'in' ? 'Take money from' : 'Send money to'}
-              value={moveOther}
-              onValueChange={setMoveOther}
-              options={moveOptions}
-            />
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setView('budget')}
+              className="flex h-11 items-center justify-center gap-2 rounded-2xl text-label"
+            >
+              <PencilLine className="h-4 w-4" />
+              Change budget
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setView('move')}
+              className="flex h-11 items-center justify-center gap-2 rounded-2xl text-label"
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              Move money
+            </Button>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="move-amount" className="text-label" style={mutedStyle}>
-              Amount
+          {over && (
+            <Button
+              type="button"
+              onClick={() => {
+                setBudgetInput(centsToInput(category.budgeted - category.balance));
+                setView('budget');
+              }}
+              className="press -mt-3 flex min-h-11 items-center justify-between gap-3 rounded-2xl px-4 text-left text-label"
+              style={{ backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }}
+            >
+              <span>Cover the {money(-category.balance)} overspending</span>
+              <span aria-hidden="true">›</span>
+            </Button>
+          )}
+
+          <CategoryTransactions
+            month={data.month}
+            monthName={monthName}
+            categoryId={category.id}
+            categoryName={category.name}
+            baseCurrency={baseCurrency}
+            reloadKey={data}
+            onSelect={(t, trigger) => {
+              txTrigger.current = trigger;
+              setEditTx(t);
+            }}
+          />
+        </div>
+      )}
+
+      {view === 'budget' && (
+        <div key="budget" className="view-in flex flex-col gap-6">
+          <Button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setView('overview');
+            }}
+            className="press -ml-1.5 flex min-h-11 items-center gap-1 self-start rounded-xl pr-2.5 text-label"
+            style={mutedStyle}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            {category.name}
+          </Button>
+          {/* Budgeted (saved by the Save button at the bottom) */}
+          <form id="budget-category-form" onSubmit={save} className="flex flex-col gap-1.5">
+            <Label htmlFor="budget-amount" className="text-label" style={mutedStyle}>
+              Budgeted for {monthName}
             </Label>
-            <div className="flex gap-2">
-              <AmountInput id="move-amount" value={moveInput} onChange={setMoveInput} currency={baseCurrency} />
-              <Button
-                type="submit"
-                disabled={busy !== null || moveCents === null || moveCents <= 0}
-                variant="secondary"
-                className="h-12 shrink-0 rounded-2xl px-5 text-body disabled:opacity-50"
-              >
-                {busy === 'move' ? 'Moving…' : 'Move'}
-              </Button>
-            </div>
-            {moveChips.length > 0 && (
+            <AmountInput id="budget-amount" value={budgetInput} onChange={setBudgetInput} currency={baseCurrency} />
+            {budgetChips.length > 0 && (
               <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pt-1">
-                {moveChips.map((c) => (
-                  <Chip key={c.key} onClick={() => setMoveInput(centsToInput(c.value))}>
+                {budgetChips.map((c) => (
+                  <Chip key={c.key} onClick={() => setBudgetInput(centsToInput(c.value))}>
                     {c.text}
                   </Chip>
                 ))}
               </div>
             )}
-            {moveWarning && (
-              <p className="text-caption" style={{ color: 'var(--warning)' }}>
-                {moveWarning}
+            {budgetDelta !== 0 && (
+              <p className="text-caption tabular-nums" style={{ color: toBudgetAfter < 0 ? 'var(--negative)' : 'var(--text-muted)' }}>
+                {toBudgetAfter < 0 ? `This overbudgets the month by ${money(-toBudgetAfter)}` : `To budget after saving: ${money(toBudgetAfter)}`}
               </p>
             )}
-          </div>
-        </form>
+          </form>
 
-        {/* Category settings */}
-        <section className="flex flex-col gap-4 pt-6" style={sectionDivider} aria-label="Category settings">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="budget-category-name" className="text-label" style={mutedStyle}>
-              Name
-            </Label>
-            <Input
-              id="budget-category-name"
-              form="budget-category-form"
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              autoComplete="off"
-              maxLength={100}
-            />
-          </div>
-          <Switch
-            checked={category.carryover}
-            disabled={busy !== null}
-            onCheckedChange={toggleRollover}
-            className="flex min-h-11 items-center justify-between gap-3 text-left disabled:opacity-60"
-          >
-            <span className="flex flex-col gap-0.5">
-              <span className="text-body">Roll over overspending</span>
-              <span className="text-caption" style={mutedStyle}>
-                Carry a negative balance into next month instead of taking it from To budget.
+          {/* Category settings */}
+          <section className="flex flex-col gap-4 pt-6" style={sectionDivider} aria-label="Category settings">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="budget-category-name" className="text-label" style={mutedStyle}>
+                Name
+              </Label>
+              <Input
+                id="budget-category-name"
+                form="budget-category-form"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                autoComplete="off"
+                maxLength={100}
+              />
+            </div>
+            <Switch
+              checked={category.carryover}
+              disabled={busy !== null}
+              onCheckedChange={toggleRollover}
+              className="flex min-h-11 items-center justify-between gap-3 text-left disabled:opacity-60"
+            >
+              <span className="flex flex-col gap-0.5">
+                <span className="text-body">Roll over overspending</span>
+                <span className="text-caption" style={mutedStyle}>
+                  Carry a negative balance into next month instead of taking it from To budget.
+                </span>
               </span>
+              <SwitchThumb className="shrink-0" />
+            </Switch>
+          </section>
+
+          {error && (
+            <Alert as="p" variant="destructive">
+              {error}
+            </Alert>
+          )}
+
+          <Button
+            type="submit"
+            form="budget-category-form"
+            disabled={busy !== null || newBudgeted === null || !newName}
+            variant="default"
+            className="h-12 w-full rounded-2xl text-body disabled:opacity-50"
+          >
+            {busy === 'save' ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      )}
+
+      {view === 'move' && (
+        <div key="move" className="view-in flex flex-col gap-6">
+          <Button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setView('overview');
+            }}
+            className="press -ml-1.5 flex min-h-11 items-center gap-1 self-start rounded-xl pr-2.5 text-label"
+            style={mutedStyle}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            {category.name}
+          </Button>
+          {/* Move money */}
+          <form onSubmit={moveMoney} className="flex flex-col gap-4" aria-labelledby="move-money-label">
+            <span id="move-money-label" className="text-label" style={mutedStyle}>
+              Move money
             </span>
-            <SwitchThumb className="shrink-0" />
-          </Switch>
-        </section>
+            <RadioGroup
+              value={moveDir}
+              onValueChange={(value) => setMoveDir(value as MoveDir)}
+              aria-label="Move direction"
+              className="grid grid-cols-2 gap-1 rounded-2xl p-1"
+              style={{ backgroundColor: 'var(--bg-subtle)' }}
+            >
+              {(
+                [
+                  ['in', `Into ${category.name}`],
+                  ['out', `Out of ${category.name}`],
+                ] as const
+              ).map(([id, text]) => {
+                const on = moveDir === id;
+                return (
+                  <RadioGroupItem
+                    key={id}
+                    value={id}
+                    className="h-10 truncate rounded-xl px-2 text-label transition"
+                    style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
+                  >
+                    {text}
+                  </RadioGroupItem>
+                );
+              })}
+            </RadioGroup>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="move-other" className="text-label" style={mutedStyle}>
+                {moveDir === 'in' ? 'Take from' : 'Send to'}
+              </Label>
+              <Select
+                id="move-other"
+                aria-label={moveDir === 'in' ? 'Take money from' : 'Send money to'}
+                value={moveOther}
+                onValueChange={setMoveOther}
+                options={moveOptions}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="move-amount" className="text-label" style={mutedStyle}>
+                Amount
+              </Label>
+              <div className="flex gap-2">
+                <AmountInput id="move-amount" value={moveInput} onChange={setMoveInput} currency={baseCurrency} />
+                <Button
+                  type="submit"
+                  disabled={busy !== null || moveCents === null || moveCents <= 0}
+                  variant="secondary"
+                  className="h-12 shrink-0 rounded-2xl px-5 text-body disabled:opacity-50"
+                >
+                  {busy === 'move' ? 'Moving…' : 'Move'}
+                </Button>
+              </div>
+              {moveChips.length > 0 && (
+                <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pt-1">
+                  {moveChips.map((c) => (
+                    <Chip key={c.key} onClick={() => setMoveInput(centsToInput(c.value))}>
+                      {c.text}
+                    </Chip>
+                  ))}
+                </div>
+              )}
+              {moveWarning && (
+                <p className="text-caption" style={{ color: 'var(--warning)' }}>
+                  {moveWarning}
+                </p>
+              )}
+            </div>
+          </form>
 
-        {error && (
-          <Alert as="p" variant="destructive">
-            {error}
-          </Alert>
-        )}
+          {error && (
+            <Alert as="p" variant="destructive">
+              {error}
+            </Alert>
+          )}
 
-        <Button
-          type="submit"
-          form="budget-category-form"
-          disabled={busy !== null || newBudgeted === null || !newName}
-          variant="default"
-          className="h-12 w-full rounded-2xl text-body disabled:opacity-50"
-        >
-          {busy === 'save' ? 'Saving…' : 'Save'}
-        </Button>
-      </div>
+        </div>
+      )}
+
+      {editTx && (
+        <EditTransactionSheet
+          key={editTx.id}
+          transaction={editTx}
+          accounts={accounts}
+          categories={categories}
+          payees={payees}
+          baseCurrency={baseCurrency}
+          onClose={() => {
+            setEditTx(null);
+            txTrigger.current?.focus({ preventScroll: true });
+          }}
+          onSaved={() => {
+            setEditTx(null);
+            onTransactionChanged('Transaction updated');
+          }}
+        />
+      )}
     </Sheet>
   );
 }
