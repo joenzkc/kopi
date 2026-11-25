@@ -411,38 +411,34 @@ inboxRoutes.post('/:id/approve', requireSession, withEmailLock, async (c) => {
     .slice(0, 32)}`;
 
   let txId: string = importedId;
-  if (d.transferAccountId) {
-    const payees = await actual.getPayees();
-    const transferPayee = payees.find((p) => p.transfer_acct === d.transferAccountId);
-    if (!transferPayee) return c.json({ error: 'Could not find the transfer payee for that account in Actual' }, 400);
-    await actual.addTransaction(
-      d.accountId,
-      {
-        date: d.date,
-        amount: Math.round(d.amount * 100),
-        payee: transferPayee.id,
-        notes: d.notes || undefined,
-        cleared: true,
-        imported_id: importedId,
-      },
-      { runTransfers: true },
-    );
-  } else if (addSeparately) {
-    // An explicitly separate charge must bypass Actual's amount/date reconciliation.
+  if (d.transferAccountId || addSeparately) {
+    const transferPayee = d.transferAccountId
+      ? (await actual.getPayees()).find((p) => p.transfer_acct === d.transferAccountId)
+      : undefined;
+    if (d.transferAccountId && !transferPayee) return c.json({ error: 'Could not find the transfer account in Actual' }, 400);
+
+    // These imports bypass Actual's reconciliation, so look for a prior successful write before retrying.
     const transactions = await actual.getAccountTransactions(d.accountId, d.date, d.date);
     const existing = transactions.find((tx) => tx.imported_id === importedId);
     if (existing) {
+      if (transferPayee && (!existing.transfer_id || existing.payee !== transferPayee.id)) {
+        return c.json({ error: 'This email already has a different transaction in Actual. Check Activity before importing again.' }, 409);
+      }
       txId = existing.id;
     } else {
-      await actual.addTransaction(d.accountId, {
+      const details = {
         date: d.date,
         amount: Math.round(d.amount * 100),
-        payee_name: d.payee!,
-        category: d.categoryId || undefined,
         notes: d.notes || undefined,
         cleared: true,
         imported_id: importedId,
-      });
+      };
+      if (transferPayee) {
+        await actual.addTransaction(d.accountId, { ...details, payee: transferPayee.id }, { runTransfers: true });
+      } else {
+        // An explicitly separate charge keeps the user-selected payee and category.
+        await actual.addTransaction(d.accountId, { ...details, payee_name: d.payee!, category: d.categoryId || undefined });
+      }
     }
   } else {
     // imported_payee carries the bank's original text so Actual's payee rename rules match it.

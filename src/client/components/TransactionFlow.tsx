@@ -28,7 +28,7 @@ import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogTitle } from '
 export type FlowKind = 'expense' | 'income' | 'transfer';
 export type FlowRequest = { mode: 'add'; kind?: FlowKind } | { mode: 'review'; event: EmailEventRecord };
 
-type Step = 'amount' | 'payee' | 'details' | 'category' | 'done';
+type Step = 'amount' | 'payee' | 'transferAccount' | 'details' | 'category' | 'done';
 
 interface TransactionFlowProps {
   request: FlowRequest;
@@ -95,13 +95,17 @@ export function TransactionFlow({
 
   const { valuesHidden, formatMoney, formatSignedMoney } = useFinancialValues();
   const [step, setStep] = useState<Step>(review ? 'details' : 'amount');
-  const [kind, setKind] = useState<FlowKind>(() => {
+  const [direction, setDirection] = useState<'expense' | 'income'>(() => {
     if (review) {
-      if (review.parsed?.transferAccountId) return 'transfer';
-      return (review.parsed?.amountBase ?? -1) >= 0 ? 'income' : 'expense';
+      const amount = review.parsed?.amountBase ?? review.parsed?.amount;
+      if (!amount) return review.parsed?.direction || 'expense';
+      return amount > 0 ? 'income' : 'expense';
     }
-    return request.mode === 'add' ? request.kind || 'expense' : 'expense';
+    return request.mode === 'add' && request.kind === 'income' ? 'income' : 'expense';
   });
+  const [isTransfer, setIsTransfer] = useState(() =>
+    request.mode === 'review' ? Boolean(request.event.parsed?.transferAccountId) : request.kind === 'transfer',
+  );
   const [amt, setAmt] = useState(() => {
     const v = review?.parsed?.amountBase;
     return v !== null && v !== undefined ? Math.abs(v).toFixed(2) : '';
@@ -135,8 +139,11 @@ export function TransactionFlow({
   }, []);
 
   const n = Number.parseFloat(amt) || 0;
-  const isTransfer = kind === 'transfer';
-  const transferIncoming = Boolean(review && isTransfer && (review.parsed?.amount ?? -1) > 0);
+  const kind: FlowKind = isTransfer ? 'transfer' : direction;
+  const incomingReview = Boolean(review && direction === 'income');
+  const transferIncoming = isTransfer && incomingReview;
+  const pickingTransferAccount = isTransfer || step === 'transferAccount';
+  const transferAccounts = openAccounts.filter((a) => a.id !== accountId);
   const signed = kind === 'income' || transferIncoming ? n : -n;
   const parsedRef = review?.parsed?.accountRef || null;
   const rememberLabel = parsedRef?.label || (review?.parsed?.alertKey ? `${senderLabel(review.parsed.originalSender || review.sender)} alerts like this` : null);
@@ -187,8 +194,8 @@ export function TransactionFlow({
   }, [step]);
 
   useEffect(() => {
-    if (step === 'payee' && !isTransfer) payeeInputRef.current?.focus();
-  }, [step, isTransfer]);
+    if (step === 'payee' && !pickingTransferAccount) payeeInputRef.current?.focus();
+  }, [step, pickingTransferAccount]);
 
   useLayoutEffect(() => {
     if (!linkOpen) return;
@@ -284,6 +291,7 @@ export function TransactionFlow({
 
   // --- save ---
   async function save() {
+    if (busy) return;
     setError(null);
     if (n <= 0) {
       setStep('amount');
@@ -293,7 +301,7 @@ export function TransactionFlow({
       setError(parsedRef ? `Pick which account ${parsedRef.label} belongs to.` : 'Pick an account first.');
       return;
     }
-    if (isTransfer && !toAccountId) {
+    if (isTransfer && !transferAccounts.some((a) => a.id === toAccountId)) {
       setStep('payee');
       return;
     }
@@ -332,11 +340,13 @@ export function TransactionFlow({
       }
       invalidateRecent();
       const title = review ? 'Imported to Actual' : isTransfer ? 'Transfer recorded' : 'Added to Actual';
-      const who = isTransfer ? `${accountName(accountId)} → ${accountName(toAccountId)}` : payeeName.trim();
+      const who = isTransfer
+        ? `${accountName(transferIncoming ? toAccountId : accountId)} → ${accountName(transferIncoming ? accountId : toAccountId)}`
+        : payeeName.trim();
       setDone({
         title,
         line1: isTransfer ? who : `${who} · ${catName}`,
-        line2: `${isTransfer ? 'From ' : ''}${accountName(accountId)} · ${friendlyDate(date)}${!review && !cleared ? ' · Uncleared' : ''}`,
+        line2: `${isTransfer ? '' : accountName(accountId) + ' · '}${friendlyDate(date)}${!review && !cleared ? ' · Uncleared' : ''}`,
       });
       setStep('done');
       onChanged(''); // the done screen already confirms it; no toast needed
@@ -362,7 +372,8 @@ export function TransactionFlow({
   }
 
   function addAnother() {
-    setKind('expense');
+    setDirection('expense');
+    setIsTransfer(false);
     setAmt('');
     setPayeeName('');
     setCategoryId('');
@@ -378,11 +389,21 @@ export function TransactionFlow({
 
   function chooseKind(k: FlowKind) {
     if (k === kind) return;
-    setKind(k);
-    setCategoryId('');
-    setSuggested(false);
-    if (!review) setPayeeName('');
-    setToAccountId('');
+    setIsTransfer(k === 'transfer');
+    if (!review || (k !== 'transfer' && k !== direction)) {
+      setCategoryId('');
+      setSuggested(false);
+    }
+    if (k !== 'transfer') setDirection(k);
+    if (!review) {
+      setPayeeName('');
+      setToAccountId('');
+    }
+  }
+
+  function selectAccount(id: string) {
+    setAccountId(id);
+    if (id === toAccountId) setToAccountId('');
   }
 
   // --- small building blocks ---
@@ -434,6 +455,8 @@ export function TransactionFlow({
   });
 
   const amountSummary = isTransfer ? formatMoney(n, baseCurrency) : formatSignedMoney(signed, baseCurrency);
+  const transferAction = incomingReview ? 'Transfer from account' : 'Transfer to account';
+  const intoAccount = kind === 'income' || transferIncoming;
   const dialogTitle = review ? 'Review email transaction' : 'New transaction';
   const visibleStep = review && valuesHidden ? 'privateReview' : step;
 
@@ -499,14 +522,14 @@ export function TransactionFlow({
                   className="relative flex h-10 items-center gap-1.5 rounded-full border pl-4 pr-3 text-sm font-semibold"
                   style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
                 >
-                  <span style={{ color: 'var(--text-muted)' }}>{kind === 'income' ? 'Into' : 'From'}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{intoAccount ? 'Into' : 'From'}</span>
                   <span>{accountName(accountId)}</span>
                   <ChevronDown className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
                   <NativeSelect
                     variant="unstyled"
-                    aria-label={kind === 'income' ? 'Into account' : 'From account'}
+                    aria-label={intoAccount ? 'Into account' : 'From account'}
                     value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
+                    onChange={(e) => selectAccount(e.target.value)}
                     className="absolute inset-0 cursor-pointer opacity-0"
                   >
                     {openAccounts.map((a) => (
@@ -546,15 +569,15 @@ export function TransactionFlow({
         )}
 
         {/* ---------- PAYEE / DESTINATION ---------- */}
-        {visibleStep === 'payee' && (
+        {(visibleStep === 'payee' || visibleStep === 'transferAccount') && (
           <div className="flex min-h-0 flex-1 flex-col">
             {header(
-              isTransfer ? 'Move to which account?' : kind === 'income' ? 'Who paid you?' : 'Who was it?',
+              pickingTransferAccount ? transferAction : kind === 'income' ? 'Who paid you?' : 'Who was it?',
               () => setStep(review || payeeName || toAccountId ? 'details' : 'amount'),
               amountSummary,
             )}
             <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-5 safe-pb">
-              {!isTransfer && (
+              {!pickingTransferAccount && (
                 <Label
                   className="flex h-12 items-center gap-2 rounded-2xl border-2 px-3.5"
                   style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--accent-text)', color: 'var(--text-muted)' }}
@@ -581,10 +604,10 @@ export function TransactionFlow({
                 </Label>
               )}
               <span className={sectionLabel} style={{ color: 'var(--text-muted)' }}>
-                {isTransfer ? 'Your accounts' : query.trim() ? 'Matches' : 'Recent payees'}
+                {pickingTransferAccount ? review?.parsed?.counterRef?.label || 'Your accounts' : query.trim() ? 'Matches' : 'Recent payees'}
               </span>
               <div className="no-scrollbar -mx-1 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-1">
-                {!isTransfer && query.trim() && !exactPayee && (
+                {!pickingTransferAccount && query.trim() && !exactPayee && (
                   <Button
                     type="button"
                     onClick={() => pickPayee(query.trim())}
@@ -595,30 +618,29 @@ export function TransactionFlow({
                     Create “{query.trim()}”
                   </Button>
                 )}
-                {isTransfer
-                  ? openAccounts
-                      .filter((a) => a.id !== accountId)
-                      .map((a) => (
-                        <Button
-                          key={a.id}
-                          type="button"
-                          onClick={() => {
-                            setToAccountId(a.id);
-                            setStep('details');
-                          }}
-                          className="press flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left"
-                          style={{ backgroundColor: 'var(--bg-surface)', borderColor: a.id === toAccountId ? 'var(--accent-text)' : 'var(--border-subtle)' }}
-                        >
-                          <Tile colorKey={a.name} label={a.name} size={40} />
-                          <span className="flex min-w-0 flex-1 flex-col">
-                            <span className="truncate text-[15px] font-bold">{a.name}</span>
-                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                              {a.offbudget ? 'Off budget' : 'Budget account'} · {formatMoney((a.workingBalance ?? 0) / 100, baseCurrency)}
-                            </span>
+                {pickingTransferAccount
+                  ? transferAccounts.map((a) => (
+                      <Button
+                        key={a.id}
+                        type="button"
+                        onClick={() => {
+                          chooseKind('transfer');
+                          setToAccountId(a.id);
+                          setStep('details');
+                        }}
+                        className="press flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left"
+                        style={{ backgroundColor: 'var(--bg-surface)', borderColor: a.id === toAccountId ? 'var(--accent-text)' : 'var(--border-subtle)' }}
+                      >
+                        <Tile colorKey={a.name} label={a.name} size={40} />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-[15px] font-bold">{a.name}</span>
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {a.offbudget ? 'Off budget' : 'Budget account'} · {formatMoney((a.workingBalance ?? 0) / 100, baseCurrency)}
                           </span>
-                          <ChevronRight className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
-                        </Button>
-                      ))
+                        </span>
+                        <ChevronRight className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                      </Button>
+                    ))
                   : payeeOptions.map((p) => (
                       <Button
                         key={p.name}
@@ -637,7 +659,12 @@ export function TransactionFlow({
                         <ChevronRight className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
                       </Button>
                     ))}
-                {!isTransfer && !query.trim() && payeeOptions.length === 0 && (
+                {pickingTransferAccount && transferAccounts.length === 0 && (
+                  <p className="px-1 py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                    A transfer needs two open accounts.
+                  </p>
+                )}
+                {!pickingTransferAccount && !query.trim() && payeeOptions.length === 0 && (
                   <p className="px-1 py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
                     Type a payee name to search or create one.
                   </p>
@@ -674,17 +701,6 @@ export function TransactionFlow({
                     <span className="text-xs" style={{ color: 'var(--warning)' }}>
                       {review.parsed.currency} {Math.abs(review.parsed.amount).toLocaleString('en-SG')} converted at today’s rate. Adjust the amount if your statement differs.
                     </span>
-                  )}
-                  {review.parsed?.counterRef && !isTransfer && (
-                    <Button
-                      type="button"
-                      onClick={() => chooseKind('transfer')}
-                      className="flex items-center gap-1.5 self-start text-xs font-bold"
-                      style={{ color: 'var(--accent-text)' }}
-                    >
-                      <ArrowLeftRight className="h-3.5 w-3.5" />
-                      Other side is {review.parsed.counterRef.label}. Is it one of your accounts? Make it a transfer
-                    </Button>
                   )}
                   {review.parsed?.matchedRuleName && (
                     <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -735,7 +751,7 @@ export function TransactionFlow({
                   style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
                 >
                   <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
-                    {isTransfer ? 'Transfer to' : kind === 'income' ? 'From' : 'Paid to'}
+                    {isTransfer ? (transferIncoming ? 'Transfer from' : 'Transfer to') : kind === 'income' ? 'From' : 'Paid to'}
                   </span>
                   <span className="w-full truncate text-lg font-extrabold">
                     {isTransfer ? (toAccountId ? accountName(toAccountId) : 'Pick account') : payeeName || 'Add payee'}
@@ -770,16 +786,30 @@ export function TransactionFlow({
                 </p>
               )}
 
-              {!isTransfer && review && rawPayee && !review.parsed?.payeeFromRule && (
-                <Button
-                  type="button"
-                  ref={linkPayeeOpenerRef}
-                  onClick={() => setLinkOpen(true)}
-                  className="-mt-2 self-start px-1 text-xs font-bold"
-                  style={{ color: 'var(--accent-text)' }}
-                >
-                  Always rename “{rawPayee}” to an existing payee…
-                </Button>
+              {review && (
+                <div className="-mt-2 flex flex-wrap items-center gap-x-3">
+                  {!isTransfer && rawPayee && !review.parsed?.payeeFromRule && (
+                    <Button
+                      type="button"
+                      ref={linkPayeeOpenerRef}
+                      onClick={() => setLinkOpen(true)}
+                      className="min-h-11 px-1 text-left text-xs font-bold"
+                      style={{ color: 'var(--accent-text)' }}
+                    >
+                      Always rename “{rawPayee}” to an existing payee…
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => isTransfer ? chooseKind(direction) : setStep('transferAccount')}
+                    className="flex min-h-11 items-center gap-1.5 px-1 text-xs font-bold"
+                    style={{ color: 'var(--accent-text)' }}
+                  >
+                    <ArrowLeftRight className="h-4 w-4" />
+                    {isTransfer ? 'Use a payee' : transferAction}
+                  </Button>
+                </div>
               )}
 
               {!isTransfer && (
@@ -826,7 +856,7 @@ export function TransactionFlow({
               )}
               {isTransfer && (
                 <p className="px-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  Moving money between your own accounts needs no category. Actual creates the matching entry in{' '}
+                  Actual creates the matching entry in{' '}
                   {toAccountId ? accountName(toAccountId) : 'the other account'}.
                 </p>
               )}
@@ -837,7 +867,7 @@ export function TransactionFlow({
               >
                 <Label className="relative flex min-h-[54px] items-center justify-between gap-3">
                   <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                    {kind === 'income' ? 'Into account' : isTransfer ? 'From account' : 'Account'}
+                    {intoAccount ? 'Into account' : isTransfer ? 'From account' : 'Account'}
                   </span>
                   <span className="flex min-w-0 items-center gap-1 text-sm font-bold" style={{ color: accountId ? undefined : 'var(--accent-text)' }}>
                     <span className="truncate">{accountId ? accountName(accountId) : 'Choose account'}</span>
@@ -845,12 +875,9 @@ export function TransactionFlow({
                   </span>
                   <NativeSelect
                     variant="unstyled"
-                    aria-label="Account"
+                    aria-label={intoAccount ? 'Into account' : isTransfer ? 'From account' : 'Account'}
                     value={accountId}
-                    onChange={(e) => {
-                      setAccountId(e.target.value);
-                      if (e.target.value === toAccountId) setToAccountId('');
-                    }}
+                    onChange={(e) => selectAccount(e.target.value)}
                     className="absolute inset-0 cursor-pointer opacity-0"
                   >
                     {!accountId && <NativeSelectOption value="">Choose an account…</NativeSelectOption>}
