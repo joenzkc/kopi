@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, X } from 'lucide-react';
 import type { ActualAccount, EnrichedRsuGrant, RsuTrancheStatus } from '@shared/types';
 import {
   VESTING_PRESETS,
@@ -11,17 +11,11 @@ import { apiFetch } from '../lib/api';
 import { Sheet } from './Sheet';
 import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
-import { Label } from '@client/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
-
-interface StockSearchHit {
-  symbol: string;
-  name: string;
-  asset_type: 'stock' | 'etf' | 'crypto';
-  provider_id: string;
-  exchange?: string;
-  currency: string;
-}
+import { Select } from '@client/components/ui/select';
+import { Switch, SwitchThumb } from '@client/components/ui/switch';
+import { DeleteButton, Field, SubmitButton } from './portfolio/parts';
+import { SymbolSearch, type SearchHit } from './portfolio/SymbolSearch';
+import { accountOptions, currencyOptions, todayLocalIso } from './portfolio/format';
 
 interface DraftTranche {
   key: string;
@@ -41,11 +35,6 @@ interface RsuGrantSheetProps {
   accounts: ActualAccount[];
   onSaved: (msg: string) => void;
   onError: (msg: string) => void;
-}
-
-function todayLocalIso(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
 export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onError }: RsuGrantSheetProps) {
@@ -73,11 +62,6 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
 
   const [tranches, setTranches] = useState<DraftTranche[]>([]);
   const [saving, setSaving] = useState(false);
-
-  // Ticker search
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<StockSearchHit[]>([]);
-  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -131,31 +115,7 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
       setManualOverride(false);
       setTranches([]);
     }
-    setSearchQuery('');
-    setSearchResults([]);
   }, [open, editing]);
-
-  // Yahoo ticker search
-  useEffect(() => {
-    if (!open || editing || searchQuery.trim().length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await apiFetch<{ results: StockSearchHit[] }>(
-          `/api/portfolio/search?q=${encodeURIComponent(searchQuery.trim())}&type=stock`,
-        );
-        setSearchResults(res.results);
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, open, editing]);
 
   // Auto-generate schedule when creating a new grant and user hasn't manually edited rows
   useEffect(() => {
@@ -220,13 +180,11 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
     );
   }
 
-  function pickSearchHit(hit: StockSearchHit) {
+  function pickSearchHit(hit: SearchHit) {
     setSymbol(hit.symbol);
     setName(hit.name);
     setProviderId(hit.provider_id);
     setCurrency(hit.currency);
-    setSearchQuery('');
-    setSearchResults([]);
   }
 
   function addManualTranche() {
@@ -332,119 +290,64 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
     }
   }
 
-  const offBudgetAccounts = accounts.filter((a) => a.offbudget);
+  async function handleDelete() {
+    if (!editing) return;
+    const label = editing.grant_name ? `${editing.symbol} (${editing.grant_name})` : editing.symbol;
+    setSaving(true);
+    try {
+      await apiFetch(`/api/portfolio/rsus/${editing.id}`, { method: 'DELETE' });
+      onSaved(`Removed ${label}`);
+      onClose();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const today = todayLocalIso();
   const sumTrancheUnits = tranches.reduce((acc, t) => acc + (Number(t.units) || 0), 0);
   const presetInfo = VESTING_PRESETS.find((p) => p.id === preset);
+  const onSurface = 'bg-[var(--bg-surface)]';
+  /** Changing a generator input re-enables auto-generation for new grants. */
+  const regen = () => {
+    if (!editing) setManualOverride(false);
+  };
 
   return (
     <Sheet
       financialForm
       open={open}
       onClose={onClose}
-      title={editing ? `Edit ${editing.symbol} RSU Grant` : 'Add RSU Grant & Vesting'}
-      subtitle="Live stock valuation · past vest dates auto-vest into holdings"
+      title={editing ? `${editing.symbol} grant` : 'Add RSU grant'}
+      subtitle="Valued at the live share price. Past vest dates vest automatically."
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Yahoo ticker search */}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {!editing && (
-          <div className="relative">
-            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Search company stock ticker (Yahoo Finance)
-            </Label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4" style={{ color: 'var(--text-muted)' }} />
-              <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by ticker or company name..."
-                className="pl-9"
-              />
-            </div>
-            {(searching || searchResults.length > 0) && (
-              <div
-                className="mt-1.5 max-h-44 overflow-y-auto rounded-xl shadow-lg"
-                style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-              >
-                {searching && (
-                  <div className="p-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Searching...
-                  </div>
-                )}
-                {searchResults.map((hit) => (
-                  <Button
-                    key={`${hit.asset_type}:${hit.provider_id}`}
-                    type="button"
-                    onClick={() => pickSearchHit(hit)}
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-xs transition hover:opacity-80"
-                    style={{ borderBottom: '1px solid var(--border-subtle)' }}
-                  >
-                    <div className="min-w-0">
-                      <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                        {hit.symbol}
-                      </span>
-                      <span className="ml-2 truncate" style={{ color: 'var(--text-muted)' }}>
-                        {hit.name}
-                      </span>
-                    </div>
-                    <span className="ml-2 shrink-0 text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                      {hit.exchange || hit.currency}
-                    </span>
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
+          <SymbolSearch type="stock" label="Find the company" placeholder="Ticker or company name" onPick={pickSearchHit} />
         )}
 
-        {/* Symbol + Ticker + Name */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="min-w-0">
-            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Symbol
-            </Label>
-            <Input required value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="ACME" />
-          </div>
-          <div className="min-w-0">
-            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Yahoo Ticker
-            </Label>
-            <Input
-              required
-              value={providerId}
-              onChange={(e) => setProviderId(e.target.value)}
-              placeholder="ACME"
-            />
-          </div>
+          <Field label="Symbol" htmlFor="g-symbol">
+            <Input id="g-symbol" required value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="ACME" autoCapitalize="characters" />
+          </Field>
+          <Field label="Yahoo ticker" htmlFor="g-provider">
+            <Input id="g-provider" required value={providerId} onChange={(e) => setProviderId(e.target.value)} placeholder="ACME" />
+          </Field>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="min-w-0">
-            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Company Name
-            </Label>
-            <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Corp." />
-          </div>
-          <div className="min-w-0">
-            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Grant Label (optional)
-            </Label>
-            <Input
-              value={grantName}
-              onChange={(e) => setGrantName(e.target.value)}
-              placeholder="e.g. New-hire grant"
-            />
-          </div>
-        </div>
+        <Field label="Company" htmlFor="g-name">
+          <Input id="g-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Corp." />
+        </Field>
 
-        {/* Grant date, price, currency */}
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          <div className="col-span-2 min-w-0 sm:col-span-1">
-            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Grant Date
-            </Label>
+        <Field label="Grant label" htmlFor="g-label">
+          <Input id="g-label" value={grantName} onChange={(e) => setGrantName(e.target.value)} placeholder="Optional, e.g. New-hire grant" />
+        </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Grant date" htmlFor="g-date">
             <Input
+              id="g-date"
               required
               type="date"
               value={grantDate}
@@ -454,390 +357,285 @@ export function RsuGrantSheet({ open, onClose, editing, accounts, onSaved, onErr
                 if (!editing && !manualOverride) setVestStartDate(next);
               }}
             />
-          </div>
-          <div className="min-w-0">
-            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Grant Price
-            </Label>
+          </Field>
+          <Field label="Currency">
+            <Select aria-label="Grant currency" value={currency} onValueChange={setCurrency} options={currencyOptions('USD')} />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Grant price" htmlFor="g-price">
             <Input
+              id="g-price"
               type="number"
+              inputMode="decimal"
               step="any"
               min="0"
               value={grantPrice}
               onChange={(e) => setGrantPrice(e.target.value)}
               placeholder="Optional"
+              className="tabular-nums"
             />
-          </div>
-          <div className="min-w-0">
-            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Currency
-            </Label>
-            <NativeSelect value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {['USD', 'SGD', 'EUR', 'GBP', 'HKD', 'JPY', 'AUD'].map((c) => (
-                <NativeSelectOption key={c} value={c}>
-                  {c}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </div>
-        </div>
-
-        {/* Vesting Schedule Generator */}
-        <div className="rounded-2xl p-3.5 space-y-3" style={{ backgroundColor: 'var(--bg-subtle)' }}>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
-              <Calendar className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--accent-text)' }} />
-              Vesting Schedule Builder
-            </div>
-            {editing && (
-              <Button
-                type="button"
-                onClick={regenerateNow}
-                className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition hover:opacity-80"
-                style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text)' }}
-              >
-                <RefreshCw className="h-3 w-3" />
-                Regenerate
-              </Button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            <div className="min-w-0">
-              <Label className="mb-1 block text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-                Total Shares Granted
-              </Label>
-              <Input
-                type="number"
-                step="any"
-                min="0"
-                value={totalUnits}
-                onChange={(e) => {
-                  setTotalUnits(e.target.value);
-                  if (!editing) setManualOverride(false);
-                }}
-                placeholder="e.g. 100"
-                style={{ backgroundColor: 'var(--bg-surface)' }}
-              />
-            </div>
-            <div className="min-w-0">
-              <Label className="mb-1 block text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-                Vesting Start Date
-              </Label>
-              <Input
-                type="date"
-                value={vestStartDate}
-                onChange={(e) => {
-                  setVestStartDate(e.target.value);
-                  if (!editing) setManualOverride(false);
-                }}
-                style={{ backgroundColor: 'var(--bg-surface)' }}
-              />
-            </div>
-          </div>
-
-          {/* Preset selector chips */}
-          <div>
-            <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-              <span>Schedule Preset</span>
-              <Label className="inline-flex shrink-0 items-center gap-1.5 cursor-pointer">
-                <Input
-                  variant="unstyled"
-                  type="checkbox"
-                  checked={roundWhole}
-                  onChange={(e) => {
-                    setRoundWhole(e.target.checked);
-                    if (!editing) setManualOverride(false);
-                  }}
-                />
-                <span>Whole shares</span>
-              </Label>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {VESTING_PRESETS.map((p) => {
-                const active = preset === p.id;
-                return (
-                  <Button
-                    key={p.id}
-                    type="button"
-                    onClick={() => {
-                      setPreset(p.id);
-                      if (!editing) setManualOverride(false);
-                    }}
-                    className="rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition"
-                    style={{
-                      backgroundColor: active ? 'var(--accent-soft)' : 'var(--bg-surface)',
-                      color: active ? 'var(--accent-text)' : 'var(--text-secondary)',
-                      border: `1px solid ${active ? 'var(--accent-border)' : 'var(--border-subtle)'}`,
-                    }}
-                  >
-                    {p.label}
-                  </Button>
-                );
-              })}
-            </div>
-            {presetInfo && (
-              <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                {presetInfo.description}
-              </p>
-            )}
-          </div>
-
-          {preset === 'custom' && (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <div className="min-w-0">
-                <Label className="mb-1 block text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-                  Years
-                </Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="6"
-                  value={customYears}
-                  onChange={(e) => {
-                    setCustomYears(e.target.value);
-                    if (!editing) setManualOverride(false);
-                  }}
-                  style={{ backgroundColor: 'var(--bg-surface)' }}
-                />
-              </div>
-              <div className="min-w-0">
-                <Label className="mb-1 block text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-                  Cliff (mo)
-                </Label>
-                <NativeSelect
-                  value={customCliff}
-                  onChange={(e) => {
-                    setCustomCliff(e.target.value);
-                    if (!editing) setManualOverride(false);
-                  }}
-                  style={{ backgroundColor: 'var(--bg-surface)' }}
-                >
-                  <NativeSelectOption value="0">None</NativeSelectOption>
-                  <NativeSelectOption value="6">6 mo</NativeSelectOption>
-                  <NativeSelectOption value="12">12 mo</NativeSelectOption>
-                  <NativeSelectOption value="18">18 mo</NativeSelectOption>
-                  <NativeSelectOption value="24">24 mo</NativeSelectOption>
-                </NativeSelect>
-              </div>
-              <div className="col-span-2 min-w-0 sm:col-span-1">
-                <Label className="mb-1 block text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-                  Frequency
-                </Label>
-                <NativeSelect
-                  value={customFreq}
-                  onChange={(e) => {
-                    setCustomFreq(e.target.value as VestingFrequency);
-                    if (!editing) setManualOverride(false);
-                  }}
-                  style={{ backgroundColor: 'var(--bg-surface)' }}
-                >
-                  <NativeSelectOption value="monthly">Monthly</NativeSelectOption>
-                  <NativeSelectOption value="quarterly">Quarterly</NativeSelectOption>
-                  <NativeSelectOption value="semiannual">Semi-Annual</NativeSelectOption>
-                  <NativeSelectOption value="annual">Annual</NativeSelectOption>
-                </NativeSelect>
-              </div>
-            </div>
-          )}
-
-          {/* Editable Tranches List */}
-          <div className="pt-1">
-            <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] tabular-nums">
-              <span className="truncate font-semibold" style={{ color: 'var(--text-primary)' }}>
-                Tranches ({tranches.length}) · {Number(sumTrancheUnits.toFixed(4))} sh
-              </span>
-              <Button
-                type="button"
-                onClick={addManualTranche}
-                className="inline-flex shrink-0 items-center gap-1 font-semibold transition hover:opacity-80"
-                style={{ color: 'var(--accent-text)' }}
-              >
-                <Plus className="h-3 w-3" />
-                Add date
-              </Button>
-            </div>
-
-            {tranches.length === 0 ? (
-              <div
-                className="rounded-xl p-3 text-center text-xs"
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-muted)' }}
-              >
-                Enter total shares above to generate vesting dates, or click &ldquo;Add date&rdquo; for a custom schedule.
-              </div>
-            ) : (
-              <div
-                className="max-h-60 divide-y overflow-y-auto rounded-xl"
-                style={{
-                  backgroundColor: 'var(--bg-surface)',
-                  border: '1px solid var(--border-subtle)',
-                  borderColor: 'var(--border-subtle)',
-                }}
-              >
-                {tranches.map((t) => {
-                  const isPast = t.vest_date <= today;
-                  const badgeText =
-                    t.status === 'sold'
-                      ? 'Sold'
-                      : t.status === 'forfeited'
-                        ? 'Forfeited'
-                        : t.status === 'vested' || isPast
-                          ? 'Vested'
-                          : 'Upcoming';
-                  const badgeColor =
-                    badgeText === 'Vested'
-                      ? 'var(--positive)'
-                      : badgeText === 'Sold'
-                        ? 'var(--info)'
-                        : badgeText === 'Forfeited'
-                          ? 'var(--negative)'
-                          : 'var(--text-muted)';
-                  return (
-                    <div
-                      key={t.key}
-                      className="flex flex-col gap-2 p-2.5 sm:flex-row sm:items-center sm:gap-2"
-                      style={{ borderColor: 'var(--border-subtle)' }}
-                    >
-                      <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <Input
-                          type="date"
-                          required
-                          value={t.vest_date}
-                          onChange={(e) => updateTranche(t.key, { vest_date: e.target.value })}
-                          className="min-w-0 flex-1 !py-1.5 !px-2.5 sm:!text-xs"
-                        />
-                        <Button
-                          type="button"
-                          onClick={() => removeTranche(t.key)}
-                          className="shrink-0 rounded-lg p-1.5 transition hover:opacity-80 sm:hidden"
-                          style={{ color: 'var(--negative)' }}
-                          aria-label="Remove tranche"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="flex items-center gap-2 sm:shrink-0">
-                        <Input
-                          type="number"
-                          required
-                          step="any"
-                          min="0"
-                          value={t.units}
-                          onChange={(e) => updateTranche(t.key, { units: e.target.value })}
-                          placeholder="Shares"
-                          className="min-w-0 flex-1 !py-1.5 !px-2.5 text-right tabular-nums sm:w-20 sm:flex-none sm:!text-xs"
-                        />
-                        <span
-                          className="w-16 shrink-0 text-center text-[11px] font-semibold"
-                          style={{ color: badgeColor }}
-                        >
-                          {badgeText}
-                        </span>
-                        <Button
-                          type="button"
-                          onClick={() => removeTranche(t.key)}
-                          className="hidden shrink-0 rounded-lg p-1 transition hover:opacity-80 sm:inline-flex"
-                          style={{ color: 'var(--negative)' }}
-                          aria-label="Remove tranche"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Tax withholding + Portfolio inclusion */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="min-w-0">
-            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Est. Tax Withholding %
-            </Label>
+          </Field>
+          <Field label="Tax withheld %" htmlFor="g-tax">
             <Input
+              id="g-tax"
               type="number"
+              inputMode="decimal"
               step="any"
               min="0"
               max="99"
               value={taxWithholdPct}
               onChange={(e) => setTaxWithholdPct(e.target.value)}
               placeholder="0"
+              className="tabular-nums"
             />
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {[0, 22, 30, 37].map((pct) => (
-                <Button
-                  key={pct}
-                  type="button"
-                  onClick={() => setTaxWithholdPct(String(pct))}
-                  className="rounded-md px-2 py-1 text-[11px] font-medium"
-                  style={{
-                    backgroundColor: Number(taxWithholdPct) === pct ? 'var(--accent-soft)' : 'var(--bg-subtle)',
-                    color: Number(taxWithholdPct) === pct ? 'var(--accent-text)' : 'var(--text-muted)',
-                  }}
-                >
-                  {pct}%
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div className="min-w-0">
-            <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Link Actual Account (optional)
-            </Label>
-            <NativeSelect value={actualAccountId} onChange={(e) => setActualAccountId(e.target.value)}>
-              <NativeSelectOption value="">Not linked</NativeSelectOption>
-              {(offBudgetAccounts.length > 0 ? offBudgetAccounts : accounts).map((acc) => (
-                <NativeSelectOption key={acc.id} value={acc.id}>
-                  {acc.name} {acc.offbudget ? '(Off-budget)' : '(On-budget)'}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </div>
+          </Field>
+        </div>
+        <div className="-mt-2 flex flex-wrap items-center justify-end gap-1.5" aria-label="Common tax withholding rates">
+          {[0, 22, 30, 37].map((pct) => {
+            const on = Number(taxWithholdPct) === pct;
+            return (
+              <Button
+                key={pct}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setTaxWithholdPct(String(pct))}
+                className="h-8 rounded-full px-3 text-label tabular-nums transition-colors duration-150"
+                style={{ backgroundColor: on ? 'var(--accent)' : 'var(--bg-subtle)', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
+              >
+                {pct}%
+              </Button>
+            );
+          })}
         </div>
 
-        <Label
-          className="flex items-start gap-2.5 rounded-xl p-3 text-xs cursor-pointer"
+        {/* Vesting schedule builder */}
+        <section className="flex flex-col gap-4 rounded-2xl p-4" style={{ backgroundColor: 'var(--bg-subtle)' }} aria-label="Vesting schedule">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-heading">Vesting schedule</span>
+            {editing && (
+              <Button type="button" onClick={regenerateNow} className="flex items-center gap-1.5 text-label" style={{ color: 'var(--accent-text)' }}>
+                <RefreshCw className="h-3.5 w-3.5" />
+                Regenerate
+              </Button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Total shares" htmlFor="g-total">
+              <Input
+                id="g-total"
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min="0"
+                value={totalUnits}
+                onChange={(e) => {
+                  setTotalUnits(e.target.value);
+                  regen();
+                }}
+                placeholder="e.g. 100"
+                className={`${onSurface} tabular-nums`}
+              />
+            </Field>
+            <Field label="Vesting starts" htmlFor="g-start">
+              <Input
+                id="g-start"
+                type="date"
+                value={vestStartDate}
+                onChange={(e) => {
+                  setVestStartDate(e.target.value);
+                  regen();
+                }}
+                className={onSurface}
+              />
+            </Field>
+          </div>
+
+          <Field label="Schedule" help={presetInfo?.description}>
+            <Select
+              aria-label="Vesting schedule preset"
+              value={preset}
+              onValueChange={(v) => {
+                setPreset(v as VestingPreset);
+                regen();
+              }}
+              options={VESTING_PRESETS.map((p) => ({ value: p.id, label: p.label }))}
+              className={onSurface}
+            />
+          </Field>
+
+          {preset === 'custom' && (
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Years" htmlFor="g-years">
+                <Input
+                  id="g-years"
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  max="6"
+                  value={customYears}
+                  onChange={(e) => {
+                    setCustomYears(e.target.value);
+                    regen();
+                  }}
+                  className={`${onSurface} tabular-nums`}
+                />
+              </Field>
+              <Field label="Cliff">
+                <Select
+                  aria-label="Cliff"
+                  value={customCliff}
+                  onValueChange={(v) => {
+                    setCustomCliff(v);
+                    regen();
+                  }}
+                  options={[
+                    { value: '0', label: 'None' },
+                    { value: '6', label: '6 mo' },
+                    { value: '12', label: '12 mo' },
+                    { value: '18', label: '18 mo' },
+                    { value: '24', label: '24 mo' },
+                  ]}
+                  className={onSurface}
+                />
+              </Field>
+              <Field label="Every">
+                <Select
+                  aria-label="Vesting frequency"
+                  value={customFreq}
+                  onValueChange={(v) => {
+                    setCustomFreq(v as VestingFrequency);
+                    regen();
+                  }}
+                  options={[
+                    { value: 'monthly', label: 'Month' },
+                    { value: 'quarterly', label: 'Quarter' },
+                    { value: 'semiannual', label: '6 months' },
+                    { value: 'annual', label: 'Year' },
+                  ]}
+                  className={onSurface}
+                />
+              </Field>
+            </div>
+          )}
+
+          <Switch
+            checked={roundWhole}
+            onCheckedChange={(v) => {
+              setRoundWhole(v);
+              regen();
+            }}
+            className="flex items-center justify-between gap-3 text-left"
+          >
+            <span className="flex flex-col">
+              <span className="text-body">Whole shares</span>
+              <span className="text-caption" style={{ color: 'var(--text-muted)' }}>
+                Round each vest to whole shares
+              </span>
+            </span>
+            <SwitchThumb className="shrink-0" />
+          </Switch>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-label tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                {tranches.length} vest{tranches.length === 1 ? '' : 's'} · {Number(sumTrancheUnits.toFixed(4))} sh
+              </span>
+              <Button type="button" onClick={addManualTranche} className="flex items-center gap-1 text-label" style={{ color: 'var(--accent-text)' }}>
+                <Plus className="h-3.5 w-3.5" />
+                Add date
+              </Button>
+            </div>
+            {tranches.length === 0 ? (
+              <p className="rounded-2xl p-3.5 text-center text-caption" style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-muted)' }}>
+                Enter the total shares to generate vest dates, or add dates yourself.
+              </p>
+            ) : (
+              <div className="divider-list max-h-72 overflow-y-auto overscroll-contain rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)' }}>
+                {tranches.map((t, i) => {
+                  const past = t.vest_date <= today;
+                  const st =
+                    t.status === 'sold'
+                      ? { label: 'Sold', color: 'var(--info)' }
+                      : t.status === 'forfeited'
+                        ? { label: 'Forfeited', color: 'var(--negative)' }
+                        : t.status === 'vested' || past
+                          ? { label: 'Vested', color: 'var(--positive)' }
+                          : { label: 'Upcoming', color: 'var(--border-strong)' };
+                  return (
+                    <div key={t.key} className="flex items-center gap-1.5 py-1.5 pl-2.5 pr-0.5">
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: st.color }} title={st.label}>
+                        <span className="sr-only">{st.label}</span>
+                      </span>
+                      <Input
+                        type="date"
+                        required
+                        aria-label={`Vest ${i + 1} date`}
+                        value={t.vest_date}
+                        onChange={(e) => updateTranche(t.key, { vest_date: e.target.value })}
+                        className="min-w-0 flex-1 px-2"
+                      />
+                      <Input
+                        type="number"
+                        required
+                        inputMode="decimal"
+                        step="any"
+                        min="0"
+                        aria-label={`Vest ${i + 1} shares`}
+                        value={t.units}
+                        onChange={(e) => updateTranche(t.key, { units: e.target.value })}
+                        placeholder="Shares"
+                        className="w-16 shrink-0 px-2 text-right tabular-nums"
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => removeTranche(t.key)}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                        style={{ color: 'var(--text-muted)' }}
+                        aria-label={`Remove vest ${i + 1}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-caption" style={{ color: 'var(--text-muted)' }}>
+              Green dots have vested. To mark a vest as sold, open it from the grant’s vest list.
+            </p>
+          </div>
+        </section>
+
+        <Field label="Actual account" help="Vested shares are included when the account balance is synced to Actual.">
+          <Select aria-label="Link to Actual account" value={actualAccountId} onValueChange={setActualAccountId} options={accountOptions(accounts)} />
+        </Field>
+
+        <Switch
+          checked={includeInTotal}
+          onCheckedChange={setIncludeInTotal}
+          className="flex items-center justify-between gap-3 rounded-2xl p-3.5 text-left"
           style={{ backgroundColor: 'var(--bg-subtle)' }}
         >
-          <Input
-            variant="unstyled"
-            type="checkbox"
-            checked={includeInTotal}
-            onChange={(e) => setIncludeInTotal(e.target.checked)}
-            className="mt-0.5"
-          />
-          <div>
-            <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Count vested shares in Total Investments &amp; Net Worth
-            </div>
-            <div className="mt-0.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              Unvested RSUs are always shown separately and never inflate Net Worth. Turn this off if you already track vested shares in regular Stock holdings.
-            </div>
-          </div>
-        </Label>
+          <span className="flex flex-col gap-0.5">
+            <span className="text-body font-semibold">Count vested shares in totals</span>
+            <span className="text-caption" style={{ color: 'var(--text-muted)' }}>
+              Adds vested, held shares to Investments and net worth. Turn off if you already track them as a stock holding. Unvested shares are never counted.
+            </span>
+          </span>
+          <SwitchThumb className="shrink-0" />
+        </Switch>
 
-        <div>
-          <Label className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Notes (optional)
-          </Label>
-          <Input
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g. Broker name / grant ID"
-          />
+        <Field label="Notes" htmlFor="g-notes">
+          <Input id="g-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional, e.g. broker or grant ID" />
+        </Field>
+
+        <div className="flex flex-col gap-1 pt-1">
+          <SubmitButton disabled={saving}>{saving ? 'Saving…' : editing ? 'Save grant' : 'Add grant'}</SubmitButton>
+          {editing && <DeleteButton disabled={saving} label="Remove grant and its vests" onConfirm={() => void handleDelete()} />}
         </div>
-
-        <Button
-          type="submit"
-          disabled={saving}
-          variant="default" className="w-full rounded-xl py-3 text-sm font-medium disabled:opacity-50"
-        >
-          {saving ? 'Saving...' : editing ? 'Save RSU Grant' : 'Add RSU Grant'}
-        </Button>
       </form>
     </Sheet>
   );

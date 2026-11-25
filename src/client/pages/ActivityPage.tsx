@@ -1,7 +1,7 @@
 import { useFinancialValues } from '../lib/valueVisibility';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeftRight, CalendarCheck, CreditCard, FlaskConical, Mail, RefreshCw, Search, X } from 'lucide-react';
-import type { ActualAccount, ActualCategory, ActualPayee, EmailEventRecord, RecentTransaction } from '@shared/types';
+import { CalendarCheck, CreditCard, FlaskConical, ListFilter, Mail, MoreHorizontal, RefreshCw, Search, X } from 'lucide-react';
+import type { ActualAccount, ActualCategory, ActualCategoryGroup, ActualPayee, EmailEventRecord, RecentTransaction } from '@shared/types';
 import { ApiError, apiFetch } from '../lib/api';
 import { fetchRecent, friendlyDate, localISODate, relativeTime, senderLabel } from '../lib/recent';
 import { Sheet } from '../components/Sheet';
@@ -10,8 +10,9 @@ import { LinkPayeeSheet } from '../components/LinkPayeeSheet';
 import { BillMatchSheet } from '../components/BillMatchSheet';
 import { EditTransactionSheet } from '../components/EditTransactionSheet';
 import type { FlowRequest } from '../components/TransactionFlow';
+import { ActivityFilterSheet, KIND_LABELS, NO_FILTERS, activeFilterCount, matchesFilters, type ActivityFilters, type ActivityKind } from '../components/activity/ActivityFilterSheet';
 import { Button } from '@client/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
+import { Menu } from '@client/components/ui/menu';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { Textarea } from '@client/components/ui/textarea';
@@ -23,6 +24,7 @@ import { Spinner } from '@client/components/ui/spinner';
 interface ActivityPageProps {
   accounts: ActualAccount[];
   categories: ActualCategory[];
+  categoryGroups: ActualCategoryGroup[];
   payees: ActualPayee[];
   baseCurrency: string;
   dataVersion: number;
@@ -31,15 +33,14 @@ interface ActivityPageProps {
   onToast: (msg: string, tone?: 'success' | 'error') => void;
 }
 
-type Filter = 'all' | 'out' | 'in' | 'transfers';
-
-export function ActivityPage({ accounts, categories, payees, baseCurrency, dataVersion, onOpenFlow, onChanged, onToast }: ActivityPageProps) {
+export function ActivityPage({ accounts, categories, categoryGroups, payees, baseCurrency, dataVersion, onOpenFlow, onChanged, onToast }: ActivityPageProps) {
   const { valuesHidden, formatMoney, formatSignedMoney } = useFinancialValues();
   const [events, setEvents] = useState<EmailEventRecord[]>([]);
   const [txs, setTxs] = useState<RecentTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [txError, setTxError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filters, setFilters] = useState<ActivityFilters>(NO_FILTERS);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editTx, setEditTx] = useState<RecentTransaction | null>(null);
@@ -187,13 +188,11 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return txs.filter((t) => {
-      if (filter === 'out' && (t.amount >= 0 || t.isTransfer)) return false;
-      if (filter === 'in' && (t.amount <= 0 || t.isTransfer)) return false;
-      if (filter === 'transfers' && !t.isTransfer) return false;
+      if (!matchesFilters(t, filters)) return false;
       if (!q) return true;
       return [t.payeeName, t.categoryName, t.accountName, t.notes].some((v) => v && v.toLowerCase().includes(q));
     });
-  }, [txs, filter, query]);
+  }, [txs, filters, query]);
 
   const groups = useMemo(() => {
     const map = new Map<string, RecentTransaction[]>();
@@ -221,100 +220,141 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
     return { inc: inc / 100, out: out / 100, label: new Date().toLocaleDateString('en-SG', { month: 'long' }) };
   }, [txs]);
 
-  const filters: Array<{ id: Filter; label: string }> = [
-    { id: 'all', label: 'All' },
-    { id: 'out', label: 'Out' },
-    { id: 'in', label: 'In' },
-    { id: 'transfers', label: 'Transfers' },
+  const filterCount = activeFilterCount(filters);
+  const toggleKind = (k: ActivityKind) => setFilters((cur) => ({ ...cur, kind: cur.kind === k ? 'all' : k }));
+  const chips: Array<{ key: string; label: string; clear: () => void }> = [
+    ...(filters.kind !== 'all' ? [{ key: 'kind', label: KIND_LABELS[filters.kind], clear: () => setFilters((f) => ({ ...f, kind: 'all' as const })) }] : []),
+    ...(filters.categoryId !== null
+      ? [{ key: 'cat', label: filters.categoryId === '' ? 'Uncategorized' : categoryName(filters.categoryId) || 'Category', clear: () => setFilters((f) => ({ ...f, categoryId: null })) }]
+      : []),
+    ...(filters.accountId !== null
+      ? [{ key: 'acct', label: accountName(filters.accountId) || 'Account', clear: () => setFilters((f) => ({ ...f, accountId: null })) }]
+      : []),
   ];
+  const summaryLink = 'press -mx-1.5 inline-flex min-h-9 items-center gap-1 rounded-lg px-1.5 transition-colors duration-150';
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
-        <p className="text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>
-          {month.label} · in <span style={{ color: 'var(--positive)' }}>{formatMoney(month.inc, baseCurrency)}</span> · out{' '}
-          <span style={{ color: 'var(--text-primary)' }}>{formatMoney(month.out, baseCurrency)}</span>
+        <p className="-my-1 flex flex-wrap items-center gap-x-2.5 text-body tabular-nums" style={{ color: 'var(--text-muted)' }}>
+          <span>{month.label}</span>
+          <span aria-hidden="true">·</span>
+          <Button
+            type="button"
+            aria-pressed={filters.kind === 'in'}
+            title="Show money in"
+            onClick={() => toggleKind('in')}
+            className={summaryLink}
+            style={{ backgroundColor: filters.kind === 'in' ? 'var(--positive-soft)' : undefined }}
+          >
+            in
+            <span className="font-semibold" style={{ color: 'var(--positive)' }}>{formatMoney(month.inc, baseCurrency)}</span>
+          </Button>
+          <span aria-hidden="true">·</span>
+          <Button
+            type="button"
+            aria-pressed={filters.kind === 'out'}
+            title="Show money out"
+            onClick={() => toggleKind('out')}
+            className={summaryLink}
+            style={{ backgroundColor: filters.kind === 'out' ? 'var(--bg-subtle)' : undefined }}
+          >
+            out
+            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{formatMoney(month.out, baseCurrency)}</span>
+          </Button>
         </p>
-        <Label
-          className="flex h-12 items-center gap-2 rounded-2xl px-3.5"
-          style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-muted)' }}
-        >
-          <Search className="h-4 w-4 shrink-0" />
-          <Input
-            variant="unstyled"
-            aria-label="Search transactions"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search payee, category, account, note"
-            className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none"
-            style={{ color: 'var(--text-primary)' }}
-          />
+        <div className="flex h-12 items-center gap-1 rounded-2xl pl-3.5 pr-0.5" style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-muted)' }}>
+          <Label className="flex h-full min-w-0 flex-1 items-center gap-2">
+            <Search className="h-4 w-4 shrink-0" />
+            <Input
+              variant="unstyled"
+              aria-label="Search transactions"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search payee, category, account, note"
+              className="h-full min-w-0 flex-1 bg-transparent text-body outline-none"
+              style={{ color: 'var(--text-primary)' }}
+            />
+          </Label>
           {query && (
-            <Button type="button" onClick={() => setQuery('')} aria-label="Clear search" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full">
+            <Button type="button" onClick={() => setQuery('')} aria-label="Clear search" className="flex h-11 w-9 shrink-0 items-center justify-center rounded-full">
               <X className="h-4 w-4" />
             </Button>
           )}
-        </Label>
-        <RadioGroup value={filter} onValueChange={(value) => setFilter(value as Filter)} aria-label="Filter" className="grid grid-cols-4 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-surface)' }}>
-          {filters.map((f) => {
-            const on = filter === f.id;
-            return (
-              <RadioGroupItem
-                key={f.id}
-                value={f.id}
-                className="h-10 rounded-xl text-sm font-bold transition"
-                style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
+          <span aria-hidden="true" className="h-6 w-px shrink-0" style={{ backgroundColor: 'var(--border-subtle)' }} />
+          <Button
+            type="button"
+            onClick={() => setFilterSheetOpen(true)}
+            aria-label={filterCount ? `Filters (${filterCount} active)` : 'Filters'}
+            className="press relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors"
+            style={filterCount ? { backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text)' } : undefined}
+          >
+            <ListFilter className="h-[18px] w-[18px]" />
+            {filterCount > 0 && (
+              <span
+                className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption font-bold tabular-nums"
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)', fontSize: '0.625rem', lineHeight: 1 }}
               >
-                {f.label}
-              </RadioGroupItem>
-            );
-          })}
-        </RadioGroup>
+                {filterCount}
+              </span>
+            )}
+          </Button>
+        </div>
+        {chips.length > 0 && (
+          <div className="-my-1.5 flex flex-wrap items-center gap-x-2">
+            {chips.map((c) => (
+              <Button key={c.key} type="button" onClick={c.clear} aria-label={`Remove filter: ${c.label}`} className="press flex min-h-11 max-w-full items-center">
+                <span className="flex h-8 min-w-0 items-center gap-1.5 rounded-full pl-3 pr-2 text-label" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text)' }}>
+                  <span className="truncate">{c.label}</span>
+                  <X className="h-3.5 w-3.5 shrink-0" />
+                </span>
+              </Button>
+            ))}
+            {chips.length > 1 && (
+              <Button type="button" onClick={() => setFilters(NO_FILTERS)} className="press min-h-11 px-1 text-label" style={{ color: 'var(--text-muted)' }}>
+                Clear all
+              </Button>
+            )}
+            <span className="ml-auto text-caption tabular-nums" style={{ color: 'var(--text-muted)' }}>
+              {filtered.length} transaction{filtered.length === 1 ? '' : 's'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Review queue (email imports) */}
       <section className="flex flex-col gap-2.5">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-extrabold">
+        <div className="flex min-h-11 items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-heading">
             To review{toReview.length > 0 ? ` · ${toReview.length}` : ''}
+            {rescanning && <Spinner />}
           </h2>
-          <div className="flex items-center gap-4">
-            {toReview.length > 0 && (
-              <Button
-                type="button"
-                onClick={() => void rescan()}
-                disabled={rescanning}
-                className="flex items-center gap-1 text-sm font-bold disabled:opacity-50"
-                style={{ color: 'var(--accent-text)' }}
-                title="Read waiting emails again with your latest links and rules"
-              >
-                <RefreshCw className={`h-4 w-4 ${rescanning ? 'animate-spin' : ''}`} />
-                Re-read
+          <Menu
+            trigger={
+              <Button type="button" aria-label="Review options" className="press -mr-2 flex h-11 w-11 items-center justify-center rounded-full" style={{ color: 'var(--text-muted)' }}>
+                <MoreHorizontal className="h-5 w-5" />
               </Button>
-            )}
-            <Button
-              type="button"
-              onClick={() => setTestOpen(true)}
-              className="flex items-center gap-1 text-sm font-bold"
-              style={{ color: 'var(--accent-text)' }}
-            >
-              <FlaskConical className="h-4 w-4" />
-              Test parser
-            </Button>
-          </div>
+            }
+            items={[
+              ...(toReview.length > 0
+                ? [{ label: rescanning ? 'Re-reading…' : 'Re-read emails', icon: <RefreshCw />, disabled: rescanning, onSelect: () => void rescan() }]
+                : []),
+              { label: 'Test parser', icon: <FlaskConical />, onSelect: () => setTestOpen(true) },
+            ]}
+          />
         </div>
         {queued > 0 && (
-          <p className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+          <p className="flex items-center gap-2 text-body" style={{ color: 'var(--text-muted)' }}>
             <Spinner />
             {queued} email{queued === 1 ? '' : 's'} being parsed…
           </p>
         )}
         {!loading && toReview.length === 0 && queued === 0 && (
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-body" style={{ color: 'var(--text-muted)' }}>
             Nothing waiting. Card alerts from your bank show up here.
           </p>
         )}
-        {toReview.map((ev, i) => {
+        {toReview.map((ev) => {
           const p = ev.parsed;
           const failed = ev.status === 'failed';
           const payee = p?.payee || (!valuesHidden && ev.subject) || 'Email transaction';
@@ -324,132 +364,132 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
           const billReview = p?.billReview;
           const candidate = billReview?.candidates[0];
           const checkBill = billReview && !billReview.dismissed && (billReview.waitingForBill || billReview.needsReview);
+          const badge: { text: string; bg: string; fg: string } | null = failed
+            ? { text: 'Couldn’t parse', bg: 'var(--negative-soft)', fg: 'var(--negative)' }
+            : candidate || checkBill || billReview?.dismissed
+              ? { text: candidate ? 'Possible match' : billReview?.dismissed ? 'Match dismissed' : 'Check bill', bg: 'var(--accent-soft)', fg: 'var(--accent-text)' }
+              : p
+                ? { text: p.matchedRuleName ? 'Rule match' : `${Math.round(p.confidence * 100)}% match`, bg: 'var(--positive-soft)', fg: 'var(--positive)' }
+                : null;
+          const primaryLabel = busy
+            ? 'Saving…'
+            : billReview?.dismissed
+              ? 'Add separately'
+              : failed
+                ? 'Fix & import'
+                : !p?.accountId
+                  ? 'Choose account'
+                  : p.fxEstimated
+                    ? 'Check & add'
+                    : p.transferAccountId
+                      ? 'Add transfer'
+                      : 'Add to Actual';
+          const action = 'h-11 rounded-2xl px-2 text-label disabled:opacity-50';
           return (
             <Card
               as="article"
-              variant="outline"
+              variant="flat"
               key={ev.id}
-              className="flex flex-col gap-3.5 rounded-[26px] p-4"
-              style={failed ? { borderColor: 'var(--negative)' } : undefined}
+              className="flex flex-col gap-3 rounded-3xl p-4"
+              style={failed ? { boxShadow: 'inset 0 0 0 1px var(--negative)' } : undefined}
             >
-              <div className="flex items-center justify-between gap-2 text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+              <div className="flex items-center justify-between gap-2 text-caption" style={{ color: 'var(--text-muted)' }}>
                 <span className="flex min-w-0 items-center gap-1.5">
                   <Mail className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">
                     {p?.accountRef?.label.split(' ')[0] || senderLabel(p?.originalSender || ev.sender)} · {relativeTime(ev.received_at)}
                   </span>
                 </span>
-                {failed ? (
-                  <Badge className="shrink-0 px-2.5 py-0.5 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }}>
-                    Couldn't parse
+                {badge && (
+                  <Badge className="shrink-0 px-2.5 py-0.5 text-caption font-semibold tabular-nums" style={{ backgroundColor: badge.bg, color: badge.fg }}>
+                    {badge.text}
                   </Badge>
-                ) : (
-                  (candidate || checkBill || billReview?.dismissed) ? (
-                    <Badge className="shrink-0 bg-accent px-2.5 py-0.5 text-[11px] font-extrabold">
-                      {candidate ? 'Possible match' : billReview?.dismissed ? 'Match dismissed' : 'Check bill'}
-                    </Badge>
-                  ) : p && (
-                    <Badge className="shrink-0 px-2.5 py-0.5 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--positive)', color: 'var(--bg-canvas)' }}>
-                      {p.matchedRuleName ? 'Rule match' : `${Math.round(p.confidence * 100)}% match`}
-                    </Badge>
-                  )
                 )}
               </div>
-              <div className="flex items-center gap-3.5">
-                <Tile colorKey={cat || payee} label={payee} size={i === 0 ? 50 : 42} />
+              <div className="flex items-center gap-3">
+                <Tile colorKey={cat || payee} label={payee} transfer={Boolean(p?.transferAccountId)} />
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <span className={`truncate font-extrabold ${i === 0 ? 'text-lg' : 'text-[15px]'}`}>{payee}</span>
-                  <span className="truncate text-[13px]" style={{ color: 'var(--text-muted)' }}>
+                  <span className="truncate text-body">{payee}</span>
+                  <span className="truncate text-caption" style={{ color: 'var(--text-muted)' }}>
                     {p?.transferAccountId
                       ? `Transfer · ${acct || 'account'} → ${accountName(p.transferAccountId)}`
                       : [cat || 'Uncategorized', acct || (p?.accountRef ? null : 'No account')].filter(Boolean).join(' · ')}
                   </span>
                   {p?.accountRef && !p.accountId && (
-                    <Badge className="mt-1 flex max-w-full items-center gap-1 self-start whitespace-nowrap px-2 py-0.5 text-[11px] font-extrabold" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
+                    <Badge className="mt-1 flex max-w-full items-center gap-1 self-start whitespace-nowrap px-2 py-0.5 text-caption font-semibold" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
                       <CreditCard className="h-3 w-3" />
                       New: {p.accountRef.label}
                     </Badge>
                   )}
+                </div>
+                <div className="flex shrink-0 flex-col items-end">
+                  <span className="text-body font-semibold tabular-nums" style={{ color: (p?.amountBase ?? 0) > 0 ? 'var(--positive)' : 'var(--text-primary)' }}>
+                    {p?.amountBase !== null && p?.amountBase !== undefined ? formatSignedMoney(p.amountBase, baseCurrency) : '—'}
+                  </span>
                   {!valuesHidden && p?.fxEstimated && p.amount !== null && (
-                    <span className="mt-0.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                      ≈ from {p.currency} {Math.abs(p.amount).toLocaleString('en-SG')} at today’s rate
+                    <span className="text-caption tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                      ≈ {p.currency} {Math.abs(p.amount).toLocaleString('en-SG')}
                     </span>
                   )}
                 </div>
-                <span className={`shrink-0 font-extrabold tabular-nums ${i === 0 ? 'text-xl' : 'text-base'}`} style={{ color: (p?.amountBase ?? 0) > 0 ? 'var(--positive)' : 'var(--text-primary)' }}>
-                  {p?.amountBase !== null && p?.amountBase !== undefined ? formatSignedMoney(p.amountBase, baseCurrency) : '—'}
-                </span>
               </div>
-              {!valuesHidden && i === 0 && ev.body_text && (
-                <p className="line-clamp-2 rounded-2xl px-3 py-2.5 text-xs leading-relaxed" style={{ backgroundColor: 'var(--bg-canvas)', color: 'var(--text-muted)' }}>
-                  “{ev.body_text.replace(/\s+/g, ' ').trim().slice(0, 200)}”
-                </p>
-              )}
               {!valuesHidden && ev.error && (
-                <p className="text-xs font-semibold" style={{ color: 'var(--negative)' }}>
+                <p className="text-caption font-semibold" style={{ color: 'var(--negative)' }}>
                   {ev.error}
                 </p>
               )}
               {candidate && (
-                <div className="flex items-center gap-2.5 rounded-xl bg-secondary p-3">
-                  <CalendarCheck className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <div className="flex items-center gap-2.5 rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-subtle)' }}>
+                  <CalendarCheck className="h-4 w-4 shrink-0" style={{ color: 'var(--text-muted)' }} aria-hidden="true" />
                   <div className="min-w-0">
-                    <p className="text-sm font-bold">
+                    <p className="text-body">
                       {billReview!.candidates.length === 1 ? candidate.scheduleName + ' already posted' : 'Several posted bills match'}
                     </p>
-                    {billReview!.candidates.length === 1 && <p className="text-xs text-muted-foreground">Posted by schedule · {friendlyDate(candidate.date)}</p>}
+                    {billReview!.candidates.length === 1 && (
+                      <p className="text-caption" style={{ color: 'var(--text-muted)' }}>
+                        Posted by schedule · {friendlyDate(candidate.date)}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
               {!candidate && checkBill && (
-                <p className="rounded-xl bg-secondary p-3 text-sm">
+                <p className="rounded-2xl p-3 text-body" style={{ backgroundColor: 'var(--bg-subtle)' }}>
                   {billReview.waitingForBill ? 'Waiting for the scheduled bill in Actual. Kopi will check again.' : 'Check the scheduled bill or confirm this is a separate charge.'}
                 </p>
               )}
+              {billReview?.dismissed && (
+                <div className="flex items-center justify-between gap-2 rounded-2xl py-1 pl-3 pr-1" style={{ backgroundColor: 'var(--bg-subtle)' }}>
+                  <p className="text-caption" style={{ color: 'var(--text-muted)' }}>
+                    You said the posted bill isn’t a match.
+                  </p>
+                  <Button type="button" disabled={busy} onClick={() => void decideBill(ev, 'restore')}
+                    className="min-h-11 shrink-0 rounded-xl px-3 text-label disabled:opacity-50" style={{ color: 'var(--accent-text)' }}>
+                    Undo
+                  </Button>
+                </div>
+              )}
               <div className="grid grid-cols-4 gap-2">
-                <Button type="button" disabled={busy} onClick={() => void skip(ev)} variant="secondary" className="h-12 rounded-2xl text-sm font-bold disabled:opacity-50">
+                <Button type="button" disabled={busy} onClick={() => void skip(ev)} variant="secondary" className={action}>
                   Skip
                 </Button>
-                <Button type="button" disabled={busy} onClick={() => onOpenFlow({ mode: 'review', event: ev })} variant="secondary" className="h-12 rounded-2xl text-sm font-bold disabled:opacity-50">
+                <Button type="button" disabled={busy} onClick={() => onOpenFlow({ mode: 'review', event: ev })} variant="secondary" className={action}>
                   Edit
                 </Button>
                 {candidate ? (
-                  <Button type="button" disabled={busy} onClick={() => setReviewBillId(ev.id)}
-                    variant="default" className="col-span-2 h-12 rounded-2xl text-sm disabled:opacity-50">
+                  <Button type="button" disabled={busy} onClick={() => setReviewBillId(ev.id)} variant="default" className={`col-span-2 ${action}`}>
                     Review match
                   </Button>
                 ) : checkBill ? (
-                  <Button type="button" disabled={busy} onClick={() => void decideBill(ev, 'reject')}
-                    variant="secondary" className="col-span-2 h-12 rounded-2xl text-sm font-bold disabled:opacity-50">
+                  <Button type="button" disabled={busy} onClick={() => void decideBill(ev, 'reject')} variant="secondary" className={`col-span-2 ${action}`}>
                     Not a match
                   </Button>
-                ) : <Button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void quickAdd(ev)}
-                  variant="default" className="col-span-2 h-12 rounded-2xl text-sm disabled:opacity-50"
-                >
-                  {busy
-                    ? 'Saving…'
-                    : billReview?.dismissed
-                      ? 'Add separately'
-                    : failed
-                      ? 'Fix & import'
-                      : !p?.accountId
-                        ? 'Choose account'
-                        : p.fxEstimated
-                          ? 'Check & add'
-                          : p.transferAccountId
-                            ? 'Add transfer'
-                            : 'Add to Actual'}
-                </Button>}
+                ) : (
+                  <Button type="button" disabled={busy} onClick={() => void quickAdd(ev)} variant="default" className={`col-span-2 ${action}`}>
+                    {primaryLabel}
+                  </Button>
+                )}
               </div>
-              {billReview?.dismissed && (
-                <Button type="button" disabled={busy} onClick={() => void decideBill(ev, 'restore')}
-                  className="self-start px-1 text-xs font-bold text-primary">
-                  Undo dismissal
-                </Button>
-              )}
             </Card>
           );
         })}
@@ -457,19 +497,19 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
 
       {resolvedBills.length > 0 && (
         <section className="flex flex-col gap-2.5" aria-label="Resolved bill emails">
-          <h2 className="text-lg font-extrabold">Resolved bill emails</h2>
+          <h2 className="text-heading">Resolved bill emails</h2>
           {resolvedBills.map((event) => {
             const matched = event.parsed?.billReview?.outcome === 'matched';
             const bill = event.parsed?.billReview?.candidates[0];
             return (
-              <Card key={event.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl p-3.5">
+              <Card key={event.id} variant="flat" className="flex flex-wrap items-center justify-between gap-2 rounded-3xl p-4">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold">{event.parsed?.payee || (valuesHidden ? 'Email transaction' : event.subject)}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-body">{event.parsed?.payee || (valuesHidden ? 'Email transaction' : event.subject)}</p>
+                  <p className="text-caption" style={{ color: 'var(--text-muted)' }}>
                     {bill ? bill.scheduleName + ' · ' + friendlyDate(bill.date) : 'Same bank reference · ' + friendlyDate(event.received_at.slice(0, 10))}
                   </p>
                 </div>
-                <Badge className="bg-accent px-2.5 py-0.5 text-[11px] font-extrabold">
+                <Badge className="px-2.5 py-0.5 text-caption font-semibold" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text)' }}>
                   {matched ? 'Matched to paid bill' : 'Repeat alert ignored'}
                 </Badge>
               </Card>
@@ -480,7 +520,7 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
 
       {/* Transactions */}
       {txError && (
-        <p className="rounded-2xl p-4 text-sm font-semibold" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
+        <p className="rounded-2xl p-4 text-body font-semibold" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
           Couldn't load transactions from Actual: {txError}
         </p>
       )}
@@ -492,15 +532,15 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
         </div>
       )}
       {!loading && !txError && groups.length === 0 && (
-        <p className="py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
-          {query || filter !== 'all' ? 'No transactions match.' : 'No transactions in the last 60 days.'}
+        <p className="py-6 text-center text-body" style={{ color: 'var(--text-muted)' }}>
+          {query || filterCount > 0 ? 'No transactions match.' : 'No transactions in the last 60 days.'}
         </p>
       )}
       {groups.map((g) => (
         <section key={g.date} className="flex flex-col">
           <div className="mb-1 flex items-baseline justify-between">
-            <h2 className="text-[15px] font-extrabold">{friendlyDate(g.date)}</h2>
-            <span className="text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>
+            <h2 className="text-heading">{friendlyDate(g.date)}</h2>
+            <span className="text-body tabular-nums" style={{ color: 'var(--text-muted)' }}>
               {formatSignedMoney(g.total, baseCurrency)}
             </span>
           </div>
@@ -517,14 +557,14 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
             >
               <Tile colorKey={t.categoryName || t.payeeName} label={t.payeeName} transfer={t.isTransfer} />
               <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-[15px] font-semibold">{t.payeeName}</span>
-                <span className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>
+                <span className="truncate text-body">{t.payeeName}</span>
+                <span className="truncate text-caption" style={{ color: 'var(--text-muted)' }}>
                   {[t.isTransfer ? null : t.categoryName || 'Uncategorized', t.accountName, t.cleared === false ? 'uncleared' : null]
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
               </div>
-              <span className="text-[15px] font-bold tabular-nums" style={{ color: t.amount > 0 ? 'var(--positive)' : 'var(--text-primary)' }}>
+              <span className="text-body font-semibold tabular-nums" style={{ color: t.amount > 0 ? 'var(--positive)' : 'var(--text-primary)' }}>
                 {formatSignedMoney(t.amount / 100, baseCurrency)}
               </span>
             </Button>
@@ -537,6 +577,17 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
           busy={busyId === billEmail.id} onClose={() => setReviewBillId(null)}
           onDecision={(action, transactionId, remember) => void decideBill(billEmail, action, transactionId, remember)} />
       )}
+      <ActivityFilterSheet
+        open={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        filters={filters}
+        onChange={setFilters}
+        transactions={txs}
+        categories={categories}
+        categoryGroups={categoryGroups}
+        accounts={accounts}
+        resultCount={filtered.length}
+      />
       {editTx && (
         <EditTransactionSheet
           key={editTx.id}
@@ -568,20 +619,20 @@ export function ActivityPage({ accounts, categories, payees, baseCurrency, dataV
       />
 
       <Sheet financialForm open={testOpen} onClose={() => setTestOpen(false)} title="Test email parser" subtitle="Simulates an incoming bank alert email">
-        <form onSubmit={runTest} className="space-y-3.5">
-          <div>
-            <Label htmlFor="test-from" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>From</Label>
+        <form onSubmit={runTest} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="test-from" className="text-label" style={{ color: 'var(--text-muted)' }}>From</Label>
             <Input id="test-from" value={testFrom} onChange={(e) => setTestFrom(e.target.value)} />
           </div>
-          <div>
-            <Label htmlFor="test-subject" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Subject</Label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="test-subject" className="text-label" style={{ color: 'var(--text-muted)' }}>Subject</Label>
             <Input id="test-subject" value={testSubject} onChange={(e) => setTestSubject(e.target.value)} />
           </div>
-          <div>
-            <Label htmlFor="test-body" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Email body</Label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="test-body" className="text-label" style={{ color: 'var(--text-muted)' }}>Email body</Label>
             <Textarea id="test-body" rows={4} value={testBody} onChange={(e) => setTestBody(e.target.value)} />
           </div>
-          <Button type="submit" disabled={testBusy} variant="default" className="h-12 w-full rounded-2xl text-sm disabled:opacity-50">
+          <Button type="submit" disabled={testBusy} variant="default" className="h-12 w-full rounded-2xl text-body disabled:opacity-50">
             {testBusy ? 'Parsing…' : 'Queue & parse test email'}
           </Button>
         </form>

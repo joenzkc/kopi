@@ -11,7 +11,7 @@ import { Switch, SwitchThumb } from '@client/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@client/components/ui/collapsible';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
+import { Select } from '@client/components/ui/select';
 import { Alert } from '@client/components/ui/alert';
 import { Skeleton } from '@client/components/ui/skeleton';
 
@@ -56,7 +56,7 @@ function Segmented({
           <RadioGroupItem
             key={o.text}
             value={o.off ? 'tracking' : 'budget'}
-            className="h-10 rounded-xl text-sm font-bold transition"
+            className="h-10 rounded-xl text-label transition"
             style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
           >
             {o.text}
@@ -312,8 +312,8 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
         <Button type="button" onClick={() => openManage(a)} className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
           <Tile colorKey={a.name} label={a.name} size={40} />
           <span className="flex min-w-0 flex-1 flex-col">
-            <span className="line-clamp-2 text-[15px] font-semibold leading-snug [overflow-wrap:anywhere]">{a.name}</span>
-            <span className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span className="line-clamp-2 text-body [overflow-wrap:anywhere]">{a.name}</span>
+            <span className="truncate text-caption" style={{ color: 'var(--text-muted)' }}>
               {a.closed ? 'Closed' : a.offbudget ? 'Tracking' : 'Budget'}
               {!a.closed && !onHome && ' · hidden from Home'}
               {a.links.length > 0 && ` · ${a.links.filter((l) => l.kind !== 'alert').length || a.links.length} linked`}
@@ -325,7 +325,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
               )}
             </span>
           </span>
-          <span className="text-[15px] font-bold tabular-nums" style={{ color: bal < 0 ? 'var(--negative)' : 'var(--text-primary)' }}>
+          <span className="text-body font-semibold tabular-nums" style={{ color: bal < 0 ? 'var(--negative)' : 'var(--text-primary)' }}>
             {money(bal)}
           </span>
           <ChevronRight className="h-4 w-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
@@ -338,7 +338,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
     <section key={group?.id ?? title} className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2 px-1">
         <div className="flex min-w-0 items-center gap-1">
-          <h2 className="truncate text-[15px] font-extrabold">{title}</h2>
+          <h2 className="truncate text-heading">{title}</h2>
           {group && (
             <Button
               type="button"
@@ -351,7 +351,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
             </Button>
           )}
         </div>
-        <span className="shrink-0 text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>
+        <span className="shrink-0 text-body tabular-nums" style={{ color: 'var(--text-muted)' }}>
           {money(list.reduce((sum, a) => sum + (a.workingBalance ?? 0), 0))}
         </span>
       </div>
@@ -359,7 +359,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
         {list.length ? (
           list.map(row)
         ) : (
-          <p className="py-4 text-sm" style={{ color: 'var(--text-muted)' }}>
+          <p className="py-4 text-body" style={{ color: 'var(--text-muted)' }}>
             No accounts yet. Tap an account and choose this group to move it here.
           </p>
         )}
@@ -369,17 +369,16 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
 
   const groupSelect = (id: string, value: string, onChange: (v: string) => void) => (
     <div>
-      <Label htmlFor={id} className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+      <Label htmlFor={id} className="mb-1 block text-label" style={{ color: 'var(--text-secondary)' }}>
         Group
       </Label>
-      <NativeSelect id={id} value={value} onChange={(e) => onChange(e.target.value)}>
-        <NativeSelectOption value="">No group</NativeSelectOption>
-        {groups.map((g) => (
-          <NativeSelectOption key={g.id} value={g.id}>
-            {g.name}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
+      <Select
+        id={id}
+        value={value}
+        onValueChange={onChange}
+        placeholder="No group"
+        options={[{ value: '', label: 'No group' }, ...groups.map((g) => ({ value: g.id, label: g.name }))]}
+      />
     </div>
   );
 
@@ -391,24 +390,24 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
           setSheetError(null);
           setAddOpen(true);
         }}
-        variant="default" className="flex h-12 items-center justify-center gap-2 rounded-2xl text-[15px]"
+        variant="default" className="flex h-12 items-center justify-center gap-2 rounded-2xl text-body"
       >
         <Plus className="h-5 w-5" />
         Add account
       </Button>
 
       <div className="-mt-2 flex items-start justify-between gap-3 px-1">
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-caption" style={{ color: 'var(--text-muted)' }}>
           Ticked accounts appear on Home. Tap an account to rename, regroup, switch type or close it.
         </p>
-        <Button type="button" onClick={() => openGroupSheet()} className="flex shrink-0 items-center gap-1 text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+        <Button type="button" onClick={() => openGroupSheet()} className="flex shrink-0 items-center gap-1 text-label" style={{ color: 'var(--accent-text)' }}>
           <FolderPlus className="h-4 w-4" />
           New group
         </Button>
       </div>
 
       {error && (
-        <p className="rounded-2xl p-4 text-sm font-semibold" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
+        <p className="rounded-2xl p-4 text-body font-semibold" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
           {error}
         </p>
       )}
@@ -422,7 +421,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
           {(ungrouped.length > 0 || groups.length === 0) && section(groups.length ? 'No group' : 'Accounts', ungrouped)}
           {closed.length > 0 && (
             <>
-              <CollapsibleTrigger className="self-center text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+              <CollapsibleTrigger className="self-center text-label" style={{ color: 'var(--accent-text)' }}>
                 {showClosed ? 'Hide closed accounts' : `Show ${closed.length} closed account${closed.length === 1 ? '' : 's'}`}
               </CollapsibleTrigger>
               {showClosed && <CollapsibleContent asChild>{section('Closed', closed)}</CollapsibleContent>}
@@ -435,23 +434,23 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
       <Sheet financialForm open={addOpen} onClose={() => setAddOpen(false)} title="Add account" subtitle="Creates the account in Actual">
         <form onSubmit={createAccount} className="flex flex-col gap-4">
           <div>
-            <Label htmlFor="acc-name" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+            <Label htmlFor="acc-name" className="mb-1 block text-label" style={{ color: 'var(--text-secondary)' }}>
               Name
             </Label>
             <Input id="acc-name" autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Everyday Savings" maxLength={100} />
           </div>
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+            <span className="text-label" style={{ color: 'var(--text-secondary)' }}>
               Type
             </span>
             <Segmented value={newOff} onChange={setNewOff} label="Account type" />
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-caption" style={{ color: 'var(--text-muted)' }}>
               {newOff ? KIND_HELP.tracking : KIND_HELP.budget}
             </p>
           </div>
           {groups.length > 0 && groupSelect('acc-group', newGroup, setNewGroup)}
           <div>
-            <Label htmlFor="acc-balance" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+            <Label htmlFor="acc-balance" className="mb-1 block text-label" style={{ color: 'var(--text-secondary)' }}>
               Starting balance ({baseCurrency})
             </Label>
             <Input
@@ -462,7 +461,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
               placeholder="0.00"
               className="tabular-nums"
             />
-            <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <p className="mt-1 text-caption" style={{ color: 'var(--text-muted)' }}>
               Use a negative number for a credit card or loan you owe on.
             </p>
           </div>
@@ -471,7 +470,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
               {sheetError}
             </Alert>
           )}
-          <Button type="submit" disabled={busy} variant="default" className="h-12 rounded-2xl text-[15px] disabled:opacity-50">
+          <Button type="submit" disabled={busy} variant="default" className="h-12 rounded-2xl text-body disabled:opacity-50">
             {busy ? 'Adding…' : 'Add account'}
           </Button>
         </form>
@@ -483,10 +482,10 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
           <div className="flex flex-col gap-5">
             {selected.closed ? (
               <div className="flex flex-col gap-3">
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <p className="text-body" style={{ color: 'var(--text-secondary)' }}>
                   This account is closed. Reopening brings it back into Actual with its history intact.
                 </p>
-                <Button type="button" disabled={busy} onClick={reopenAccount} variant="default" className="h-12 rounded-2xl text-[15px] disabled:opacity-50">
+                <Button type="button" disabled={busy} onClick={reopenAccount} variant="default" className="h-12 rounded-2xl text-body disabled:opacity-50">
                   {busy ? 'Reopening…' : 'Reopen account'}
                 </Button>
               </div>
@@ -494,7 +493,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
               <>
                 {/* Rename */}
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="acc-edit-name" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                  <Label htmlFor="acc-edit-name" className="text-label" style={{ color: 'var(--text-secondary)' }}>
                     Name
                   </Label>
                   <div className="flex gap-2">
@@ -503,7 +502,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                       type="button"
                       onClick={saveName}
                       disabled={busy || !editName.trim() || editName.trim() === selected.name}
-                      variant="secondary" className="shrink-0 rounded-xl px-4 text-sm font-bold disabled:opacity-40"
+                      variant="secondary" className="shrink-0 rounded-xl px-4 text-label disabled:opacity-40"
                     >
                       Save
                     </Button>
@@ -514,7 +513,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
 
                 {/* Budget vs tracking */}
                 <div className="flex flex-col gap-2">
-                  <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="text-label" style={{ color: 'var(--text-secondary)' }}>
                     Type
                   </span>
                   <Segmented
@@ -525,12 +524,12 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                     }}
                     label="Account type"
                   />
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <p className="text-caption" style={{ color: 'var(--text-muted)' }}>
                     {editOff ? KIND_HELP.tracking : KIND_HELP.budget}
                   </p>
                   {confirmKind && (
                     <div className="flex flex-col gap-3 rounded-2xl p-3.5" style={{ backgroundColor: 'var(--warning-soft)' }}>
-                      <p className="flex gap-2 text-xs leading-relaxed" style={{ color: 'var(--warning)' }}>
+                      <p className="flex gap-2 text-caption leading-relaxed" style={{ color: 'var(--warning)' }}>
                         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                         <span>
                           {editOff
@@ -546,11 +545,11 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                             setEditOff(selected.offbudget);
                             setConfirmKind(false);
                           }}
-                          variant="secondary" className="h-10 flex-1 rounded-xl text-sm font-bold"
+                          variant="secondary" className="h-10 flex-1 rounded-xl text-label"
                         >
                           Cancel
                         </Button>
-                        <Button type="button" disabled={busy} onClick={saveKind} variant="default" className="h-10 flex-1 rounded-xl text-sm disabled:opacity-50">
+                        <Button type="button" disabled={busy} onClick={saveKind} variant="default" className="h-10 flex-1 rounded-xl text-label disabled:opacity-50">
                           {busy ? 'Switching…' : `Make it ${editOff ? 'tracking' : 'budget'}`}
                         </Button>
                       </div>
@@ -561,13 +560,13 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                 {/* Email import: linked cards/accounts + auto-import */}
                 <div className="flex flex-col gap-3 border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
                   <div>
-                    <h3 className="text-sm font-extrabold">Email import</h3>
-                    <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <h3 className="text-heading">Email import</h3>
+                    <p className="mt-0.5 text-caption" style={{ color: 'var(--text-muted)' }}>
                       Bank alerts from these go to {selected.name}. Kopi learns them the first time you review one.
                     </p>
                   </div>
                   {selected.links.length === 0 ? (
-                    <p className="rounded-xl px-3 py-2.5 text-xs" style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
+                    <p className="rounded-xl px-3 py-2.5 text-caption" style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
                       Nothing linked yet.
                     </p>
                   ) : (
@@ -576,8 +575,8 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                         <div key={l.fingerprint} className="flex items-center gap-2.5 py-2.5" style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
                           <CreditCard className="h-4 w-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
                           <span className="flex min-w-0 flex-1 flex-col">
-                            <span className="truncate text-sm font-semibold">{l.label}</span>
-                            <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                            <span className="truncate text-body">{l.label}</span>
+                            <span className="text-caption" style={{ color: 'var(--text-muted)' }}>
                               {l.kind === 'alert' ? 'Alert type' : l.source === 'manual' ? 'Added by you' : 'Learned from a review'}
                               {l.conflicts > 0 ? ' · used for different accounts, always reviewed' : ''}
                             </span>
@@ -606,14 +605,20 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                     />
                     <datalist id="known-issuers">
                       {KNOWN_ISSUERS.map((b) => (
-                        <NativeSelectOption key={b} value={b} />
+                        <option key={b} value={b} />
                       ))}
                     </datalist>
-                    <NativeSelect aria-label="Type" value={linkKind} onChange={(e) => setLinkKind(e.target.value as 'card' | 'account' | 'wallet')} className="w-auto">
-                      <NativeSelectOption value="card">Card</NativeSelectOption>
-                      <NativeSelectOption value="account">Account</NativeSelectOption>
-                      <NativeSelectOption value="wallet">Wallet</NativeSelectOption>
-                    </NativeSelect>
+                    <Select
+                      aria-label="Type"
+                      value={linkKind}
+                      onValueChange={setLinkKind}
+                      options={[
+                        { value: 'card', label: 'Card' },
+                        { value: 'account', label: 'Account' },
+                        { value: 'wallet', label: 'Wallet' },
+                      ]}
+                      className="w-auto"
+                    />
                     <Input
                       aria-label="Last 4 digits"
                       inputMode="numeric"
@@ -624,7 +629,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                       className="tabular-nums"
                     />
                   </div>
-                  <Button type="button" onClick={addLink} disabled={busy} variant="secondary" className="h-10 rounded-xl text-sm font-bold disabled:opacity-50">
+                  <Button type="button" onClick={addLink} disabled={busy} variant="secondary" className="h-10 rounded-xl text-label disabled:opacity-50">
                     Link card or account
                   </Button>
                   <Switch
@@ -635,8 +640,8 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                     style={{ backgroundColor: 'var(--bg-subtle)' }}
                   >
                     <span className="flex flex-col">
-                      <span className="text-sm font-bold">Import automatically</span>
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <span className="text-body font-semibold">Import automatically</span>
+                      <span className="text-caption" style={{ color: 'var(--text-muted)' }}>
                         Skip review when a linked card’s email is read cleanly. Foreign-currency and transfer emails still wait for you.
                       </span>
                     </span>
@@ -650,65 +655,63 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                     <Button
                       type="button"
                       onClick={() => setClosing(true)}
-                      className="h-12 rounded-2xl text-[15px] font-bold"
+                      className="h-12 rounded-2xl text-body"
                       style={{ backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }}
                     >
                       Close account…
                     </Button>
                   ) : (
                     <>
-                      <h3 className="text-sm font-extrabold">Close {selected.name}</h3>
-                      <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                      <h3 className="text-heading">Close {selected.name}</h3>
+                      <p className="text-caption leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                         Closed accounts keep their history but disappear from your lists. You can reopen it later.
                       </p>
                       {selected.linkedHoldings > 0 && (
-                        <p className="rounded-xl px-3 py-2 text-xs" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
+                        <p className="rounded-xl px-3 py-2 text-caption" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
                           {selected.linkedHoldings} portfolio holding{selected.linkedHoldings === 1 ? ' syncs' : 's sync'} into this account. Unlink {selected.linkedHoldings === 1 ? 'it' : 'them'} in Invest so syncing doesn’t fail.
                         </p>
                       )}
                       {selectedBalance !== 0 && (
                         <>
                           <div>
-                            <Label htmlFor="acc-transfer" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                            <Label htmlFor="acc-transfer" className="mb-1 block text-label" style={{ color: 'var(--text-secondary)' }}>
                               Move the remaining {money(selectedBalance)} to
                             </Label>
-                            <NativeSelect id="acc-transfer" value={transferTo} onChange={(e) => setTransferTo(e.target.value)}>
-                              <NativeSelectOption value="">Choose an account…</NativeSelectOption>
-                              {open
+                            <Select
+                              id="acc-transfer"
+                              value={transferTo || null}
+                              onValueChange={setTransferTo}
+                              placeholder="Choose an account…"
+                              options={open
                                 .filter((a) => a.id !== selected.id)
-                                .map((a) => (
-                                  <NativeSelectOption key={a.id} value={a.id}>
-                                    {a.name} ({a.offbudget ? 'tracking' : 'budget'})
-                                  </NativeSelectOption>
-                                ))}
-                            </NativeSelect>
+                                .map((a) => ({ value: a.id, label: a.name, hint: a.offbudget ? 'Tracking' : 'Budget' }))}
+                            />
                           </div>
                           {needsCategory && (
                             <div>
-                              <Label htmlFor="acc-transfer-cat" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                              <Label htmlFor="acc-transfer-cat" className="mb-1 block text-label" style={{ color: 'var(--text-secondary)' }}>
                                 Category for money leaving the budget
                               </Label>
-                              <NativeSelect id="acc-transfer-cat" value={transferCat} onChange={(e) => setTransferCat(e.target.value)}>
-                                <NativeSelectOption value="">Choose a category…</NativeSelectOption>
-                                {expenseCategories.map((c) => (
-                                  <NativeSelectOption key={c.id} value={c.id}>
-                                    {c.name}
-                                  </NativeSelectOption>
-                                ))}
-                              </NativeSelect>
+                              <Select
+                                id="acc-transfer-cat"
+                                value={transferCat || null}
+                                onValueChange={setTransferCat}
+                                placeholder="Choose a category…"
+                                options={expenseCategories.map((c) => ({ value: c.id, label: c.name }))}
+                              />
                             </div>
                           )}
                         </>
                       )}
                       <div className="flex gap-2">
-                        <Button type="button" onClick={() => setClosing(false)} variant="secondary" className="h-12 flex-1 rounded-2xl text-sm font-bold">
+                        <Button type="button" onClick={() => setClosing(false)} variant="secondary" className="h-12 flex-1 rounded-2xl text-body">
                           Keep open
                         </Button>
                         <Button
                           type="button"
                           disabled={busy || !canClose}
                           onClick={closeAccount}
-                          className="h-12 flex-1 rounded-2xl text-sm font-bold disabled:opacity-40"
+                          className="h-12 flex-1 rounded-2xl text-body disabled:opacity-40"
                           style={{ backgroundColor: 'var(--negative)', color: 'var(--bg-canvas)' }}
                         >
                           {busy ? 'Closing…' : 'Close account'}
@@ -738,7 +741,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
         {groupSheet && (
           <form onSubmit={saveGroup} className="flex flex-col gap-4">
             <div>
-              <Label htmlFor="group-name" className="mb-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="group-name" className="mb-1 block text-label" style={{ color: 'var(--text-secondary)' }}>
                 Name
               </Label>
               <Input
@@ -755,7 +758,7 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                 {sheetError}
               </Alert>
             )}
-            <Button type="submit" disabled={busy} variant="default" className="h-12 rounded-2xl text-[15px] disabled:opacity-50">
+            <Button type="submit" disabled={busy} variant="default" className="h-12 rounded-2xl text-body disabled:opacity-50">
               {busy ? 'Saving…' : groupSheet.mode === 'edit' ? 'Save' : 'Create group'}
             </Button>
             {groupSheet.mode === 'edit' && (
@@ -764,25 +767,25 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
                   <Button
                     type="button"
                     onClick={() => setConfirmDeleteGroup(true)}
-                    className="h-12 rounded-2xl text-[15px] font-bold"
+                    className="h-12 rounded-2xl text-body"
                     style={{ backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }}
                   >
                     Delete group…
                   </Button>
                 ) : (
                   <>
-                    <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                    <p className="text-caption leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                       The accounts in “{groupSheet.group.name}” stay as they are and become ungrouped. Nothing else changes.
                     </p>
                     <div className="flex gap-2">
-                      <Button type="button" onClick={() => setConfirmDeleteGroup(false)} variant="secondary" className="h-12 flex-1 rounded-2xl text-sm font-bold">
+                      <Button type="button" onClick={() => setConfirmDeleteGroup(false)} variant="secondary" className="h-12 flex-1 rounded-2xl text-body">
                         Keep group
                       </Button>
                       <Button
                         type="button"
                         disabled={busy}
                         onClick={deleteGroup}
-                        className="h-12 flex-1 rounded-2xl text-sm font-bold disabled:opacity-40"
+                        className="h-12 flex-1 rounded-2xl text-body disabled:opacity-40"
                         style={{ backgroundColor: 'var(--negative)', color: 'var(--bg-canvas)' }}
                       >
                         {busy ? 'Deleting…' : 'Delete group'}

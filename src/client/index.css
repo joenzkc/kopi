@@ -22,6 +22,62 @@
   --color-ring: var(--accent-text);
 }
 
+/* Type scale (Manrope). Every text size in the app comes from these steps; each sets size, line height,
+   tracking and a default weight, so `text-body` alone is a complete style. Weights stay within 500/600/700:
+   add font-medium / font-semibold / font-bold only when a role needs a different weight (e.g. amounts are
+   `text-body font-semibold`). Large text gets negative tracking and tight leading; small text gets a little extra tracking. */
+@theme {
+  --font-sans: Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* The amount being typed on the add-transaction keypad only */
+  --text-entry: 3.5rem;
+  --text-entry--line-height: 1;
+  --text-entry--letter-spacing: -0.04em;
+  --text-entry--font-weight: 700;
+
+  /* Hero balances (Home net worth, Budget left-to-budget, Portfolio total) */
+  --text-display: 2.5rem;
+  --text-display--line-height: 1;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 700;
+
+  /* Page titles */
+  --text-title: 1.75rem;
+  --text-title--line-height: 1.1;
+  --text-title--letter-spacing: -0.025em;
+  --text-title--font-weight: 700;
+
+  /* Stat-tile values (RSU summary, budget summary) */
+  --text-stat: 1.25rem;
+  --text-stat--line-height: 1.15;
+  --text-stat--letter-spacing: -0.02em;
+  --text-stat--font-weight: 700;
+
+  /* Section headings, group names, sheet titles, month label */
+  --text-heading: 1.0625rem;
+  --text-heading--line-height: 1.25;
+  --text-heading--letter-spacing: -0.012em;
+  --text-heading--font-weight: 700;
+
+  /* Row names, amounts, body copy, large buttons */
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.35;
+  --text-body--letter-spacing: -0.005em;
+  --text-body--font-weight: 500;
+
+  /* Buttons, chips, tabs, field labels, section labels */
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.35;
+  --text-label--letter-spacing: 0em;
+  --text-label--font-weight: 600;
+
+  /* Meta lines, helper text, badges, legends */
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.35;
+  --text-caption--letter-spacing: 0.005em;
+  --text-caption--font-weight: 500;
+}
+
 /* Default tokens = Night Cards · Midnight + Lime. lib/theme.ts overrides these at runtime
    from the saved Appearance setting. */
 :root {
@@ -62,7 +118,7 @@
 
 @layer base {
   html {
-    font-family: Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--font-sans);
     background-color: var(--bg-canvas);
     color: var(--text-primary);
     -webkit-tap-highlight-color: transparent;
@@ -71,7 +127,8 @@
   body {
     background-color: var(--bg-canvas);
     color: var(--text-primary);
-    overscroll-behavior-y: contain;
+    /* No browser bounce / pull-to-refresh: Kopi draws its own (components/PullToRefresh). */
+    overscroll-behavior-y: none;
   }
 
   input,
@@ -145,6 +202,9 @@ html {
     background-color: var(--accent);
     color: var(--accent-fg);
     font-weight: 700;
+    /* Type-scale utilities (text-body, text-label…) set font-weight: var(--tw-font-weight, <role default>);
+       this keeps primary buttons bold unless a font-* utility asks otherwise. */
+    --tw-font-weight: 700;
     transition: background-color 150ms ease, opacity 150ms ease, transform 100ms ease;
   }
 
@@ -162,6 +222,8 @@ html {
     background-color: var(--bg-subtle);
     border: 1px solid transparent;
     color: var(--text-primary);
+    font-weight: 700;
+    --tw-font-weight: 700; /* see .btn-primary */
     transition: background-color 150ms ease, border-color 150ms ease, transform 100ms ease;
   }
 
@@ -178,7 +240,9 @@ html {
     border: 1px solid var(--border-subtle);
     background-color: var(--bg-subtle);
     padding: 0.65rem 0.85rem;
-    font-size: 0.9rem;
+    font-size: 0.9375rem; /* text-body */
+    line-height: 1.35;
+    font-weight: 500;
     color: var(--text-primary);
     outline: none;
     transition: border-color 150ms ease, box-shadow 150ms ease;
@@ -203,6 +267,270 @@ html {
 
   .divider-list > * + * {
     border-top: 1px solid var(--border-subtle);
+  }
+
+  /* Select trigger styled like .input-field (forms) */
+  .select-field {
+    min-height: 2.75rem;
+    border-radius: 0.875rem;
+    border: 1px solid var(--border-subtle);
+    background-color: var(--bg-subtle);
+    padding: 0.6rem 0.75rem 0.6rem 0.85rem;
+    font-size: 0.9375rem; /* text-body */
+    line-height: 1.35;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .select-field[data-popup-open],
+  .select-field:focus-visible {
+    border-color: var(--accent-text);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    outline: none;
+  }
+
+  .select-inline {
+    color: var(--text-primary);
+  }
+
+  .select-inline[data-popup-open] {
+    background-color: var(--bg-hover);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .select-inline:hover {
+      background-color: var(--bg-hover);
+    }
+  }
+
+  /* Popover surface shared by Select and Menu: opens from its trigger (Base UI sets --transform-origin). */
+  .popover-surface {
+    border-radius: 1rem;
+    border: 1px solid var(--border-strong);
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    box-shadow: 0 16px 40px -12px rgb(0 0 0 / 0.45), 0 2px 6px rgb(0 0 0 / 0.2);
+    transform-origin: var(--transform-origin);
+    outline: none;
+    transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+  }
+
+  .popover-surface[data-starting-style],
+  .popover-surface[data-ending-style] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  .popover-surface[data-ending-style] {
+    transition-duration: 110ms;
+  }
+
+  .popover-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.625rem 0.5rem 0.75rem;
+    border-radius: 0.625rem;
+    font-size: 0.9375rem; /* text-body */
+    line-height: 1.35;
+    font-weight: 500;
+    cursor: default;
+    user-select: none;
+    outline: none;
+  }
+
+  .popover-item[data-highlighted] {
+    background-color: var(--bg-hover);
+  }
+
+  .popover-item[data-selected] {
+    font-weight: 600;
+  }
+
+  .popover-item[data-disabled] {
+    opacity: 0.45;
+  }
+
+  .popover-item-destructive {
+    color: var(--negative);
+  }
+
+  @media (any-pointer: coarse) {
+    .popover-item {
+      min-height: 2.75rem;
+    }
+  }
+}
+
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ---- Sheet (Base UI Drawer): bottom sheet on phones, centred panel on md+ ----
+   Swipe tracking is 1:1 (no transition while [data-swiping]); release/close duration scales with
+   swipe velocity via --drawer-swipe-strength, like a native sheet. */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background-color: rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: calc(1 - var(--drawer-swipe-progress, 0));
+  transition: opacity 450ms var(--ease-drawer);
+}
+
+.sheet-backdrop[data-starting-style],
+.sheet-backdrop[data-ending-style] {
+  opacity: 0;
+}
+
+.sheet-viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet-popup {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 92dvh;
+  overflow: hidden;
+  border-radius: 1.75rem 1.75rem 0 0;
+  border: 1px solid var(--border-subtle);
+  border-bottom: 0;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: 0 -12px 40px -16px rgb(0 0 0 / 0.5);
+  outline: none;
+  transform: translateY(var(--drawer-swipe-movement-y, 0px));
+  transition: transform 450ms var(--ease-drawer);
+}
+
+.sheet-popup[data-starting-style],
+.sheet-popup[data-ending-style] {
+  transform: translateY(100%);
+}
+
+.sheet-popup[data-ending-style],
+.sheet-backdrop[data-ending-style] {
+  transition-duration: calc(var(--drawer-swipe-strength, 1) * 380ms);
+}
+
+.sheet-popup[data-swiping],
+.sheet-backdrop[data-swiping] {
+  transition-duration: 0ms;
+  user-select: none;
+}
+
+.sheet-handle {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 0.3125rem;
+  margin: 0.5rem auto 0;
+  border-radius: 999px;
+  background-color: var(--border-strong);
+}
+
+.sheet-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1.25rem max(1rem, env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  .sheet-viewport {
+    align-items: center;
+    padding: 1rem;
+  }
+
+  .sheet-popup {
+    max-width: 32rem;
+    max-height: min(88dvh, 780px);
+    border-radius: 1.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+    box-shadow: 0 24px 64px -24px rgb(0 0 0 / 0.6);
+    transition: transform 220ms var(--ease-out), opacity 220ms var(--ease-out);
+  }
+
+  .sheet-popup[data-starting-style],
+  .sheet-popup[data-ending-style] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  .sheet-popup[data-ending-style] {
+    transition-duration: 150ms;
+  }
+
+  .sheet-handle {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-popup {
+    transition: opacity 160ms ease;
+  }
+
+  .sheet-popup[data-starting-style],
+  .sheet-popup[data-ending-style] {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+/* Keep the layout width fixed when a page gets short enough to drop its scrollbar (desktop),
+   so content doesn't jump sideways when filtering lists. */
+html {
+  scrollbar-gutter: stable;
+  overscroll-behavior-y: none;
+}
+
+/* Tab switch: the newly shown tab settles in (opacity + 6px rise, ease-out). Replays whenever a
+   hidden panel is shown again, because display:none → block restarts CSS animations. */
+@keyframes tab-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+}
+
+@keyframes tab-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.tab-panel:not([hidden]) {
+  animation: tab-in 220ms var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-panel:not([hidden]) {
+    animation: tab-fade 160ms ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover-surface {
+    transition: opacity 120ms ease;
+  }
+
+  .popover-surface[data-starting-style],
+  .popover-surface[data-ending-style] {
+    transform: none;
   }
 }
 

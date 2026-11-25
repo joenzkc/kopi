@@ -4,7 +4,8 @@ import { Alert } from '@client/components/ui/alert';
 import { Button } from '@client/components/ui/button';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
+import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
+import { Select } from '@client/components/ui/select';
 import { Switch, SwitchThumb } from '@client/components/ui/switch';
 import { Textarea } from '@client/components/ui/textarea';
 import { apiFetch } from '../lib/api';
@@ -80,7 +81,7 @@ export function EditTransactionSheet({ transaction, accounts, categories, payees
       <form onSubmit={save}>
         <fieldset disabled={busy} className="space-y-4">
           <div>
-            <Label htmlFor="edit-tx-payee" className="mb-1 block text-xs font-bold">Payee</Label>
+            <Label htmlFor="edit-tx-payee" className="mb-1 block text-label" style={{ color: 'var(--text-muted)' }}>Payee</Label>
             <Input id="edit-tx-payee" value={payeeName} onChange={(e) => setPayeeName(e.target.value)}
               readOnly={transaction.isTransfer} list={transaction.isTransfer ? undefined : 'edit-tx-payees'}
               placeholder="No payee" maxLength={120} />
@@ -92,52 +93,76 @@ export function EditTransactionSheet({ transaction, accounts, categories, payees
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
             <div className="min-w-0">
-              <Label htmlFor="edit-tx-amount" className="mb-1 block text-xs font-bold">Amount ({baseCurrency})</Label>
+              <Label htmlFor="edit-tx-amount" className="mb-1 block text-label" style={{ color: 'var(--text-muted)' }}>Amount ({baseCurrency})</Label>
               <Input id="edit-tx-amount" type="number" inputMode="decimal" min="0" step="0.01" required readOnly={split}
                 value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
             <div className="min-w-0">
-              <Label htmlFor="edit-tx-direction" className="mb-1 block text-xs font-bold">Direction</Label>
-              <NativeSelect id="edit-tx-direction" value={direction} disabled={split} onChange={(e) => setDirection(e.target.value)}>
-                <NativeSelectOption value="out">Outflow</NativeSelectOption>
-                <NativeSelectOption value="in">Inflow</NativeSelectOption>
-              </NativeSelect>
+              <span id="edit-tx-direction" className="mb-1 block text-label" style={{ color: 'var(--text-muted)' }}>Direction</span>
+              <RadioGroup
+                aria-labelledby="edit-tx-direction"
+                value={direction}
+                onValueChange={setDirection}
+                disabled={split}
+                className="grid h-11 grid-cols-2 gap-1 rounded-[0.875rem] p-1 data-[disabled]:opacity-50"
+                style={{ backgroundColor: 'var(--bg-subtle)' }}
+              >
+                {[
+                  { value: 'out', label: 'Out' },
+                  { value: 'in', label: 'In' },
+                ].map((o) => (
+                  <RadioGroupItem
+                    key={o.value}
+                    value={o.value}
+                    className="min-w-12 rounded-[0.625rem] px-3 text-label transition-colors duration-150"
+                    style={direction === o.value ? { backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' } : { color: 'var(--text-muted)' }}
+                  >
+                    {o.label}
+                  </RadioGroupItem>
+                ))}
+              </RadioGroup>
             </div>
           </div>
           <div>
-            <Label htmlFor="edit-tx-date" className="mb-1 block text-xs font-bold">Date</Label>
+            <Label htmlFor="edit-tx-date" className="mb-1 block text-label" style={{ color: 'var(--text-muted)' }}>Date</Label>
             <Input id="edit-tx-date" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           {canEditCategory && (
             <div>
-              <Label htmlFor="edit-tx-category" className="mb-1 block text-xs font-bold">Category</Label>
-              <NativeSelect id="edit-tx-category" value={category} onChange={(e) => setCategory(e.target.value)}>
-                <NativeSelectOption value="">Uncategorized</NativeSelectOption>
-                {initialCategory && !categories.some((c) => c.id === initialCategory) && (
-                  <NativeSelectOption value={initialCategory}>{transaction.categoryName || 'Current category'}</NativeSelectOption>
-                )}
-                {categories.map((c) => <NativeSelectOption key={c.id} value={c.id}>{c.name}</NativeSelectOption>)}
-              </NativeSelect>
+              <Label htmlFor="edit-tx-category" className="mb-1 block text-label" style={{ color: 'var(--text-muted)' }}>Category</Label>
+              <Select
+                id="edit-tx-category"
+                aria-label="Category"
+                value={category}
+                onValueChange={setCategory}
+                options={[
+                  { value: '', label: 'Uncategorized' },
+                  ...(initialCategory && !categories.some((c) => c.id === initialCategory)
+                    ? [{ value: initialCategory, label: transaction.categoryName || 'Current category' }]
+                    : []),
+                  ...categories.map((c) => ({ value: c.id, label: c.name })),
+                ]}
+              />
             </div>
           )}
-          {split && <p className="text-xs text-muted-foreground">Edit split amounts and categories in Actual.</p>}
+          {split && <p className="text-caption" style={{ color: 'var(--text-muted)' }}>Edit split amounts and categories in Actual.</p>}
           <div>
-            <Label htmlFor="edit-tx-notes" className="mb-1 block text-xs font-bold">Notes</Label>
+            <Label htmlFor="edit-tx-notes" className="mb-1 block text-label" style={{ color: 'var(--text-muted)' }}>Notes</Label>
             <Textarea id="edit-tx-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} />
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="edit-tx-cleared" className="text-sm font-semibold">{transaction.reconciled ? 'Reconciled' : 'Cleared'}</Label>
+            <Label htmlFor="edit-tx-cleared" className="text-body">{transaction.reconciled ? 'Reconciled' : 'Cleared'}</Label>
             <Switch id="edit-tx-cleared" type="button" checked={cleared} onCheckedChange={setCleared}
               disabled={Boolean(transaction.reconciled) || busy} className="flex min-h-11 items-center">
               <SwitchThumb />
             </Switch>
           </div>
           {error && <Alert variant="destructive">{error}</Alert>}
-          <Button type="submit" variant="default" disabled={!hasChanges || busy} className="h-12 w-full rounded-2xl font-bold">
+          <Button type="submit" variant="default" disabled={!hasChanges || busy} className="h-12 w-full rounded-2xl text-body">
             {busy ? 'Saving…' : 'Save changes'}
           </Button>
           {onLinkPayee && (
-            <Button type="button" onClick={onLinkPayee} disabled={hasChanges || busy} className="min-h-11 w-full text-sm text-primary">
+            <Button type="button" onClick={onLinkPayee} disabled={hasChanges || busy} className="min-h-11 w-full text-label disabled:opacity-50" style={{ color: 'var(--accent-text)' }}>
               Link payee for imports
             </Button>
           )}

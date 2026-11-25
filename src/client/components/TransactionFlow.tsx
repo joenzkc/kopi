@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeftRight, Check, ChevronDown, ChevronLeft, ChevronRight, CreditCard, Delete, Mail, Plus, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, CreditCard, Delete, Link2, Mail, MoreHorizontal, Pencil, Plus, Search, X } from 'lucide-react';
 import type {
   ActualAccount,
   ActualCategory,
@@ -21,14 +21,15 @@ import { Toggle } from '@client/components/ui/toggle';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@client/components/ui/collapsible';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
+import { Select } from '@client/components/ui/select';
+import { Menu } from '@client/components/ui/menu';
 import { Alert } from '@client/components/ui/alert';
-import { Dialog, DialogClose, DialogContent, DialogOverlay, DialogTitle } from '@client/components/ui/dialog';
+import { Dialog } from '@base-ui/react/dialog';
 
 export type FlowKind = 'expense' | 'income' | 'transfer';
 export type FlowRequest = { mode: 'add'; kind?: FlowKind } | { mode: 'review'; event: EmailEventRecord };
 
-type Step = 'amount' | 'payee' | 'transferAccount' | 'details' | 'category' | 'done';
+type Step = 'amount' | 'payee' | 'details' | 'category' | 'done';
 
 interface TransactionFlowProps {
   request: FlowRequest;
@@ -142,8 +143,10 @@ export function TransactionFlow({
   const kind: FlowKind = isTransfer ? 'transfer' : direction;
   const incomingReview = Boolean(review && direction === 'income');
   const transferIncoming = isTransfer && incomingReview;
-  const pickingTransferAccount = isTransfer || step === 'transferAccount';
+  const pickingTransferAccount = isTransfer;
   const transferAccounts = openAccounts.filter((a) => a.id !== accountId);
+  const accountOptions = openAccounts.map((a) => ({ value: a.id, label: a.name, hint: a.offbudget ? 'Off budget' : undefined }));
+  const transferOptions = transferAccounts.map((a) => ({ value: a.id, label: a.name, hint: a.offbudget ? 'Off budget' : undefined }));
   const signed = kind === 'income' || transferIncoming ? n : -n;
   const parsedRef = review?.parsed?.accountRef || null;
   const rememberLabel = parsedRef?.label || (review?.parsed?.alertKey ? `${senderLabel(review.parsed.originalSender || review.sender)} alerts like this` : null);
@@ -302,7 +305,9 @@ export function TransactionFlow({
       return;
     }
     if (isTransfer && !transferAccounts.some((a) => a.id === toAccountId)) {
-      setStep('payee');
+      // Review picks the other account in the details card; the add flow uses the account list.
+      if (review) setError(transferIncoming ? 'Choose the account this transfer came from.' : 'Choose the account this transfer goes to.');
+      else setStep('payee');
       return;
     }
     if (!isTransfer && !payeeName.trim()) {
@@ -409,7 +414,7 @@ export function TransactionFlow({
   // --- small building blocks ---
   const iconBtn =
     'press flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition';
-  const sectionLabel = 'px-1 text-xs font-bold';
+  const sectionLabel = 'px-1 text-label';
   const kinds: Array<{ id: FlowKind; label: string }> = [
     { id: 'expense', label: 'Expense' },
     { id: 'income', label: 'Income' },
@@ -423,27 +428,31 @@ export function TransactionFlow({
           <ChevronLeft className="h-5 w-5" />
         </Button>
       ) : (
-        <DialogClose asChild>
-          <Button type="button" aria-label="Close" className={iconBtn} style={{ backgroundColor: 'var(--bg-surface)' }}>
+        <Dialog.Close
+          render={
+            <Button type="button" aria-label="Close" className={iconBtn} style={{ backgroundColor: 'var(--bg-surface)' }}>
             <X className="h-5 w-5" />
           </Button>
-        </DialogClose>
+          }
+        />
       )}
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-xl font-extrabold tracking-tight">{title}</h1>
+        <h1 className="truncate text-heading">{title}</h1>
         {sub && (
-          <p className="truncate text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>
+          <p className="truncate text-body tabular-nums" style={{ color: 'var(--text-muted)' }}>
             {sub}
           </p>
         )}
       </div>
       <ValueVisibilityButton />
       {onBack && (
-        <DialogClose asChild>
-          <Button type="button" aria-label="Close" className={iconBtn} style={{ color: 'var(--text-muted)' }}>
+        <Dialog.Close
+          render={
+            <Button type="button" aria-label="Close" className={iconBtn} style={{ color: 'var(--text-muted)' }}>
             <X className="h-5 w-5" />
           </Button>
-        </DialogClose>
+          }
+        />
       )}
     </header>
   );
@@ -454,6 +463,45 @@ export function TransactionFlow({
     borderColor: on ? 'var(--accent)' : 'var(--border-subtle)',
   });
 
+  /** Segmented type control, shared by the keypad and the review screen. */
+  const kindControl = (options: Array<{ id: FlowKind; label: string }>) => (
+    <RadioGroup
+      value={kind}
+      onValueChange={(value) => chooseKind(value as FlowKind)}
+      aria-label="Transaction type"
+      className="grid shrink-0 gap-1 rounded-2xl p-1"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`, backgroundColor: 'var(--bg-surface)' }}
+    >
+      {options.map((k) => {
+        const on = kind === k.id;
+        return (
+          <RadioGroupItem
+            key={k.id}
+            value={k.id}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.altKey && !event.ctrlKey && !event.metaKey) {
+                event.preventDefault();
+                event.currentTarget.click();
+              }
+            }}
+            className="h-10 rounded-xl text-label transition-colors duration-150"
+            style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
+          >
+            {k.label}
+          </RadioGroupItem>
+        );
+      })}
+    </RadioGroup>
+  );
+  // Review: an email is either a payment in one direction or a move between your own accounts.
+  const reviewKinds: Array<{ id: FlowKind; label: string }> = [
+    { id: direction, label: direction === 'income' ? 'Income' : 'Expense' },
+    { id: 'transfer', label: 'Transfer' },
+  ];
+  const reviewTransfer = Boolean(review) && isTransfer;
+  const showPayeeMenu = Boolean(review && !isTransfer && rawPayee && !review.parsed?.payeeFromRule);
+  const accountLabel = kind === 'income' || transferIncoming ? 'Into account' : isTransfer ? 'From account' : 'Account';
+
   const amountSummary = isTransfer ? formatMoney(n, baseCurrency) : formatSignedMoney(signed, baseCurrency);
   const transferAction = incomingReview ? 'Transfer from account' : 'Transfer to account';
   const intoAccount = kind === 'income' || transferIncoming;
@@ -461,50 +509,29 @@ export function TransactionFlow({
   const visibleStep = review && valuesHidden ? 'privateReview' : step;
 
   const panel = (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-center md:items-center md:p-6">
-      <DialogOverlay className="absolute inset-0 hidden bg-black/60 md:block" onClick={onClose} />
-      <DialogContent
+    <Dialog.Portal>
+      <Dialog.Backdrop className="fixed inset-0 z-50 hidden bg-black/60 md:block" />
+      <Dialog.Viewport className="fixed inset-0 z-50 flex items-stretch justify-center md:items-center md:p-6">
+      <Dialog.Popup
         ref={dialogRef}
+        // Focus the panel itself (not the first field) so opening the flow doesn't summon a touch keyboard.
+        initialFocus={dialogRef}
         onKeyDown={handleAmountKey}
         aria-label={dialogTitle}
-        aria-describedby={undefined}
         className="rise-in relative flex h-full w-full flex-col overflow-hidden md:h-[min(860px,92dvh)] md:max-w-[440px] md:rounded-[28px] md:border"
         style={{ backgroundColor: 'var(--bg-canvas)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
-        onPointerDownOutside={(event) => event.preventDefault()}
       >
-        <DialogTitle asChild>
-          <span className="sr-only">{dialogTitle}</span>
-        </DialogTitle>
+        <Dialog.Title className="sr-only">{dialogTitle}</Dialog.Title>
         {/* ---------- AMOUNT ---------- */}
         {visibleStep === 'privateReview' && header('Review import', null, 'Show financial values to review this email.')}
         {visibleStep === 'amount' && (
           <div className="flex min-h-0 flex-1 flex-col">
             {header(review ? 'Edit amount' : 'New transaction', review || payeeName ? () => setStep('details') : null)}
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-5 safe-pb">
-              <RadioGroup value={kind} onValueChange={(value) => chooseKind(value as FlowKind)} aria-label="Transaction type" className="grid gap-1 rounded-2xl p-1" style={{ gridTemplateColumns: `repeat(${kinds.length}, minmax(0, 1fr))`, backgroundColor: 'var(--bg-surface)' }}>
-                {kinds.map((k) => {
-                  const on = kind === k.id;
-                  return (
-                    <RadioGroupItem
-                      key={k.id}
-                      value={k.id}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && !event.altKey && !event.ctrlKey && !event.metaKey) {
-                          event.preventDefault();
-                          event.currentTarget.click();
-                        }
-                      }}
-                      className="h-10 rounded-xl text-sm font-bold transition"
-                      style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
-                    >
-                      {k.label}
-                    </RadioGroupItem>
-                  );
-                })}
-              </RadioGroup>
+              {kindControl(kinds)}
 
               <div className="flex min-h-[140px] flex-1 flex-col items-center justify-center gap-4">
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
+                <span className="text-label" style={{ color: 'var(--text-muted)' }}>
                   {kind === 'income' ? 'Received' : isTransfer ? 'Moving' : 'Spent'}
                 </span>
                 <div
@@ -512,34 +539,22 @@ export function TransactionFlow({
                   className="flex max-w-full items-baseline gap-1 tabular-nums"
                   style={{ color: kind === 'income' ? 'var(--positive)' : 'var(--text-primary)' }}
                 >
-                  <span className="text-2xl font-bold">
+                  <span className="text-title">
                     {kind === 'income' ? '+' : kind === 'expense' ? '−' : ''}
                     {sym}
                   </span>
-                  <span className="truncate text-6xl font-extrabold tracking-tight">{valuesHidden ? HIDDEN_VALUE : displayAmount(amt)}</span>
+                  <span className="truncate text-entry">{valuesHidden ? HIDDEN_VALUE : displayAmount(amt)}</span>
                 </div>
-                <Label
-                  className="relative flex h-10 items-center gap-1.5 rounded-full border pl-4 pr-3 text-sm font-semibold"
-                  style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
-                >
-                  <span style={{ color: 'var(--text-muted)' }}>{intoAccount ? 'Into' : 'From'}</span>
-                  <span>{accountName(accountId)}</span>
-                  <ChevronDown className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
-                  <NativeSelect
-                    variant="unstyled"
-                    aria-label={intoAccount ? 'Into account' : 'From account'}
-                    value={accountId}
-                    onChange={(e) => selectAccount(e.target.value)}
-                    className="absolute inset-0 cursor-pointer opacity-0"
-                  >
-                    {openAccounts.map((a) => (
-                      <NativeSelectOption key={a.id} value={a.id}>
-                        {a.name}
-                        {a.offbudget ? ' (off budget)' : ''}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                </Label>
+                <Select
+                  variant="inline"
+                  aria-label={intoAccount ? 'Into account' : 'From account'}
+                  value={accountId || null}
+                  onValueChange={selectAccount}
+                  options={accountOptions}
+                  placeholder="Choose account"
+                  prefix={<span style={{ color: 'var(--text-muted)' }}>{intoAccount ? 'Into' : 'From'}</span>}
+                  className="mx-0 h-10 max-w-full justify-center gap-1.5 rounded-full bg-[var(--bg-surface)] pl-4 pr-3 text-label font-semibold"
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-2">
@@ -549,7 +564,7 @@ export function TransactionFlow({
                     type="button"
                     onClick={() => press(k)}
                     aria-label={k === 'back' ? 'Delete digit' : k === '.' ? 'Decimal point' : k}
-                    className="press flex h-14 items-center justify-center rounded-2xl text-2xl font-bold tabular-nums transition"
+                    className="press flex h-14 items-center justify-center rounded-2xl text-stat tabular-nums transition"
                     style={{ backgroundColor: 'var(--bg-surface)' }}
                   >
                     {k === 'back' ? <Delete className="h-6 w-6" /> : k}
@@ -560,7 +575,7 @@ export function TransactionFlow({
                 type="button"
                 onClick={goFromAmount}
                 disabled={n <= 0}
-                variant="default" className="h-14 shrink-0 rounded-2xl text-base disabled:opacity-40"
+                variant="default" className="h-14 shrink-0 rounded-2xl text-body disabled:opacity-40"
               >
                 Continue
               </Button>
@@ -569,7 +584,7 @@ export function TransactionFlow({
         )}
 
         {/* ---------- PAYEE / DESTINATION ---------- */}
-        {(visibleStep === 'payee' || visibleStep === 'transferAccount') && (
+        {visibleStep === 'payee' && (
           <div className="flex min-h-0 flex-1 flex-col">
             {header(
               pickingTransferAccount ? transferAction : kind === 'income' ? 'Who paid you?' : 'Who was it?',
@@ -598,7 +613,7 @@ export function TransactionFlow({
                       pickPayee(match ? match.name : q);
                     }}
                     placeholder="Search or type a new payee"
-                    className="h-full flex-1 bg-transparent text-[15px] outline-none"
+                    className="h-full flex-1 bg-transparent text-body outline-none"
                     style={{ color: 'var(--text-primary)' }}
                   />
                 </Label>
@@ -611,7 +626,7 @@ export function TransactionFlow({
                   <Button
                     type="button"
                     onClick={() => pickPayee(query.trim())}
-                    className="press flex w-full items-center gap-3 rounded-2xl border border-dashed p-3 text-left text-[15px] font-bold"
+                    className="press flex w-full items-center gap-3 rounded-2xl border border-dashed p-3 text-left text-body"
                     style={{ borderColor: 'var(--accent-text)', backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text)' }}
                   >
                     <Plus className="h-5 w-5" />
@@ -633,8 +648,8 @@ export function TransactionFlow({
                       >
                         <Tile colorKey={a.name} label={a.name} size={40} />
                         <span className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-[15px] font-bold">{a.name}</span>
-                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          <span className="truncate text-body">{a.name}</span>
+                          <span className="text-caption tabular-nums" style={{ color: 'var(--text-muted)' }}>
                             {a.offbudget ? 'Off budget' : 'Budget account'} · {formatMoney((a.workingBalance ?? 0) / 100, baseCurrency)}
                           </span>
                         </span>
@@ -651,8 +666,8 @@ export function TransactionFlow({
                       >
                         <Tile colorKey={p.colorKey} label={p.name} size={40} />
                         <span className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-[15px] font-bold">{p.name}</span>
-                          <span className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>
+                          <span className="truncate text-body">{p.name}</span>
+                          <span className="truncate text-caption" style={{ color: 'var(--text-muted)' }}>
                             {p.sub}
                           </span>
                         </span>
@@ -660,12 +675,12 @@ export function TransactionFlow({
                       </Button>
                     ))}
                 {pickingTransferAccount && transferAccounts.length === 0 && (
-                  <p className="px-1 py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                  <p className="px-1 py-6 text-center text-body" style={{ color: 'var(--text-muted)' }}>
                     A transfer needs two open accounts.
                   </p>
                 )}
                 {!pickingTransferAccount && !query.trim() && payeeOptions.length === 0 && (
-                  <p className="px-1 py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                  <p className="px-1 py-6 text-center text-body" style={{ color: 'var(--text-muted)' }}>
                     Type a payee name to search or create one.
                   </p>
                 )}
@@ -679,101 +694,141 @@ export function TransactionFlow({
           <div className="flex min-h-0 flex-1 flex-col">
             {header(review ? 'Review import' : 'Details', review ? null : () => setStep('payee'))}
             <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-6">
+              {review && kindControl(reviewKinds)}
+
               {review && (
-                <div className="flex flex-col gap-2 rounded-3xl p-4" style={{ backgroundColor: 'var(--accent-soft)' }}>
-                  <span className="flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
-                    <Mail className="h-4 w-4" />
-                    <span className="truncate">{review.sender ? senderLabel(review.sender) : review.source}</span>
-                    {review.parsed && (
-                      <span className="ml-auto shrink-0 text-xs">{Math.round(review.parsed.confidence * 100)}% match</span>
-                    )}
-                  </span>
+                <Collapsible
+                  open={showEmail}
+                  onOpenChange={setShowEmail}
+                  className="flex flex-col gap-1 rounded-3xl px-4 pb-3 pt-1.5"
+                  style={{ backgroundColor: 'var(--bg-surface)' }}
+                >
+                  {(() => {
+                    const summary = (
+                      <>
+                        <Mail className="h-4 w-4 shrink-0" style={{ color: 'var(--accent-text)' }} />
+                        <span className="min-w-0 flex-1 truncate text-body font-semibold">
+                          {parsedRef?.label.split(' ')[0] || (review.sender ? senderLabel(review.parsed?.originalSender || review.sender) : review.source)}
+                        </span>
+                        {review.parsed && (
+                          <span className="shrink-0 text-caption tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                            {review.parsed.matchedRuleName ? 'Rule match' : `${Math.round(review.parsed.confidence * 100)}% match`}
+                          </span>
+                        )}
+                      </>
+                    );
+                    return review.body_text ? (
+                      <CollapsibleTrigger className="-mx-2 flex min-h-11 items-center gap-2 rounded-xl px-2 text-left">
+                        {summary}
+                        <span className="sr-only">{showEmail ? 'Hide email' : 'Show email'}</span>
+                        <ChevronDown
+                          className="h-4 w-4 shrink-0 transition-transform duration-200"
+                          style={{ color: 'var(--text-muted)', transform: showEmail ? 'rotate(180deg)' : 'none', transitionTimingFunction: 'var(--ease-out)' }}
+                        />
+                      </CollapsibleTrigger>
+                    ) : (
+                      <div className="flex min-h-11 items-center gap-2">{summary}</div>
+                    );
+                  })()}
                   {parsedRef && (
-                    <span className="flex flex-wrap items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <span className="flex flex-wrap items-center gap-1.5 text-caption" style={{ color: 'var(--text-muted)' }}>
                       <CreditCard className="h-3.5 w-3.5" />
-                      <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{parsedRef.label}</span>
+                      <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{parsedRef.label}</span>
                       {review.parsed?.accountSource === 'link' && review.parsed.accountId
                         ? `· linked to ${accountName(review.parsed.accountId)}`
-                        : '· new: pick its account below'}
+                        : '· new card: choose its account below'}
                     </span>
                   )}
                   {review.parsed?.fxEstimated && review.parsed.amount !== null && (
-                    <span className="text-xs" style={{ color: 'var(--warning)' }}>
+                    <span className="text-caption tabular-nums" style={{ color: 'var(--warning)' }}>
                       {review.parsed.currency} {Math.abs(review.parsed.amount).toLocaleString('en-SG')} converted at today’s rate. Adjust the amount if your statement differs.
                     </span>
                   )}
                   {review.parsed?.matchedRuleName && (
-                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <span className="text-caption" style={{ color: 'var(--text-muted)' }}>
                       Rule: {review.parsed.matchedRuleName}
                     </span>
                   )}
-                  {review.body_text && (
-                    <Collapsible open={showEmail} onOpenChange={setShowEmail} className="flex flex-col gap-1.5">
-                      {showEmail ? (
-                        <CollapsibleContent
-                          className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-2xl p-3 text-xs leading-relaxed [overflow-wrap:anywhere]"
-                          style={{ backgroundColor: 'var(--bg-canvas)', color: 'var(--text-secondary)' }}
-                        >
-                          {review.subject && (
-                            <div className="mb-2 font-bold" style={{ color: 'var(--text-primary)' }}>
-                              {review.subject}
-                            </div>
-                          )}
-                          <EmailText text={review.body_text} />
-                        </CollapsibleContent>
-                      ) : (
-                        <p className="line-clamp-3 text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                          “{review.body_text.replace(/\s+/g, ' ').trim().slice(0, 240)}”
-                        </p>
-                      )}
-                      <CollapsibleTrigger
-                        className="flex items-center gap-1 self-start text-xs font-bold"
-                        style={{ color: 'var(--accent-text)' }}
-                      >
-                        <ChevronDown className="h-3.5 w-3.5 transition-transform" style={{ transform: showEmail ? 'rotate(180deg)' : 'none' }} />
-                        {showEmail ? 'Hide full email' : 'Show full email'}
-                      </CollapsibleTrigger>
-                    </Collapsible>
-                  )}
                   {review.error && (
-                    <p className="text-xs font-semibold" style={{ color: 'var(--negative)' }}>
+                    <p className="text-caption font-semibold" style={{ color: 'var(--negative)' }}>
                       {review.error}
                     </p>
                   )}
-                </div>
+                  {review.body_text && (
+                    <CollapsibleContent
+                      className="mt-1.5 max-h-80 overflow-y-auto whitespace-pre-wrap rounded-2xl p-3 text-caption leading-relaxed [overflow-wrap:anywhere]"
+                      style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
+                    >
+                      {review.subject && (
+                        <div className="mb-2 font-semibold" style={{ color: 'var(--text-primary)' }}>
+                          {review.subject}
+                        </div>
+                      )}
+                      <EmailText text={review.body_text} />
+                    </CollapsibleContent>
+                  )}
+                </Collapsible>
               )}
 
               <div className="flex items-stretch gap-2">
-                <Button
-                  type="button"
-                  onClick={() => setStep('payee')}
-                  className="press flex min-w-0 flex-1 flex-col items-start gap-0.5 rounded-3xl border p-4 text-left"
-                  style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
-                >
-                  <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
-                    {isTransfer ? (transferIncoming ? 'Transfer from' : 'Transfer to') : kind === 'income' ? 'From' : 'Paid to'}
-                  </span>
-                  <span className="w-full truncate text-lg font-extrabold">
-                    {isTransfer ? (toAccountId ? accountName(toAccountId) : 'Pick account') : payeeName || 'Add payee'}
-                  </span>
-                  {!isTransfer && review?.parsed?.payeeFromRule && rawPayee && payeeName === review.parsed.payee && (
-                    <span className="w-full truncate text-xs" style={{ color: 'var(--text-muted)' }}>
-                      Renamed by your Actual rule from “{rawPayee}”
-                    </span>
-                  )}
-                </Button>
+                {!reviewTransfer && (
+                  <div className="relative flex min-w-0 flex-1">
+                    <Button
+                      type="button"
+                      onClick={() => setStep('payee')}
+                      className={`press flex min-w-0 flex-1 flex-col items-start gap-0.5 rounded-3xl p-4 text-left ${showPayeeMenu ? 'pr-12' : ''}`}
+                      style={{ backgroundColor: 'var(--bg-surface)' }}
+                    >
+                      <span className="text-label" style={{ color: 'var(--text-muted)' }}>
+                        {isTransfer ? (transferIncoming ? 'Transfer from' : 'Transfer to') : kind === 'income' ? 'From' : 'Paid to'}
+                      </span>
+                      <span className="w-full truncate text-heading">
+                        {isTransfer ? (toAccountId ? accountName(toAccountId) : 'Pick account') : payeeName || 'Add payee'}
+                      </span>
+                      {!isTransfer && review?.parsed?.payeeFromRule && rawPayee && payeeName === review.parsed.payee && (
+                        <span className="w-full truncate text-caption" style={{ color: 'var(--text-muted)' }}>
+                          Renamed by your Actual rule from “{rawPayee}”
+                        </span>
+                      )}
+                      {showPayeeMenu && rawPayee && rawPayee !== payeeName && (
+                        <span className="w-full truncate text-caption" style={{ color: 'var(--text-muted)' }}>
+                          Email says “{rawPayee}”
+                        </span>
+                      )}
+                    </Button>
+                    {showPayeeMenu && (
+                      <Menu
+                        trigger={
+                          <Button
+                            type="button"
+                            ref={linkPayeeOpenerRef}
+                            aria-label="Payee options"
+                            className="press absolute right-1.5 top-1.5 flex h-11 w-11 items-center justify-center rounded-full"
+                            style={{ color: 'var(--text-muted)' }}
+                          >
+                            <MoreHorizontal className="h-5 w-5" />
+                          </Button>
+                        }
+                        items={[
+                          { label: 'Change payee', icon: <Pencil />, onSelect: () => setStep('payee') },
+                          { label: 'Always rename to a payee…', icon: <Link2 />, onSelect: () => setLinkOpen(true) },
+                        ]}
+                      />
+                    )}
+                  </div>
+                )}
                 <Button
                   type="button"
                   onClick={() => setStep('amount')}
-                  className="press flex shrink-0 flex-col items-end justify-center gap-0.5 rounded-3xl border px-4 text-right"
-                  style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
+                  className={`press flex flex-col justify-center gap-0.5 rounded-3xl px-4 ${reviewTransfer ? 'flex-1 items-start py-4 text-left' : 'shrink-0 items-end text-right'}`}
+                  style={{ backgroundColor: 'var(--bg-surface)' }}
                   aria-label={`Amount ${amountSummary}, tap to edit`}
                 >
-                  <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                  <span className="text-label" style={{ color: 'var(--text-muted)' }}>
                     {kind === 'income' ? 'Income' : isTransfer ? 'Amount' : 'Expense'}
                   </span>
                   <span
-                    className="text-lg font-extrabold tabular-nums"
+                    className="text-heading tabular-nums"
                     style={{ color: kind === 'income' ? 'var(--positive)' : 'var(--text-primary)' }}
                   >
                     {n > 0 ? amountSummary : 'Add amount'}
@@ -781,35 +836,9 @@ export function TransactionFlow({
                 </Button>
               </div>
               {review && n <= 0 && (
-                <p className="-mt-2 px-1 text-xs" style={{ color: 'var(--warning)' }}>
+                <p className="-mt-2 px-1 text-caption" style={{ color: 'var(--warning)' }}>
                   No amount found in this email. If it isn’t a transaction, Dismiss it.
                 </p>
-              )}
-
-              {review && (
-                <div className="-mt-2 flex flex-wrap items-center gap-x-3">
-                  {!isTransfer && rawPayee && !review.parsed?.payeeFromRule && (
-                    <Button
-                      type="button"
-                      ref={linkPayeeOpenerRef}
-                      onClick={() => setLinkOpen(true)}
-                      className="min-h-11 px-1 text-left text-xs font-bold"
-                      style={{ color: 'var(--accent-text)' }}
-                    >
-                      Always rename “{rawPayee}” to an existing payee…
-                    </Button>
-                  )}
-                  <Button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => isTransfer ? chooseKind(direction) : setStep('transferAccount')}
-                    className="flex min-h-11 items-center gap-1.5 px-1 text-xs font-bold"
-                    style={{ color: 'var(--accent-text)' }}
-                  >
-                    <ArrowLeftRight className="h-4 w-4" />
-                    {isTransfer ? 'Use a payee' : transferAction}
-                  </Button>
-                </div>
               )}
 
               {!isTransfer && (
@@ -819,7 +848,7 @@ export function TransactionFlow({
                       Category
                     </h2>
                     {suggested && categoryId && (
-                      <span className="text-xs font-semibold" style={{ color: 'var(--accent-text)' }}>
+                      <span className="text-caption font-semibold" style={{ color: 'var(--accent-text)' }}>
                         {review && categoryId === (review.parsed?.categoryId || '') ? 'From email' : 'Suggested from payee'}
                       </span>
                     )}
@@ -835,7 +864,7 @@ export function TransactionFlow({
                             setCategoryId(pressed ? id : '');
                             setSuggested(false);
                           }}
-                          className="press h-10 rounded-xl border px-3 text-sm font-bold"
+                          className="press h-10 rounded-xl border px-3 text-label"
                           style={chip(on)}
                         >
                           {catMap.get(id)?.name}
@@ -845,7 +874,7 @@ export function TransactionFlow({
                     <Button
                       type="button"
                       onClick={() => setStep('category')}
-                      className="press flex h-10 items-center gap-1 rounded-xl border px-3 text-sm font-bold"
+                      className="press flex h-10 items-center gap-1 rounded-xl border px-3 text-label"
                       style={{ borderColor: 'var(--border-subtle)', color: 'var(--accent-text)' }}
                     >
                       All categories
@@ -854,114 +883,124 @@ export function TransactionFlow({
                   </div>
                 </section>
               )}
-              {isTransfer && (
-                <p className="px-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  Actual creates the matching entry in{' '}
-                  {toAccountId ? accountName(toAccountId) : 'the other account'}.
-                </p>
-              )}
 
-              <section
-                className="flex flex-col rounded-3xl border px-4"
-                style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
-              >
-                <Label className="relative flex min-h-[54px] items-center justify-between gap-3">
-                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                    {intoAccount ? 'Into account' : isTransfer ? 'From account' : 'Account'}
-                  </span>
-                  <span className="flex min-w-0 items-center gap-1 text-sm font-bold" style={{ color: accountId ? undefined : 'var(--accent-text)' }}>
-                    <span className="truncate">{accountId ? accountName(accountId) : 'Choose account'}</span>
-                    <ChevronDown className="h-4 w-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
-                  </span>
-                  <NativeSelect
-                    variant="unstyled"
-                    aria-label={intoAccount ? 'Into account' : isTransfer ? 'From account' : 'Account'}
-                    value={accountId}
-                    onChange={(e) => selectAccount(e.target.value)}
-                    className="absolute inset-0 cursor-pointer opacity-0"
-                  >
-                    {!accountId && <NativeSelectOption value="">Choose an account…</NativeSelectOption>}
-                    {openAccounts.map((a) => (
-                      <NativeSelectOption key={a.id} value={a.id}>
-                        {a.name}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                </Label>
-                {review && rememberLabel && accountId && (
-                  <Label className="flex items-center gap-2.5 border-t py-3 text-xs" style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
-                    <Input
-                      variant="unstyled"
-                      type="checkbox"
-                      checked={remember}
-                      onChange={(e) => setRemember(e.target.checked)}
-                      className="h-[18px] w-[18px] shrink-0"
-                      style={{ accentColor: 'var(--accent)' }}
-                    />
-                    <span>
-                      Remember: <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{rememberLabel}</span> → {accountName(accountId)}
+              <section className="flex flex-col gap-2">
+                <div className="flex flex-col rounded-3xl px-4" style={{ backgroundColor: 'var(--bg-surface)' }}>
+                  <div className="flex min-h-[54px] items-center justify-between gap-3">
+                    <span className="shrink-0 text-body" style={{ color: 'var(--text-muted)' }}>
+                      {accountLabel}
                     </span>
-                  </Label>
-                )}
-                <div className="flex min-h-[54px] flex-wrap items-center justify-between gap-2 border-t py-2" style={{ borderColor: 'var(--border-subtle)' }}>
-                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                    Date
-                  </span>
-                  <div className="flex flex-wrap items-center justify-end gap-1.5">
-                    {[today, shiftDays(today, -1)].map((d) => {
-                      const on = d === date;
-                      return (
-                        <Toggle
-                          key={d}
-                          pressed={on}
-                          onPressedChange={() => setDate(d)}
-                          className="press h-9 rounded-xl border px-3 text-xs font-bold"
-                          style={chip(on)}
-                        >
-                          {friendlyDate(d)}
-                        </Toggle>
-                      );
-                    })}
-                    <Label
-                      className="relative flex h-9 items-center rounded-xl border px-3 text-xs font-bold"
-                      style={chip(date !== today && date !== shiftDays(today, -1))}
-                    >
-                      {date !== today && date !== shiftDays(today, -1) ? friendlyDate(date) : 'Other'}
+                    <Select
+                      variant="inline"
+                      aria-label={accountLabel}
+                      value={accountId || null}
+                      onValueChange={(id) => {
+                        selectAccount(id);
+                        setError(null);
+                      }}
+                      options={accountOptions}
+                      placeholder="Choose account"
+                    />
+                  </div>
+                  {reviewTransfer && (
+                    <div className="flex min-h-[54px] items-center justify-between gap-3 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                      <span className="shrink-0 text-body" style={{ color: 'var(--text-muted)' }}>
+                        {transferIncoming ? 'From account' : 'To account'}
+                      </span>
+                      <Select
+                        variant="inline"
+                        aria-label={transferIncoming ? 'Transfer from account' : 'Transfer to account'}
+                        value={toAccountId || null}
+                        onValueChange={(id) => {
+                          setToAccountId(id);
+                          setError(null);
+                        }}
+                        options={transferOptions}
+                        placeholder="Choose account"
+                        disabled={transferOptions.length === 0}
+                      />
+                    </div>
+                  )}
+                  {review && rememberLabel && accountId && (
+                    <Label className="flex min-h-11 items-center gap-2.5 border-t py-3 text-caption" style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
                       <Input
                         variant="unstyled"
-                        type="date"
-                        aria-label="Pick a date"
-                        value={date}
-                        max={today}
-                        onChange={(e) => e.target.value && setDate(e.target.value)}
-                        className="absolute inset-0 cursor-pointer opacity-0"
+                        type="checkbox"
+                        checked={remember}
+                        onChange={(e) => setRemember(e.target.checked)}
+                        className="h-[18px] w-[18px] shrink-0"
+                        style={{ accentColor: 'var(--accent)' }}
                       />
+                      <span>
+                        Remember: <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{rememberLabel}</span> → {accountName(accountId)}
+                      </span>
                     </Label>
+                  )}
+                  <div className="flex min-h-[54px] flex-wrap items-center justify-between gap-2 border-t py-2" style={{ borderColor: 'var(--border-subtle)' }}>
+                    <span className="text-body" style={{ color: 'var(--text-muted)' }}>
+                      Date
+                    </span>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      {[today, shiftDays(today, -1)].map((d) => {
+                        const on = d === date;
+                        return (
+                          <Toggle
+                            key={d}
+                            pressed={on}
+                            onPressedChange={() => setDate(d)}
+                            className="press h-9 rounded-xl border px-3 text-label"
+                            style={chip(on)}
+                          >
+                            {friendlyDate(d)}
+                          </Toggle>
+                        );
+                      })}
+                      <Label
+                        className="relative flex h-9 items-center rounded-xl border px-3 text-label"
+                        style={chip(date !== today && date !== shiftDays(today, -1))}
+                      >
+                        {date !== today && date !== shiftDays(today, -1) ? friendlyDate(date) : 'Other'}
+                        <Input
+                          variant="unstyled"
+                          type="date"
+                          aria-label="Pick a date"
+                          value={date}
+                          max={today}
+                          onChange={(e) => e.target.value && setDate(e.target.value)}
+                          className="absolute inset-0 cursor-pointer opacity-0"
+                        />
+                      </Label>
+                    </div>
                   </div>
+                  <Label className="flex min-h-[54px] items-center justify-between gap-3 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                    <span className="text-body" style={{ color: 'var(--text-muted)' }}>
+                      Notes
+                    </span>
+                    <Input
+                      variant="unstyled"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Optional"
+                      maxLength={500}
+                      className="min-w-0 flex-1 bg-transparent text-right text-body outline-none"
+                    />
+                  </Label>
+                  {!review && (
+                    <Switch
+                      checked={cleared}
+                      onCheckedChange={setCleared}
+                      className="flex min-h-[54px] items-center justify-between border-t text-body"
+                      style={{ borderColor: 'var(--border-subtle)' }}
+                    >
+                      <span style={{ color: 'var(--text-muted)' }}>Cleared</span>
+                      <SwitchThumb />
+                    </Switch>
+                  )}
                 </div>
-                <Label className="flex min-h-[54px] items-center justify-between gap-3 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                    Notes
-                  </span>
-                  <Input
-                    variant="unstyled"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Optional"
-                    maxLength={500}
-                    className="min-w-0 flex-1 bg-transparent text-right text-sm outline-none"
-                  />
-                </Label>
-                {!review && (
-                  <Switch
-                    checked={cleared}
-                    onCheckedChange={setCleared}
-                    className="flex min-h-[54px] items-center justify-between border-t text-sm"
-                    style={{ borderColor: 'var(--border-subtle)' }}
-                  >
-                    <span style={{ color: 'var(--text-muted)' }}>Cleared</span>
-                    <SwitchThumb />
-                  </Switch>
+                {isTransfer && (
+                  <p className="px-1 text-caption" style={{ color: 'var(--text-muted)' }}>
+                    Actual creates the matching entry in {toAccountId ? accountName(toAccountId) : 'the other account'}.
+                  </p>
                 )}
               </section>
             </div>
@@ -973,11 +1012,11 @@ export function TransactionFlow({
               )}
               <div className="flex gap-2">
                 {review && (
-                  <Button type="button" onClick={() => void dismiss()} disabled={busy} variant="secondary" className="h-14 flex-1 rounded-2xl text-[15px] font-bold disabled:opacity-50">
+                  <Button type="button" onClick={() => void dismiss()} disabled={busy} variant="secondary" className="h-12 flex-1 rounded-2xl text-body disabled:opacity-50">
                     Dismiss
                   </Button>
                 )}
-                <Button type="button" onClick={() => void save()} disabled={busy} variant="default" className="h-14 flex-[2] rounded-2xl text-base disabled:opacity-50">
+                <Button type="button" onClick={() => void save()} disabled={busy} variant="default" className="h-12 flex-[2] rounded-2xl text-body disabled:opacity-50">
                   {busy ? 'Saving…' : review ? 'Import to Actual' : 'Add to Actual'}
                 </Button>
               </div>
@@ -1002,7 +1041,7 @@ export function TransactionFlow({
                   value={catQuery}
                   onChange={(e) => setCatQuery(e.target.value)}
                   placeholder="Search categories"
-                  className="h-full flex-1 bg-transparent text-[15px] outline-none"
+                  className="h-full flex-1 bg-transparent text-body outline-none"
                   style={{ color: 'var(--text-primary)' }}
                 />
               </Label>
@@ -1014,7 +1053,7 @@ export function TransactionFlow({
                     setSuggested(false);
                     setStep('details');
                   }}
-                  className="press flex items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-bold"
+                  className="press flex items-center justify-between rounded-2xl border px-4 py-3 text-left text-body"
                   style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
                 >
                   Uncategorized
@@ -1035,7 +1074,7 @@ export function TransactionFlow({
                             setSuggested(false);
                             setStep('details');
                           }}
-                          className="flex min-h-[50px] items-center gap-3 px-3 text-left text-sm font-semibold transition hover:opacity-90"
+                          className="flex min-h-[50px] items-center gap-3 px-3 text-left text-body transition hover:opacity-90"
                           style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}
                         >
                           <Tile colorKey={c.name} label={c.name} size={30} />
@@ -1057,34 +1096,37 @@ export function TransactionFlow({
             <span className="flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}>
               <Check className="h-10 w-10" strokeWidth={2.6} />
             </span>
-            <h1 className="text-2xl font-extrabold tracking-tight">{done.title}</h1>
+            <h1 className="text-title">{done.title}</h1>
             <div className="flex flex-col gap-1">
               <span
-                className="text-3xl font-extrabold tabular-nums"
+                className="text-display tabular-nums"
                 style={{ color: kind === 'income' ? 'var(--positive)' : 'var(--text-primary)' }}
               >
                 {amountSummary}
               </span>
-              <span className="text-[15px] font-bold">{done.line1}</span>
-              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              <span className="text-body font-bold">{done.line1}</span>
+              <span className="text-body" style={{ color: 'var(--text-muted)' }}>
                 {done.line2}
               </span>
             </div>
             <div className="mt-3 flex w-full gap-2">
               {!review && (
-                <Button type="button" onClick={addAnother} variant="secondary" className="h-14 flex-1 rounded-2xl text-[15px] font-bold">
+                <Button type="button" onClick={addAnother} variant="secondary" className="h-14 flex-1 rounded-2xl text-body">
                   Add another
                 </Button>
               )}
-              <DialogClose asChild>
-                <Button type="button" variant="default" className="h-14 flex-1 rounded-2xl text-base">
+              <Dialog.Close
+                render={
+                  <Button type="button" variant="default" className="h-14 flex-1 rounded-2xl text-body">
                   Done
                 </Button>
-              </DialogClose>
+                }
+              />
             </div>
           </div>
         )}
-      </DialogContent>
+      </Dialog.Popup>
+      </Dialog.Viewport>
       {review && !valuesHidden && rawPayee && (
         <LinkPayeeSheet
           open={linkOpen}
@@ -1097,12 +1139,13 @@ export function TransactionFlow({
           }}
         />
       )}
-    </div>
+    </Dialog.Portal>
   );
 
   return (
-    <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
+    // Outside presses don't dismiss: on desktop the backdrop is visible but a stray click shouldn't lose the entry.
+    <Dialog.Root open disablePointerDismissal onOpenChange={(next) => { if (!next) onClose(); }}>
       {panel}
-    </Dialog>
+    </Dialog.Root>
   );
 }

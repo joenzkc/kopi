@@ -95,21 +95,21 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
     <Sheet open={open} onClose={onClose} title="Link payee" subtitle="Saved as an Actual rule, so imports are renamed automatically">
       <div className="flex flex-col gap-4">
         <div className="rounded-2xl p-3.5" style={{ backgroundColor: 'var(--bg-subtle)' }}>
-          <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+          <span className="text-label" style={{ color: 'var(--text-muted)' }}>
             When the bank says
           </span>
-          <div className="mt-0.5 break-words text-[15px] font-extrabold">{raw}</div>
+          <div className="mt-0.5 break-words text-body font-semibold">{raw}</div>
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+          <span className="text-label" style={{ color: 'var(--text-muted)' }}>
             Match
           </span>
           <RadioGroup value={match} onValueChange={(value) => setMatch(value as typeof match)} aria-label="Match type" className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-subtle)' }}>
-            <RadioGroupItem value="exact" className="h-10 rounded-xl text-sm font-bold" style={chip(match === 'exact')}>
+            <RadioGroupItem value="exact" className="h-10 rounded-xl text-label transition-colors duration-150" style={chip(match === 'exact')}>
               Exactly this
             </RadioGroupItem>
-            <RadioGroupItem value="contains" className="h-10 rounded-xl text-sm font-bold" style={chip(match === 'contains')}>
+            <RadioGroupItem value="contains" className="h-10 rounded-xl text-label transition-colors duration-150" style={chip(match === 'contains')}>
               Contains…
             </RadioGroupItem>
           </RadioGroup>
@@ -120,7 +120,7 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
                 value={containsText}
                 onChange={(e) => setContainsText(e.target.value)}
               />
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-caption" style={{ color: 'var(--text-muted)' }}>
                 Catches every outlet, e.g. “{containsText || 'McDonalds'} JE”, “{containsText || 'McDonalds'} Tampines”.
               </p>
             </>
@@ -128,7 +128,7 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+          <span className="text-label" style={{ color: 'var(--text-muted)' }}>
             Rename to
           </span>
           <Label className="flex h-11 items-center gap-2 rounded-xl border px-3" style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border-subtle)', color: 'var(--text-muted)' }}>
@@ -143,7 +143,7 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
                 setNewName(null);
               }}
               placeholder="Search your payees"
-              className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none"
+              className="h-full min-w-0 flex-1 bg-transparent text-body outline-none"
               style={{ color: 'var(--text-primary)' }}
             />
           </Label>
@@ -156,11 +156,11 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
                   setTargetId(p.id);
                   setNewName(null);
                 }}
-                className="flex items-center gap-3 rounded-xl px-2 py-2 text-left"
+                className="flex min-h-11 items-center gap-3 rounded-xl px-2 py-1.5 text-left"
                 style={{ backgroundColor: targetId === p.id ? 'var(--accent-soft)' : 'transparent' }}
               >
                 <Tile colorKey={p.name} label={p.name} size={32} />
-                <span className="flex-1 truncate text-sm font-semibold">{p.name}</span>
+                <span className="flex-1 truncate text-body">{p.name}</span>
                 {targetId === p.id && <Check className="h-4 w-4" style={{ color: 'var(--accent-text)' }} />}
               </Button>
             ))}
@@ -171,7 +171,7 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
                   setNewName(query.trim());
                   setTargetId(null);
                 }}
-                className="flex items-center gap-3 rounded-xl border border-dashed px-2 py-2 text-left text-sm font-bold"
+                className="flex min-h-11 items-center gap-3 rounded-xl border border-dashed px-2 py-1.5 text-left text-body"
                 style={{ borderColor: 'var(--accent-text)', color: 'var(--accent-text)', backgroundColor: newName ? 'var(--accent-soft)' : 'transparent' }}
               >
                 <Plus className="h-4 w-4" />
@@ -183,11 +183,11 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
         </div>
 
         {mergePayeeId && (
-          <Label className="flex items-start gap-3 text-sm">
+          <Label className="flex items-start gap-3 text-body">
             <Input variant="unstyled" type="checkbox" checked={merge} onChange={(e) => setMerge(e.target.checked)} className="mt-0.5 h-5 w-5" style={{ accentColor: 'var(--accent)' }} />
             <span>
               Also rename past transactions
-              <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+              <span className="block text-caption" style={{ color: 'var(--text-muted)' }}>
                 Merges the “{raw}” payee into {targetLabel ? `“${targetLabel}”` : 'the one you pick'} in Actual.
               </span>
             </span>
@@ -199,7 +199,7 @@ export function LinkPayeeSheet({ open, onClose, raw, payees, mergePayeeId, onLin
             {error}
           </Alert>
         )}
-        <Button type="button" disabled={busy || !targetLabel} onClick={() => void save()} variant="default" className="h-12 rounded-2xl text-[15px] disabled:opacity-40">
+        <Button type="button" disabled={busy || !targetLabel} onClick={() => void save()} variant="default" className="h-12 rounded-2xl text-body disabled:opacity-40">
           {busy ? 'Saving…' : targetLabel ? `Always use “${targetLabel}”` : 'Choose a payee'}
         </Button>
       </div>

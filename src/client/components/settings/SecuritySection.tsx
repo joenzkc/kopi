@@ -121,7 +121,7 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
         description="Sign in with Face ID, Touch ID or Windows Hello instead of your password."
       >
         {!webAuthnSupportedOrigin && (
-          <p className="rounded-xl px-3 py-2.5 text-xs" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
+          <p className="rounded-xl px-3 py-2.5 text-caption" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
             Passkeys only work over HTTPS. Open Kopi at its https:// address to add one.
           </p>
         )}
@@ -130,8 +130,8 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
             {passkeys.map((pk, i) => (
               <div key={pk.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5" style={i === 0 ? undefined : rowStyle}>
                 <span className="flex min-w-0 flex-col">
-                  <span className="truncate text-sm font-bold">{pk.device_name}</span>
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <span className="truncate text-body font-semibold">{pk.device_name}</span>
+                  <span className="text-caption" style={{ color: 'var(--text-muted)' }}>
                     Added {pk.created_at.slice(0, 10)}
                   </span>
                 </span>
@@ -148,12 +148,12 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
           </div>
         )}
         <form onSubmit={addPasskey} className="flex flex-col gap-1.5">
-          <Label htmlFor="passkey-name" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+          <Label htmlFor="passkey-name" className="text-label" style={{ color: 'var(--text-secondary)' }}>
             Add a passkey for this device
           </Label>
           <div className="flex gap-2">
             <Input id="passkey-name" value={passkeyName} onChange={(e) => setPasskeyName(e.target.value)} maxLength={60} className="min-w-0 flex-1" />
-            <Button type="submit" disabled={busy || !webAuthnSupportedOrigin} variant="default" className="flex shrink-0 items-center gap-1.5 rounded-xl px-4 text-sm disabled:opacity-40">
+            <Button type="submit" disabled={busy || !webAuthnSupportedOrigin} variant="default" className="flex shrink-0 items-center gap-1.5 rounded-xl px-4 text-label disabled:opacity-40">
               <Plus className="h-4 w-4" />
               Add
             </Button>
@@ -168,7 +168,7 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
         description="You stay signed in on this device after changing it."
         right={
           !pwOpen ? (
-            <Button type="button" onClick={() => setPwOpen(true)} variant="secondary" className="h-10 shrink-0 rounded-xl px-3 text-sm font-bold">
+            <Button type="button" onClick={() => setPwOpen(true)} variant="secondary" className="h-10 shrink-0 rounded-xl px-3 text-label">
               Change…
             </Button>
           ) : undefined
@@ -177,20 +177,20 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
         {pwOpen && (
         <form onSubmit={changePassword} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="pw-current" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+            <Label htmlFor="pw-current" className="text-label" style={{ color: 'var(--text-secondary)' }}>
               Current password
             </Label>
             <Input id="pw-current" type="password" autoComplete="current-password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="pw-new" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="pw-new" className="text-label" style={{ color: 'var(--text-secondary)' }}>
                 New password
               </Label>
               <Input id="pw-new" type="password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="pw-confirm" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="pw-confirm" className="text-label" style={{ color: 'var(--text-secondary)' }}>
                 Repeat new password
               </Label>
               <Input id="pw-confirm" type="password" autoComplete="new-password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
@@ -209,14 +209,14 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
                 setPw({ current: '', next: '', confirm: '' });
                 setPwError(null);
               }}
-              variant="secondary" className="h-11 flex-1 rounded-xl text-sm font-bold"
+              variant="secondary" className="h-11 flex-1 rounded-xl text-body font-bold"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={busy || !pw.current || !pw.next || !pw.confirm}
-              variant="default" className="h-11 flex-1 rounded-xl text-sm disabled:opacity-40"
+              variant="default" className="h-11 flex-1 rounded-xl text-body font-bold disabled:opacity-40"
             >
               Change password
             </Button>
@@ -235,15 +235,15 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
           {sessions.map((s, i) => (
             <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5" style={i === 0 ? undefined : rowStyle}>
               <span className="flex min-w-0 flex-col">
-                <span className="flex items-center gap-2 text-sm font-bold">
+                <span className="flex items-center gap-2 text-body font-semibold">
                   {describeDevice(s.user_agent)}
                   {s.current && (
-                    <Badge variant="accent" className="px-2 py-0.5 text-[11px] font-extrabold">
+                    <Badge variant="accent" className="px-2 py-0.5 text-caption font-bold">
                       This device
                     </Badge>
                   )}
                 </span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                <span className="text-caption" style={{ color: 'var(--text-muted)' }}>
                   {s.current ? 'Active now' : `Last active ${relativeTime(s.last_seen_at)}`}
                   {s.ip_address ? ` · ${s.ip_address}` : ''}
                 </span>
@@ -253,7 +253,7 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
                   type="button"
                   disabled={busy}
                   onClick={() => void act(() => apiFetch(`/api/auth/sessions/${encodeURIComponent(s.id)}`, { method: 'DELETE' }), 'Signed out that device')}
-                  variant="secondary" className="h-10 shrink-0 rounded-xl px-3 text-sm font-bold disabled:opacity-50"
+                  variant="secondary" className="h-10 shrink-0 rounded-xl px-3 text-label disabled:opacity-50"
                 >
                   Sign out
                 </Button>
@@ -280,7 +280,7 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
       <Disclosure title="Automation (Shortcuts, n8n)" description="API keys for adding transactions from other tools">
         <CopyField label="Add-transaction endpoint (POST with Bearer API key)" value={`${window.location.origin}/api/v1/transactions/ingest`} />
         <form onSubmit={createKey} className="flex flex-col gap-1.5">
-          <Label htmlFor="api-key-name" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+          <Label htmlFor="api-key-name" className="text-label" style={{ color: 'var(--text-secondary)' }}>
             New API key
           </Label>
           <div className="flex gap-2">
@@ -291,7 +291,7 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
               placeholder="e.g. Apple Shortcuts"
               className="min-w-0 flex-1"
             />
-            <Button type="submit" disabled={busy || !newKeyName.trim()} variant="default" className="flex shrink-0 items-center gap-1.5 rounded-xl px-4 text-sm disabled:opacity-40">
+            <Button type="submit" disabled={busy || !newKeyName.trim()} variant="default" className="flex shrink-0 items-center gap-1.5 rounded-xl px-4 text-label disabled:opacity-40">
               <KeyRound className="h-4 w-4" />
               Create
             </Button>
@@ -300,7 +300,7 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
         {revealedKey && (
           <div className="flex flex-col gap-2 rounded-2xl p-3" style={{ backgroundColor: 'var(--positive-soft)' }}>
             <CopyField label="Your new key, shown only once" value={revealedKey} />
-            <Button type="button" onClick={() => setRevealedKey(null)} className="self-start text-xs font-bold" style={{ color: 'var(--accent-text)' }}>
+            <Button type="button" onClick={() => setRevealedKey(null)} className="self-start text-label" style={{ color: 'var(--accent-text)' }}>
               I’ve copied it
             </Button>
           </div>
@@ -312,8 +312,8 @@ export function SecuritySection({ webAuthnSupportedOrigin, onToast }: SecuritySe
                 <span className="flex min-w-0 items-center gap-2.5">
                   <Workflow className="h-4 w-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
                   <span className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm font-bold">{k.name}</span>
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span className="truncate text-body font-semibold">{k.name}</span>
+                    <span className="text-caption" style={{ color: 'var(--text-muted)' }}>
                       {k.key_prefix}… · {k.last_used_at ? `last used ${relativeTime(k.last_used_at)}` : 'never used'}
                     </span>
                   </span>

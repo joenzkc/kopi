@@ -1,16 +1,19 @@
 import { useFinancialValues } from '../lib/valueVisibility';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ChevronLeft, ChevronRight, Repeat } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Repeat } from 'lucide-react';
 import type { BudgetCategory, BudgetMonthResponse } from '@shared/types';
 import { apiFetch } from '../lib/api';
 import { Tile } from '../components/Tile';
 import { BudgetCategorySheet } from '../components/BudgetCategorySheet';
+import { ProgressBar, barColor, spentRatio } from '../components/budget/ProgressBar';
+import { NewBudgetItemSheet, type NewBudgetItem } from '../components/budget/NewBudgetItemSheet';
 import { Button } from '@client/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
 import { Badge } from '@client/components/ui/badge';
 import { Card } from '@client/components/ui/card';
-import { Progress } from '@client/components/ui/progress';
 import { Skeleton } from '@client/components/ui/skeleton';
+
+export { ProgressBar, spentRatio };
 
 interface BudgetPageProps {
   baseCurrency: string;
@@ -37,36 +40,8 @@ function monthLabel(month: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString('en-SG', { month: 'long', year: 'numeric' });
 }
 
-/** Share of what was available this month that has been spent (0–1). */
-export function spentRatio(spent: number, balance: number): number {
-  if (balance < 0) return 1;
-  const available = spent + balance;
-  if (available <= 0) return spent > 0 ? 1 : 0;
-  return Math.max(0, Math.min(1, spent / available));
-}
-
-function barColor(balance: number, ratio: number): string {
-  if (balance < 0) return 'var(--negative)';
-  if (ratio >= 0.9) return 'var(--warning)';
-  return 'var(--accent)';
-}
-
 function isEmpty(c: BudgetCategory): boolean {
   return c.budgeted === 0 && c.spent === 0 && c.balance === 0;
-}
-
-export function ProgressBar({ ratio, color, label }: { ratio: number; color: string; label: string }) {
-  const { valuesHidden } = useFinancialValues();
-  if (valuesHidden) return null;
-  const percentage = ratio * 100;
-  return (
-    <Progress
-      aria-label={label}
-      aria-valuetext={undefined}
-      value={Math.min(100, Math.max(0, Math.round(percentage)))}
-      indicatorStyle={{ width: `${Math.max(percentage, ratio > 0 ? 3 : 0)}%`, backgroundColor: color }}
-    />
-  );
 }
 
 export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast }: BudgetPageProps) {
@@ -78,6 +53,9 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
   const [filter, setFilter] = useState<Filter>('all');
   const [showEmpty, setShowEmpty] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [creating, setCreating] = useState<NewBudgetItem | null>(null);
+  // Categories created here stay listed even while empty, so they don't vanish behind "Show empty".
+  const [keepVisible, setKeepVisible] = useState<ReadonlySet<string>>(() => new Set());
 
   const money = useCallback((cents: number) => formatMoney(cents / 100, baseCurrency), [baseCurrency, formatMoney]);
 
@@ -112,16 +90,21 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
         visible: g.categories.filter((c) => {
           if (filter === 'overspent') return c.balance < 0;
           if (filter === 'available') return c.balance > 0;
-          return showEmpty || !isEmpty(c);
+          return showEmpty || !isEmpty(c) || keepVisible.has(c.id);
         }),
-        emptyCount: g.categories.filter(isEmpty).length,
       }))
-      .filter((g) => g.visible.length > 0);
-  }, [data, filter, showEmpty]);
+      // A group with no categories at all still shows under "All" so it can get its first one.
+      .filter((g) => g.visible.length > 0 || (filter === 'all' && g.categories.length === 0));
+  }, [data, filter, showEmpty, keepVisible]);
+
+  const groupOptions = useMemo(() => (data ? data.groups.filter((g) => !g.isIncome).map((g) => ({ id: g.id, name: g.name })) : []), [data]);
 
   const emptyTotal = useMemo(
-    () => (data ? data.groups.filter((g) => !g.isIncome).reduce((s, g) => s + g.categories.filter(isEmpty).length, 0) : 0),
-    [data],
+    () =>
+      data
+        ? data.groups.filter((g) => !g.isIncome).reduce((s, g) => s + g.categories.filter((c) => isEmpty(c) && !keepVisible.has(c.id)).length, 0)
+        : 0,
+    [data, keepVisible],
   );
   const incomeGroups = data?.groups.filter((g) => g.isIncome) ?? [];
 
@@ -146,6 +129,21 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
     [load, month, onToast],
   );
 
+  const handleCreated = useCallback(
+    (message: string, created: { kind: NewBudgetItem['kind']; id: string | null }) => {
+      setCreating(null);
+      onToast(message, 'success', 'Budget updated');
+      if (created.kind === 'category' && created.id) {
+        const id = created.id;
+        setKeepVisible((prev) => new Set(prev).add(id));
+        // Open the new bucket so money can go into it straight away (shows once the reload lands).
+        setEditingId(id);
+      }
+      void load(month);
+    },
+    [load, month, onToast],
+  );
+
   const monthNav = (
     <div className="flex items-center justify-between gap-2">
       <Button
@@ -159,9 +157,9 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
         <ChevronLeft className="h-5 w-5" />
       </Button>
       <div className="flex flex-col items-center">
-        <span className="text-[17px] font-extrabold">{monthLabel(month)}</span>
+        <span className="text-heading">{monthLabel(month)}</span>
         {!isCurrent && (
-          <Button type="button" onClick={() => setMonth(currentMonthKey())} className="text-xs font-bold" style={{ color: 'var(--accent-text)' }}>
+          <Button type="button" onClick={() => setMonth(currentMonthKey())} className="text-label" style={{ color: 'var(--accent-text)' }}>
             Back to this month
           </Button>
         )}
@@ -184,8 +182,8 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
       <div className="flex flex-col gap-5">
         {monthNav}
         <Card className="rounded-3xl p-6 text-center">
-          <p className="text-sm font-semibold" style={{ color: 'var(--negative)' }}>{error}</p>
-          <Button type="button" onClick={() => void load(month)} variant="secondary" className="mt-3 rounded-xl px-4 py-2 text-sm font-bold">
+          <p className="text-body font-semibold" style={{ color: 'var(--negative)' }}>{error}</p>
+          <Button type="button" onClick={() => void load(month)} variant="secondary" className="mt-3 rounded-xl px-4 py-2 text-label">
             Retry
           </Button>
         </Card>
@@ -211,18 +209,18 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
       {monthNav}
 
       {/* Summary */}
-      <Card as="section" variant="flat" className="flex flex-col gap-4 rounded-[28px] p-5">
+      <Card as="section" variant="flat" className="flex flex-col gap-4 rounded-3xl p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
+            <span className="text-label" style={{ color: 'var(--text-muted)' }}>
               {tb < 0 ? 'Overbudgeted' : 'To budget'}
             </span>
-            <span className="text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums" style={{ color: tb < 0 ? 'var(--negative)' : 'var(--text-primary)' }}>
+            <span className="text-display tabular-nums" style={{ color: tb < 0 ? 'var(--negative)' : 'var(--text-primary)' }}>
               {money(Math.abs(tb))}
             </span>
           </div>
           <Badge
-            className="px-2.5 py-1 text-xs font-extrabold"
+            className="px-2.5 py-1 text-caption font-bold"
             style={
               tb > 0
                 ? { backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }
@@ -236,7 +234,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
         </div>
         <div className="flex flex-col gap-2">
           <ProgressBar ratio={overallRatio} color={overallRatio >= 1 ? 'var(--negative)' : 'var(--accent)'} label="Spent of budgeted this month" />
-          <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
+          <span className="text-caption tabular-nums" style={{ color: 'var(--text-muted)' }}>
             {money(data.totalSpent)} spent of {money(data.totalBudgeted)} budgeted
           </span>
         </div>
@@ -247,8 +245,8 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
             { label: 'Available', value: data.totalBalance },
           ].map((s) => (
             <Card key={s.label} variant="subtle" className="flex flex-col gap-0.5 rounded-2xl p-3">
-              <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{s.label}</span>
-              <span className="text-[15px] font-extrabold tabular-nums" style={{ color: s.value < 0 ? 'var(--negative)' : undefined }}>
+              <span className="text-label" style={{ color: 'var(--text-muted)' }}>{s.label}</span>
+              <span className="text-body font-semibold tabular-nums" style={{ color: s.value < 0 ? 'var(--negative)' : undefined }}>
                 {formatMoney(s.value / 100, baseCurrency, Math.abs(s.value) >= 1_000_000)}
               </span>
             </Card>
@@ -256,18 +254,19 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
         </div>
       </Card>
 
-      {data.overspentCount > 0 && filter !== 'overspent' && (
+      {/* Stays put while filtering (only its action flips) so the filter control never jumps. */}
+      {data.overspentCount > 0 && (
         <Button
           type="button"
-          onClick={() => setFilter('overspent')}
+          onClick={() => setFilter((f) => (f === 'overspent' ? 'all' : 'overspent'))}
           className="press flex items-center gap-3 rounded-3xl p-4 text-left"
           style={{ backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }}
         >
           <AlertTriangle className="h-5 w-5 shrink-0" />
-          <span className="flex-1 text-sm font-bold">
+          <span className="flex-1 text-body font-semibold">
             {data.overspentCount} categor{data.overspentCount === 1 ? 'y is' : 'ies are'} overspent
           </span>
-          <span className="text-sm font-bold">Show</span>
+          <span className="shrink-0 text-label">{filter === 'overspent' ? 'Show all' : 'Show'}</span>
         </Button>
       )}
 
@@ -284,7 +283,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
             <RadioGroupItem
               key={id}
               value={id}
-              className="h-10 rounded-xl text-sm font-bold transition"
+              className="h-10 rounded-xl text-label transition"
               style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
             >
               {label}
@@ -294,7 +293,7 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
       </RadioGroup>
 
       {expenseGroups.length === 0 && (
-        <p className="py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+        <p className="py-6 text-center text-body" style={{ color: 'var(--text-muted)' }}>
           {filter === 'overspent' ? 'Nothing overspent this month.' : filter === 'available' ? 'No categories have money left.' : 'No budget categories this month.'}
         </p>
       )}
@@ -302,8 +301,8 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
       {expenseGroups.map((g) => (
         <section key={g.id} className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between px-1">
-            <h2 className="text-[15px] font-extrabold">{g.name}</h2>
-            <span className="text-sm font-semibold tabular-nums" style={{ color: g.balance < 0 ? 'var(--negative)' : 'var(--text-muted)' }}>
+            <h2 className="text-heading">{g.name}</h2>
+            <span className="text-body font-semibold tabular-nums" style={{ color: g.balance < 0 ? 'var(--negative)' : 'var(--text-muted)' }}>
               {g.balance < 0 ? `${money(-g.balance)} over` : `${money(g.balance)} left`}
             </span>
           </div>
@@ -323,31 +322,56 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
                   <Tile colorKey={c.name} label={c.name} size={38} />
                   <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="flex min-w-0 items-center gap-1.5 truncate text-[15px] font-semibold">
+                      <span className="flex min-w-0 items-center gap-1.5 truncate text-body">
                         <span className="truncate">{c.name}</span>
                         {c.carryover && <Repeat className="h-3.5 w-3.5 shrink-0" aria-label="Rolls over" style={{ color: 'var(--text-muted)' }} />}
                       </span>
                       <span
-                        className="shrink-0 text-[15px] font-extrabold tabular-nums"
+                        className="shrink-0 text-body font-semibold tabular-nums"
                         style={{ color: over ? 'var(--negative)' : c.balance === 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}
                       >
                         {over ? `−${money(-c.balance)}` : money(c.balance)}
                       </span>
                     </div>
                     <ProgressBar ratio={ratio} color={barColor(c.balance, ratio)} label={`${c.name}: ${Math.round(ratio * 100)}% spent`} />
-                    <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                    <span className="text-caption tabular-nums" style={{ color: 'var(--text-muted)' }}>
                       {money(c.spent)} spent · {money(c.budgeted)} budgeted{over ? ' · overspent' : ''}
                     </span>
                   </div>
                 </Button>
               );
             })}
+            {filter === 'all' && (
+              <Button
+                type="button"
+                onClick={() => setCreating({ kind: 'category', groupId: g.id })}
+                className="press flex min-h-12 w-full items-center gap-3 py-3 text-left text-label"
+                style={{ borderTop: g.visible.length === 0 ? 'none' : '1px solid var(--border-subtle)', color: 'var(--accent-text)' }}
+              >
+                <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center">
+                  <Plus className="h-4 w-4" />
+                </span>
+                Add category
+              </Button>
+            )}
           </div>
         </section>
       ))}
 
+      {filter === 'all' && (
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setCreating({ kind: 'group' })}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-body"
+        >
+          <Plus className="h-4 w-4" />
+          Add group
+        </Button>
+      )}
+
       {filter === 'all' && emptyTotal > 0 && (
-        <Button type="button" onClick={() => setShowEmpty((v) => !v)} className="self-center text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+        <Button type="button" onClick={() => setShowEmpty((v) => !v)} className="self-center text-label" style={{ color: 'var(--accent-text)' }}>
           {showEmpty ? 'Hide empty categories' : `Show ${emptyTotal} empty categor${emptyTotal === 1 ? 'y' : 'ies'}`}
         </Button>
       )}
@@ -355,8 +379,8 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
       {filter === 'all' && incomeGroups.length > 0 && (
         <section className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between px-1">
-            <h2 className="text-[15px] font-extrabold">Income</h2>
-            <span className="text-sm font-semibold tabular-nums" style={{ color: 'var(--positive)' }}>
+            <h2 className="text-heading">Income</h2>
+            <span className="text-body font-semibold tabular-nums" style={{ color: 'var(--positive)' }}>
               {money(data.totalIncome)} received
             </span>
           </div>
@@ -367,8 +391,8 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
               .map((c, i) => (
                 <div key={c.id} className="flex items-center gap-3 py-3" style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
                   <Tile colorKey={c.name} label={c.name} size={38} />
-                  <span className="flex-1 truncate text-[15px] font-semibold">{c.name}</span>
-                  <span className="text-[15px] font-extrabold tabular-nums" style={{ color: 'var(--positive)' }}>
+                  <span className="flex-1 truncate text-body">{c.name}</span>
+                  <span className="text-body font-semibold tabular-nums" style={{ color: 'var(--positive)' }}>
                     {money(c.spent)}
                   </span>
                 </div>
@@ -377,8 +401,8 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
         </section>
       )}
 
-      <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
-        Tap a category to change its budget or move money. Changes save to Actual.
+      <p className="text-center text-caption" style={{ color: 'var(--text-muted)' }}>
+        Tap a category to change its budget, move money or rename it. Changes save to Actual.
       </p>
 
       {editing && (
@@ -391,6 +415,16 @@ export function BudgetPage({ baseCurrency, refreshTrigger, dataVersion, onToast 
           baseCurrency={baseCurrency}
           onClose={closeEditor}
           onSaved={handleSaved}
+        />
+      )}
+
+      {creating && (
+        <NewBudgetItemSheet
+          key={creating.kind === 'category' ? `category:${creating.groupId}` : 'group'}
+          item={creating}
+          groups={groupOptions}
+          onClose={() => setCreating(null)}
+          onCreated={handleCreated}
         />
       )}
     </div>

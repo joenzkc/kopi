@@ -1,9 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { Drawer } from '@base-ui/react/drawer';
 import type { SnapshotPoint } from '@shared/types';
 import { Button } from '@client/components/ui/button';
 import { useFinancialValues } from '../lib/valueVisibility';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogOverlay, DialogTitle } from '@client/components/ui/dialog';
 
 interface SheetProps {
   open: boolean;
@@ -18,60 +18,69 @@ function HiddenForm({ children }: { children: ReactNode }) {
   const [revealed, setRevealed] = useState(false);
   if (revealed) return children;
   return (
-    <Button type="button" variant="secondary" className="min-h-11 rounded-xl px-4 text-sm" onClick={() => setRevealed(true)}>
+    <Button type="button" variant="secondary" className="min-h-11 rounded-xl px-4 text-label" onClick={() => setRevealed(true)}>
       Show values in this form
     </Button>
   );
 }
 
+/**
+ * Bottom sheet on phones (swipe down or tap outside to dismiss), centred panel on desktop.
+ * Base UI Drawer: modal focus trap, scroll lock, nested-sheet aware; motion lives in index.css (.sheet-*).
+ */
 export function Sheet({ open, onClose, title, subtitle, financialForm, children }: SheetProps) {
   const { valuesHidden } = useFinancialValues();
-  if (!open) return null;
+  const popupRef = useRef<HTMLDivElement>(null);
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-        <DialogOverlay className="fixed inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity" onClick={onClose} />
-        <DialogContent
-          aria-describedby={undefined}
-          className="relative z-10 flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-3xl shadow-2xl sm:max-w-lg sm:rounded-2xl"
-          style={{
-            backgroundColor: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-          }}
-          onPointerDownOutside={(event) => event.preventDefault()}
-        >
-          <div
-            className="flex items-center justify-between px-5 py-4"
-            style={{ borderBottom: '1px solid var(--border-subtle)' }}
+    <Drawer.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+      swipeDirection="down"
+    >
+      <Drawer.Portal>
+        <Drawer.Backdrop className="sheet-backdrop" />
+        <Drawer.Viewport className="sheet-viewport">
+          <Drawer.Popup
+            ref={popupRef}
+            // Touch/mouse: focus the panel itself so opening a form doesn't summon the keyboard.
+            initialFocus={(type) => (type === 'keyboard' ? true : popupRef.current)}
+            className="sheet-popup"
           >
-            <div>
-              <DialogTitle className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {title}
-              </DialogTitle>
-              {subtitle && (
-                <DialogDescription className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {subtitle}
-                </DialogDescription>
-              )}
+            <div aria-hidden="true" className="sheet-handle" />
+            <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-2 md:pt-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <div className="min-w-0 pt-1.5">
+                <Drawer.Title className="text-heading" style={{ color: 'var(--text-primary)' }}>
+                  {title}
+                </Drawer.Title>
+                {subtitle && (
+                  <Drawer.Description className="mt-0.5 text-caption" style={{ color: 'var(--text-muted)' }}>
+                    {subtitle}
+                  </Drawer.Description>
+                )}
+              </div>
+              <Drawer.Close
+                render={
+                  <Button
+                    type="button"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                }
+              />
             </div>
-            <DialogClose asChild>
-              <Button
-                type="button"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
-                style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </DialogClose>
-          </div>
-          <div className="overflow-y-auto overflow-x-hidden px-5 py-4 safe-pb">
-            {financialForm && valuesHidden ? <HiddenForm>{children}</HiddenForm> : children}
-          </div>
-        </DialogContent>
-      </div>
-    </Dialog>
+            <Drawer.Content className="sheet-body">
+              {financialForm && valuesHidden ? <HiddenForm>{children}</HiddenForm> : children}
+            </Drawer.Content>
+          </Drawer.Popup>
+        </Drawer.Viewport>
+      </Drawer.Portal>
+    </Drawer.Root>
   );
 }
 

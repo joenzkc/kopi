@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CalendarClock, House, Landmark, LineChart, ListOrdered, PiggyBank, Plus, RefreshCw, Settings, UserRound } from 'lucide-react';
 import type { ActualAccount, ActualBudget, ActualCategory, ActualCategoryGroup, ActualPayee, Appearance } from '@shared/types';
 import { apiFetch } from './lib/api';
@@ -14,6 +14,7 @@ import { SchedulesPage } from './pages/SchedulesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TransactionFlow, type FlowRequest } from './components/TransactionFlow';
 import { ValueVisibilityButton } from './components/ValueVisibilityButton';
+import { PullToRefresh } from './components/PullToRefresh';
 import { Button } from '@client/components/ui/button';
 import { Toggle } from '@client/components/ui/toggle';
 import { Badge } from '@client/components/ui/badge';
@@ -31,6 +32,7 @@ interface AuthStatus {
 interface ActualMeta {
   connected: boolean;
   budgets: ActualBudget[];
+  activeBudgetName?: string | null;
   accounts: ActualAccount[];
   categories: ActualCategory[];
   categoryGroups: ActualCategoryGroup[];
@@ -94,6 +96,13 @@ export function App() {
   const [flow, setFlow] = useState<FlowRequest | null>(null);
   const [flowKey, setFlowKey] = useState(0);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  // When Actual data was last fetched; drives the "Synced 2 min ago" line in the page header.
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // --- appearance ---
@@ -155,6 +164,7 @@ export function App() {
         apiFetch<{ baseCurrency: string; appearance?: Appearance; hiddenHomeAccounts?: string[] }>('/api/settings'),
       ]);
       setMeta({ ...m, categoryGroups: m.categoryGroups || [] });
+      setSyncedAt(Date.now());
       setBaseCurrency(s.baseCurrency || 'SGD');
       if (s.appearance) setAppearance(s.appearance);
       setHiddenHomeAccounts(s.hiddenHomeAccounts || []);
@@ -197,13 +207,35 @@ export function App() {
   // Remembers where Settings was opened from, so the profile button can toggle back to it.
   const beforeSettings = useRef<AppTab>('home');
 
+  // Tabs stay mounted once visited (hidden with display:none), so switching is instant instead of
+  // remounting into a loading skeleton; each tab keeps its own scroll position.
+  const [visited, setVisited] = useState<ReadonlySet<AppTab>>(() => new Set([tab]));
+  const scrollByTab = useRef<Partial<Record<AppTab, number>>>({});
+  const tabRef = useRef(tab);
+
   const navigate = useCallback((t: AppTab) => {
-    setTab((prev) => {
-      if (t === 'settings' && prev !== 'settings') beforeSettings.current = prev;
-      return t;
-    });
-    window.scrollTo({ top: 0 });
+    const prev = tabRef.current;
+    if (t === prev) {
+      window.scrollTo({ top: 0, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      return;
+    }
+    scrollByTab.current[prev] = window.scrollY;
+    if (t === 'settings') beforeSettings.current = prev;
+    tabRef.current = t;
+    setVisited((v) => (v.has(t) ? v : new Set(v).add(t)));
+    setTab(t);
   }, []);
+
+  useLayoutEffect(() => {
+    window.scrollTo({ top: scrollByTab.current[tab] ?? 0 });
+  }, [tab]);
+
+  const refreshAll = useCallback(async () => {
+    setRefreshTrigger((n) => n + 1);
+    invalidateRecent();
+    setDataVersion((v) => v + 1);
+    await Promise.all([loadPending(), loadMeta()]);
+  }, [loadPending, loadMeta]);
 
   // Handle tap on a Web Push notification while Kopi is already open
   useEffect(() => {
@@ -243,10 +275,10 @@ export function App() {
   }
 
   const showRefresh = tab === 'home' || tab === 'invest' || tab === 'budget';
-  const heading =
-    tab === 'home'
-      ? new Date().toLocaleDateString('en-SG', { weekday: 'long', day: 'numeric', month: 'short' })
-      : TITLES[tab];
+  // Home's title is the budget it shows (the date is already on the phone); other tabs use their name.
+  const heading = tab === 'home' ? meta.activeBudgetName || 'Kopi' : TITLES[tab];
+  const offline = syncedAt !== null && !meta.connected;
+  const syncLine = syncedAt === null ? 'Syncing…' : offline ? 'Actual offline' : `Synced ${sinceLabel(now - syncedAt)}`;
 
   return (
     <div className="min-h-dvh md:flex" style={{ backgroundColor: 'var(--bg-canvas)', color: 'var(--text-primary)' }}>
@@ -255,14 +287,14 @@ export function App() {
         <div className="flex items-center gap-2.5 px-2">
           <img src="/icon.svg" alt="" className="h-9 w-9 rounded-xl" />
           <div>
-            <div className="text-[17px] font-extrabold tracking-tight">kopi</div>
-            <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <div className="text-heading">kopi</div>
+            <div className="flex items-center gap-1.5 text-caption" style={{ color: 'var(--text-muted)' }}>
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: meta.connected ? 'var(--positive)' : 'var(--warning)' }} />
               {meta.connected ? 'Actual synced' : 'Actual offline'}
             </div>
           </div>
         </div>
-        <Button type="button" onClick={() => openFlow({ mode: 'add' })} variant="default" className="flex h-12 items-center justify-center gap-2 rounded-2xl text-[15px]">
+        <Button type="button" onClick={() => openFlow({ mode: 'add' })} variant="default" className="flex h-12 items-center justify-center gap-2 rounded-2xl text-body">
           <Plus className="h-5 w-5" />
           Add transaction
         </Button>
@@ -276,7 +308,7 @@ export function App() {
                 type="button"
                 onClick={() => navigate(item.id)}
                 aria-current={active ? 'page' : undefined}
-                className={`flex items-center gap-3 rounded-2xl px-3.5 py-3 text-[15px] font-bold transition ${item.id === 'settings' ? 'mt-auto' : ''}`}
+                className={`flex items-center gap-3 rounded-2xl px-3.5 py-3 text-body font-bold transition ${item.id === 'settings' ? 'mt-auto' : ''}`}
                 style={{
                   backgroundColor: active ? 'var(--bg-surface)' : 'transparent',
                   color: active ? 'var(--accent-text)' : 'var(--text-muted)',
@@ -285,7 +317,7 @@ export function App() {
                 <Icon className="h-5 w-5" />
                 <span className="flex-1 text-left">{item.label}</span>
                 {item.id === 'activity' && pendingCount > 0 && (
-                  <Badge variant="destructive" className="px-2 py-0.5 text-[11px] font-extrabold">
+                  <Badge variant="destructive" className="px-2 py-0.5 text-caption font-bold tabular-nums">
                     {pendingCount}
                   </Badge>
                 )}
@@ -295,21 +327,32 @@ export function App() {
         </nav>
       </aside>
 
-      <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between gap-3 px-5 pb-2 safe-pt md:px-10 md:pt-8">
-          <h1
-            className={tab === 'home' ? 'text-sm font-bold' : 'text-[30px] font-extrabold tracking-[-0.03em]'}
-            style={{ color: tab === 'home' ? 'var(--text-muted)' : 'var(--text-primary)' }}
-          >
-            {heading}
-          </h1>
+      <PullToRefresh onRefresh={refreshAll} disabled={Boolean(flow)}>
+        <header className="flex items-end justify-between gap-3 px-5 pb-2 safe-pt md:px-10 md:pt-8">
+          <div className="min-w-0">
+            {/* Hidden (not removed) on Settings so every page's title sits at the same height. */}
+            <p
+              aria-hidden={tab === 'settings' || undefined}
+              className={`flex items-center gap-1.5 text-caption tabular-nums ${tab === 'settings' ? 'invisible' : ''}`}
+              style={{ color: offline ? 'var(--warning)' : 'var(--text-muted)' }}
+              aria-live="polite"
+            >
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: offline ? 'var(--warning)' : syncedAt === null ? 'var(--text-muted)' : 'var(--positive)' }}
+              />
+              {syncLine}
+            </p>
+            <h1 className="truncate text-title">{heading}</h1>
+          </div>
           <div className="flex items-center gap-2">
             {showRefresh && (
               <Button
                 type="button"
                 onClick={() => setRefreshTrigger((n) => n + 1)}
                 aria-label="Refresh prices and balances"
-                className="press flex h-11 w-11 items-center justify-center rounded-full"
+                className="press hidden h-11 w-11 items-center justify-center rounded-full md:flex"
                 style={{ backgroundColor: 'var(--bg-surface)' }}
               >
                 <RefreshCw className="h-[18px] w-[18px]" />
@@ -329,13 +372,14 @@ export function App() {
         </header>
 
         <main className="mx-auto w-full max-w-3xl flex-1 px-5 pb-36 pt-3 md:px-10 md:pb-12">
-          {tab === 'home' && (
-            <HomePage onNavigate={navigate} onOpenFlow={openFlow} refreshTrigger={refreshTrigger} dataVersion={dataVersion} pendingCount={pendingCount} hiddenAccountIds={hiddenHomeAccounts} />
-          )}
-          {tab === 'activity' && (
+          <TabPanel id="home" active={tab} visited={visited}>
+            <HomePage onNavigate={navigate} refreshTrigger={refreshTrigger} dataVersion={dataVersion} pendingCount={pendingCount} hiddenAccountIds={hiddenHomeAccounts} />
+          </TabPanel>
+          <TabPanel id="activity" active={tab} visited={visited}>
             <ActivityPage
               accounts={meta.accounts}
               categories={meta.categories}
+              categoryGroups={meta.categoryGroups}
               payees={meta.payees}
               baseCurrency={baseCurrency}
               dataVersion={dataVersion}
@@ -343,9 +387,11 @@ export function App() {
               onChanged={handleChanged}
               onToast={showToast}
             />
-          )}
-          {tab === 'budget' && <BudgetPage baseCurrency={baseCurrency} refreshTrigger={refreshTrigger} dataVersion={dataVersion} onToast={showToast} />}
-          {tab === 'accounts' && (
+          </TabPanel>
+          <TabPanel id="budget" active={tab} visited={visited}>
+            <BudgetPage baseCurrency={baseCurrency} refreshTrigger={refreshTrigger} dataVersion={dataVersion} onToast={showToast} />
+          </TabPanel>
+          <TabPanel id="accounts" active={tab} visited={visited}>
             <AccountsPage
               categories={meta.categories}
               baseCurrency={baseCurrency}
@@ -355,10 +401,14 @@ export function App() {
               onChanged={handleChanged}
               onToast={showToast}
             />
-          )}
-          {tab === 'invest' && <PortfolioPage accounts={meta.accounts} onToast={showToast} refreshTrigger={refreshTrigger} />}
-          {tab === 'bills' && <SchedulesPage accounts={meta.accounts} payees={meta.payees} baseCurrency={baseCurrency} onToast={showToast} />}
-          {tab === 'settings' && (
+          </TabPanel>
+          <TabPanel id="invest" active={tab} visited={visited}>
+            <PortfolioPage accounts={meta.accounts} onToast={showToast} refreshTrigger={refreshTrigger} />
+          </TabPanel>
+          <TabPanel id="bills" active={tab} visited={visited}>
+            <SchedulesPage accounts={meta.accounts} payees={meta.payees} baseCurrency={baseCurrency} onToast={showToast} />
+          </TabPanel>
+          <TabPanel id="settings" active={tab} visited={visited}>
             <SettingsPage
               budgets={meta.budgets}
               accounts={meta.accounts}
@@ -370,9 +420,9 @@ export function App() {
               onLoggedOut={() => setAuth((prev) => (prev ? { ...prev, authenticated: false, user: null } : null))}
               onToast={showToast}
             />
-          )}
+          </TabPanel>
         </main>
-      </div>
+      </PullToRefresh>
 
       {/* Mobile floating pill nav */}
       <nav
@@ -417,7 +467,7 @@ export function App() {
               {item.id === 'activity' && pendingCount > 0 && (
                 <Badge
                   variant="destructive"
-                  className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center px-1 text-[10px] font-extrabold"
+                  className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center px-1 text-caption font-bold tabular-nums"
                 >
                   {pendingCount}
                 </Badge>
@@ -444,4 +494,23 @@ export function App() {
       <Toaster notification={toast} />
     </div>
   );
+}
+
+/** Renders a tab once it has been visited, then keeps it mounted and hides it while inactive.
+ *  The enter animation replays each time it is shown (display:none → block restarts CSS animations). */
+function TabPanel({ id, active, visited, children }: { id: AppTab; active: AppTab; visited: ReadonlySet<AppTab>; children: React.ReactNode }) {
+  if (!visited.has(id) && id !== active) return null;
+  return (
+    <div className="tab-panel" hidden={id !== active}>
+      {children}
+    </div>
+  );
+}
+
+function sinceLabel(ms: number): string {
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  return hrs < 24 ? `${hrs} h ago` : `${Math.floor(hrs / 24)} d ago`;
 }

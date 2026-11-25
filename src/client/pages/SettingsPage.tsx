@@ -10,7 +10,7 @@ import { SecuritySection } from '../components/settings/SecuritySection';
 import { SettingsCard, SettingsGroup } from '../components/settings/SettingsUI';
 import { Button } from '@client/components/ui/button';
 import { Label } from '@client/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
+import { Select } from '@client/components/ui/select';
 import { Alert } from '@client/components/ui/alert';
 import { Card } from '@client/components/ui/card';
 
@@ -95,47 +95,36 @@ export function SettingsPage({
         <SettingsCard icon={<Wallet className="h-[18px] w-[18px]" />} title="Budget" description="Changes save straight away.">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="base-currency" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="base-currency" className="text-label" style={{ color: 'var(--text-secondary)' }}>
                 Base currency
               </Label>
-              <NativeSelect
+              <Select
                 id="base-currency"
                 value={baseCurrency}
                 disabled={saving}
-                onChange={(e) => {
-                  const v = e.target.value;
+                options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+                onValueChange={(v) => {
                   setBaseCurrency(v);
                   void save({ baseCurrency: v }, `Base currency set to ${v}`);
                 }}
-              >
-                {CURRENCIES.map((c) => (
-                  <NativeSelectOption key={c} value={c}>
-                    {c}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+              />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="active-budget" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="active-budget" className="text-label" style={{ color: 'var(--text-secondary)' }}>
                 Actual budget
               </Label>
-              <NativeSelect
+              <Select
                 id="active-budget"
                 value={shownBudget}
                 disabled={saving}
-                onChange={(e) => setPendingBudget(e.target.value === budgetSyncId ? null : e.target.value)}
-              >
-                {budgets.map((b) => (
-                  <NativeSelectOption key={b.groupId} value={b.groupId}>
-                    {b.name}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+                options={budgets.map((b) => ({ value: b.groupId, label: b.name }))}
+                onValueChange={(v) => setPendingBudget(v === budgetSyncId ? null : v)}
+              />
             </div>
           </div>
           {pendingBudget && (
             <Alert className="flex flex-col gap-3 rounded-2xl p-3.5" style={{ backgroundColor: 'var(--warning-soft)' }}>
-              <p className="flex gap-2 text-xs leading-relaxed" style={{ color: 'var(--warning)' }}>
+              <p className="flex gap-2 text-caption leading-relaxed" style={{ color: 'var(--warning)' }}>
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   Kopi will show <strong>{budgets.find((b) => b.groupId === pendingBudget)?.name}</strong> everywhere. Linked cards, Home account
@@ -143,10 +132,10 @@ export function SettingsPage({
                 </span>
               </p>
               <div className="flex gap-2">
-                <Button type="button" onClick={() => setPendingBudget(null)} variant="secondary" className="h-10 flex-1 rounded-xl text-sm font-bold">
+                <Button type="button" onClick={() => setPendingBudget(null)} variant="secondary" className="h-10 flex-1 rounded-xl text-label">
                   Keep current
                 </Button>
-                <Button type="button" disabled={saving} onClick={() => void switchBudget()} variant="default" className="h-10 flex-1 rounded-xl text-sm disabled:opacity-50">
+                <Button type="button" disabled={saving} onClick={() => void switchBudget()} variant="default" className="h-10 flex-1 rounded-xl text-label disabled:opacity-50">
                   Switch budget
                 </Button>
               </div>
@@ -160,8 +149,8 @@ export function SettingsPage({
               <Landmark className="h-[18px] w-[18px]" />
             </span>
             <span className="flex flex-1 flex-col">
-              <span className="text-base font-extrabold">Accounts</span>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              <span className="text-heading">Accounts</span>
+              <span className="text-caption" style={{ color: 'var(--text-muted)' }}>
                 Add, group, close or reopen accounts, link cards, and choose what shows on Home
               </span>
             </span>
@@ -182,14 +171,14 @@ export function SettingsPage({
       <Button
         type="button"
         onClick={() => void handleLogout()}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold transition hover:opacity-90"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-body font-bold transition hover:opacity-90"
         style={{ backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }}
       >
         <LogOut className="h-4 w-4" />
         Sign out
       </Button>
 
-      <p className="text-center text-xs text-muted-foreground">Kopi v{version}</p>
+      <p className="text-center text-caption text-muted-foreground">Kopi v{version}</p>
     </div>
   );
 }

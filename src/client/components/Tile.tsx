@@ -20,7 +20,7 @@ export function Tile({ colorKey, label, size = 42, transfer = false }: TileProps
   return (
     <Avatar
       aria-hidden="true"
-      className="items-center justify-center font-extrabold"
+      className="items-center justify-center font-bold"
       style={{ ...style, width: size, height: size, borderRadius: Math.round(size / 3), fontSize: Math.round(size * 0.36) }}
     >
       {transfer ? <ArrowLeftRight className="h-4 w-4" /> : (label.trim().charAt(0) || '?').toUpperCase()}

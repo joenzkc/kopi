@@ -8,7 +8,7 @@ import { Button } from '@client/components/ui/button';
 import { Toggle } from '@client/components/ui/toggle';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@client/components/ui/native-select';
+import { Select } from '@client/components/ui/select';
 
 interface EmailImportSectionProps {
   accounts: ActualAccount[];
@@ -147,7 +147,7 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
       description="Bank alert emails become transactions to review."
     >
       {/* Status */}
-      <div className="flex items-center gap-2.5 rounded-2xl px-3.5 py-3 text-sm" style={{ backgroundColor: 'var(--bg-subtle)' }}>
+      <div className="flex items-center gap-2.5 rounded-2xl px-3.5 py-3 text-body" style={{ backgroundColor: 'var(--bg-subtle)' }}>
         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: live ? 'var(--positive)' : 'var(--text-muted)' }} aria-hidden="true" />
         <span className="min-w-0 flex-1">
           {summary === null
@@ -163,7 +163,7 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
 
       {/* Forwarding address */}
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="fwd-address" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+        <Label htmlFor="fwd-address" className="text-label" style={{ color: 'var(--text-secondary)' }}>
           Forwarding address
         </Label>
         <div className="flex gap-2">
@@ -182,12 +182,12 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
             className="min-w-0 flex-1"
           />
           {forwarding.trim() !== savedForwarding && (
-            <Button type="button" onClick={() => void saveForwarding()} variant="default" className="shrink-0 rounded-xl px-4 text-sm">
+            <Button type="button" onClick={() => void saveForwarding()} variant="default" className="shrink-0 rounded-xl px-4 text-label">
               Save
             </Button>
           )}
         </div>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-caption" style={{ color: 'var(--text-muted)' }}>
           The address your bank alerts are forwarded to (Cloudflare Email Routing → Kopi). Saved for reference.
         </p>
       </div>
@@ -197,26 +197,23 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
 
       {/* Fallback account */}
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="default-import-account" className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+        <Label htmlFor="default-import-account" className="text-label" style={{ color: 'var(--text-secondary)' }}>
           If Kopi can’t tell the account
         </Label>
-        <NativeSelect
+        <Select
           id="default-import-account"
           value={defaultAccount}
-          onChange={(e) => {
-            const v = e.target.value;
+          onValueChange={(v) => {
             setDefaultAccount(v);
             void patchSettings({ defaultEmailAccountId: v }, v ? 'Fallback account saved' : 'No fallback account');
           }}
-        >
-          <NativeSelectOption value="">Ask me each time (recommended)</NativeSelectOption>
-          {openAccounts.map((a) => (
-            <NativeSelectOption key={a.id} value={a.id}>
-              {a.name}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          placeholder="Ask me each time (recommended)"
+          options={[
+            { value: '', label: 'Ask me each time (recommended)' },
+            ...openAccounts.map((a) => ({ value: a.id, label: a.name })),
+          ]}
+        />
+        <p className="text-caption" style={{ color: 'var(--text-muted)' }}>
           Used only for emails from a card Kopi hasn’t learned yet. Leaving it empty means those always ask.
         </p>
       </div>
@@ -225,16 +222,16 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
       <Button
         type="button"
         onClick={onOpenAccounts}
-        className="flex min-h-[52px] items-center justify-between gap-3 rounded-2xl px-3.5 text-left text-sm"
+        className="flex min-h-[52px] items-center justify-between gap-3 rounded-2xl px-3.5 text-left text-body"
         style={{ backgroundColor: 'var(--bg-subtle)' }}
       >
         <span>
           <strong>{linkCount === null ? '…' : linkCount}</strong> card{linkCount === 1 ? '' : 's'} and accounts linked
-          <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+          <span className="block text-caption" style={{ color: 'var(--text-muted)' }}>
             Kopi learns each card the first time you review one of its emails.
           </span>
         </span>
-        <span className="flex shrink-0 items-center gap-1 text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
+        <span className="flex shrink-0 items-center gap-1 text-label" style={{ color: 'var(--accent-text)' }}>
           Manage
           <ChevronRight className="h-4 w-4" />
         </span>
@@ -248,7 +245,7 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
           <Toggle
             onPressedChange={setShowSecret}
             pressed={showSecret}
-            className="flex min-h-[44px] items-center gap-1.5 self-start px-1 text-sm font-bold"
+            className="flex min-h-[44px] items-center gap-1.5 self-start px-1 text-label"
             style={{ color: 'var(--accent-text)' }}
           >
             {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -268,10 +265,10 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+          <span className="text-label" style={{ color: 'var(--text-secondary)' }}>
             Per-bank rules (legacy)
           </span>
-          <p className="flex gap-2 rounded-xl px-3 py-2.5 text-xs leading-relaxed" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
+          <p className="flex gap-2 rounded-xl px-3 py-2.5 text-caption leading-relaxed" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
               These apply to a whole bank, not a card. With several cards at one bank, leave them on “No account” and use linked cards
@@ -280,22 +277,17 @@ export function EmailImportSection({ accounts, onOpenAccounts, onToast }: EmailI
           </p>
           {rules.map((r) => (
             <div key={r.id} className="flex flex-col gap-2 rounded-xl p-3" style={{ backgroundColor: 'var(--bg-canvas)' }}>
-              <span className="text-sm font-bold">{r.name}</span>
+              <span className="text-body font-semibold">{r.name}</span>
               <div className="flex items-center gap-2">
-                <NativeSelect
+                <Select
                   aria-label={`Account for ${r.name}`}
                   value={r.actual_account_id || ''}
-                  onChange={(e) => void updateRule(r, { actual_account_id: e.target.value || null })}
+                  onValueChange={(v) => void updateRule(r, { actual_account_id: v || null })}
+                  placeholder="No account"
+                  options={[{ value: '', label: 'No account' }, ...openAccounts.map((a) => ({ value: a.id, label: a.name }))]}
                   className="min-w-0 flex-1"
-                >
-                  <NativeSelectOption value="">No account</NativeSelectOption>
-                  {openAccounts.map((a) => (
-                    <NativeSelectOption key={a.id} value={a.id}>
-                      {a.name}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
-                <Label className="flex min-h-[44px] shrink-0 cursor-pointer items-center gap-2 px-1 text-xs font-bold">
+                />
+                <Label className="flex min-h-[44px] shrink-0 cursor-pointer items-center gap-2 px-1 text-label">
                   <Input
                     variant="unstyled"
                     type="checkbox"

@@ -79,5 +79,10 @@ export function senderLabel(sender: string): string {
   const name = sender.replace(/<.*>/, '').replace(/"/g, '').trim();
   if (name && !name.includes('@')) return name;
   const domain = sender.split('@')[1]?.replace(/>.*/, '') || sender;
-  return domain.split('.').slice(-2, -1)[0]?.toUpperCase() || sender;
+  // Skip second-level public suffixes so alerts@citibank.com.sg reads "CITIBANK", not "COM".
+  const parts = domain.toLowerCase().split('.').filter(Boolean);
+  const SECOND_LEVEL = new Set(['com', 'co', 'net', 'org', 'gov', 'edu', 'ac']);
+  let i = parts.length - 2;
+  if (i > 0 && parts[parts.length - 1].length === 2 && SECOND_LEVEL.has(parts[i])) i -= 1;
+  return parts[i]?.toUpperCase() || sender;
 }

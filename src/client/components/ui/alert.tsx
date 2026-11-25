@@ -6,7 +6,7 @@ const alertVariants = cva('', {
   variants: {
     variant: {
       default: '',
-      destructive: 'text-sm font-semibold text-destructive',
+      destructive: 'text-label text-destructive',
     },
   },
   defaultVariants: { variant: 'default' },

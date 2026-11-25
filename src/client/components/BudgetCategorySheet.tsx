@@ -2,12 +2,13 @@ import React, { useMemo, useState } from 'react';
 import type { BudgetCategory, BudgetMonthResponse } from '@shared/types';
 import { apiFetch, formatMoney } from '../lib/api';
 import { Sheet } from './Sheet';
+import { ProgressBar, barColor, spentRatio } from './budget/ProgressBar';
 import { Button } from '@client/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
 import { Switch, SwitchThumb } from '@client/components/ui/switch';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
-import { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from '@client/components/ui/native-select';
+import { Select, type SelectGroup } from '@client/components/ui/select';
 import { Alert } from '@client/components/ui/alert';
 
 interface BudgetCategorySheetProps {
@@ -34,14 +35,16 @@ export function parseCents(input: string): number | null {
 
 const centsToInput = (cents: number) => (cents / 100).toFixed(2);
 
-const labelStyle = { color: 'var(--text-secondary)' };
+const mutedStyle = { color: 'var(--text-muted)' };
+const sectionDivider = { borderTop: '1px solid var(--border-subtle)' };
 
+/** Quick-fill suggestion under an amount field. */
 function Chip({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <Button
       type="button"
       onClick={onClick}
-      className="press rounded-full px-3 py-1.5 text-xs font-bold tabular-nums"
+      className="press h-8 shrink-0 whitespace-nowrap rounded-full px-3 text-label tabular-nums"
       style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
     >
       {children}
@@ -49,12 +52,47 @@ function Chip({ onClick, children }: { onClick: () => void; children: React.Reac
   );
 }
 
+/** Amount input with the currency code tucked inside on the right. */
+function AmountInput({
+  id,
+  value,
+  onChange,
+  currency,
+  form,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  currency: string;
+  form?: string;
+}) {
+  return (
+    <div className="relative min-w-0 flex-1">
+      <Input
+        id={id}
+        form={form}
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={(e) => e.target.select()}
+        placeholder="0.00"
+        autoComplete="off"
+        className="h-12 pr-14 tabular-nums"
+      />
+      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-label" style={mutedStyle}>
+        {currency}
+      </span>
+    </div>
+  );
+}
+
 export function BudgetCategorySheet({ category, groupName, data, monthName, baseCurrency, onClose, onSaved }: BudgetCategorySheetProps) {
+  const [nameInput, setNameInput] = useState(() => category?.name ?? '');
   const [budgetInput, setBudgetInput] = useState(() => (category ? centsToInput(category.budgeted) : ''));
   const [moveDir, setMoveDir] = useState<MoveDir>(() => (category && category.balance < 0 ? 'in' : 'out'));
   const [moveOther, setMoveOther] = useState(''); // '' = To budget
   const [moveInput, setMoveInput] = useState(() => (category && category.balance < 0 ? centsToInput(-category.balance) : ''));
-  const [busy, setBusy] = useState<null | 'budget' | 'move' | 'rollover'>(null);
+  const [busy, setBusy] = useState<null | 'save' | 'move' | 'rollover'>(null);
   const [error, setError] = useState<string | null>(null);
 
   const money = (cents: number) => formatMoney(cents / 100, baseCurrency);
@@ -71,15 +109,61 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
   if (!category) return null;
 
   const over = category.balance < 0;
+  const ratio = spentRatio(category.spent, category.balance);
   const newBudgeted = parseCents(budgetInput);
   const budgetDelta = newBudgeted === null ? 0 : newBudgeted - category.budgeted;
   const toBudgetAfter = data.toBudget - budgetDelta;
+  const newName = nameInput.trim();
+  const nameChanged = newName !== '' && newName !== category.name;
   const moveCents = parseCents(moveInput);
   const otherCat = moveOther ? otherGroups.flatMap((g) => g.categories).find((c) => c.id === moveOther) : null;
   const otherName = otherCat?.name ?? 'To budget';
   const otherAvailable = otherCat ? otherCat.balance : data.toBudget;
 
-  async function run(kind: 'budget' | 'move' | 'rollover', fn: () => Promise<unknown>, message: string, close: boolean) {
+  const moveOptions: SelectGroup[] = [
+    { label: 'Unassigned', options: [{ value: '', label: 'To budget', hint: money(data.toBudget) }] },
+    ...otherGroups.map((g) => ({
+      label: g.name,
+      options: g.categories.map((c) => ({ value: c.id, label: c.name, hint: money(c.balance) })),
+    })),
+  ];
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newBudgeted === null) return setError('Enter an amount, e.g. 250 or 250.50');
+    if (!newName) return setError('Give the category a name');
+    const budgetChanged = newBudgeted !== category.budgeted;
+    if (!budgetChanged && !nameChanged) return onClose();
+
+    setBusy('save');
+    setError(null);
+    const done: string[] = [];
+    try {
+      if (budgetChanged) {
+        await apiFetch(`/api/budget/${data.month}/categories/${encodeURIComponent(category.id)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ budgeted: newBudgeted }),
+        });
+        done.push(`${category.name} budget set to ${money(newBudgeted)}`);
+      }
+      if (nameChanged) {
+        await apiFetch(`/api/budget/categories/${encodeURIComponent(category.id)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ name: newName }),
+        });
+        done.push(budgetChanged ? `renamed to ${newName}` : `${category.name} renamed to ${newName}`);
+      }
+      onSaved(done.join(', '), true);
+    } catch (err) {
+      // Keep the sheet open on a partial save, but still refresh what did land.
+      if (done.length > 0) onSaved(done.join(', '), false);
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  async function run(kind: 'move' | 'rollover', fn: () => Promise<unknown>, message: string, close: boolean) {
     setBusy(kind);
     setError(null);
     try {
@@ -91,22 +175,6 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
       setBusy(null);
     }
   }
-
-  const saveBudget = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newBudgeted === null) return setError('Enter an amount, e.g. 250 or 250.50');
-    if (newBudgeted === category.budgeted) return onClose();
-    void run(
-      'budget',
-      () =>
-        apiFetch(`/api/budget/${data.month}/categories/${encodeURIComponent(category.id)}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ budgeted: newBudgeted }),
-        }),
-      `${category.name} budget set to ${money(newBudgeted)}`,
-      true,
-    );
-  };
 
   const moveMoney = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,64 +202,79 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
     );
   };
 
+  const budgetChips = [
+    over && { key: 'cover', text: `Cover overspending`, value: category.budgeted - category.balance },
+    category.spent > 0 && category.spent !== category.budgeted && { key: 'spent', text: `Match spent · ${money(category.spent)}`, value: category.spent },
+    data.toBudget > 0 && { key: 'all', text: `+ To budget · ${money(data.toBudget)}`, value: category.budgeted + data.toBudget },
+    category.budgeted !== 0 && { key: 'clear', text: 'Clear', value: 0 },
+  ].filter((c): c is { key: string; text: string; value: number } => Boolean(c));
+
+  const moveChips = [
+    moveDir === 'in' && over && { key: 'over', text: `Overspent · ${money(-category.balance)}`, value: -category.balance },
+    moveDir === 'in' && otherAvailable > 0 && { key: 'other', text: `All of ${otherName} · ${money(otherAvailable)}`, value: otherAvailable },
+    moveDir === 'out' && category.balance > 0 && { key: 'avail', text: `All available · ${money(category.balance)}`, value: category.balance },
+  ].filter((c): c is { key: string; text: string; value: number } => Boolean(c));
+
+  const moveWarning =
+    moveCents === null
+      ? null
+      : moveDir === 'in' && moveCents > otherAvailable
+        ? `That's more than ${otherName} has available; it will go negative.`
+        : moveDir === 'out' && moveCents > category.balance
+          ? `That's more than ${category.name} has available; it will go negative.`
+          : null;
+
   return (
     <Sheet financialForm open onClose={onClose} title={category.name} subtitle={`${groupName} · ${monthName}`}>
       <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { label: 'Budgeted', value: category.budgeted },
-            { label: 'Spent', value: category.spent },
-            { label: 'Available', value: category.balance },
-          ].map((s) => (
-            <div key={s.label} className="flex flex-col gap-0.5 rounded-2xl p-3" style={{ backgroundColor: 'var(--bg-subtle)' }}>
-              <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{s.label}</span>
-              <span className="text-[15px] font-extrabold tabular-nums" style={{ color: s.value < 0 ? 'var(--negative)' : undefined }}>
-                {money(s.value)}
-              </span>
-            </div>
-          ))}
-        </div>
+        {/* Summary */}
+        <section className="flex flex-col gap-2" aria-label="This month">
+          <span className="text-label" style={mutedStyle}>
+            {over ? 'Overspent' : 'Available'}
+          </span>
+          <span className="text-title tabular-nums" style={{ color: over ? 'var(--negative)' : 'var(--text-primary)' }}>
+            {over ? `−${money(-category.balance)}` : money(category.balance)}
+          </span>
+          <ProgressBar ratio={ratio} color={barColor(category.balance, ratio)} label={`${Math.round(ratio * 100)}% spent`} />
+          <span className="text-caption tabular-nums" style={mutedStyle}>
+            {money(category.spent)} spent of {money(category.budgeted)} budgeted
+          </span>
+        </section>
 
-        {/* Set budgeted amount */}
-        <form onSubmit={saveBudget} className="flex flex-col gap-2">
-          <Label htmlFor="budget-amount" className="text-xs font-bold" style={labelStyle}>
-            Budgeted for {monthName} ({baseCurrency})
+        {/* Budgeted (saved by the Save button at the bottom) */}
+        <form id="budget-category-form" onSubmit={save} className="flex flex-col gap-1.5">
+          <Label htmlFor="budget-amount" className="text-label" style={mutedStyle}>
+            Budgeted for {monthName}
           </Label>
-          <div className="flex gap-2">
-            <Input
-              id="budget-amount"
-              inputMode="decimal"
-              value={budgetInput}
-              onChange={(e) => setBudgetInput(e.target.value)}
-              onFocus={(e) => e.target.select()}
-              placeholder="0.00"
-              className="flex-1 tabular-nums"
-            />
-            <Button type="submit" disabled={busy !== null || newBudgeted === null} variant="default" className="h-12 shrink-0 rounded-2xl px-5 text-[15px] disabled:opacity-50">
-              {busy === 'budget' ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {over && <Chip onClick={() => setBudgetInput(centsToInput(category.budgeted - category.balance))}>Cover overspending</Chip>}
-            {category.spent > 0 && category.spent !== category.budgeted && (
-              <Chip onClick={() => setBudgetInput(centsToInput(category.spent))}>Match spent · {money(category.spent)}</Chip>
-            )}
-            {data.toBudget > 0 && <Chip onClick={() => setBudgetInput(centsToInput(category.budgeted + data.toBudget))}>Add all of To budget</Chip>}
-            {category.budgeted !== 0 && <Chip onClick={() => setBudgetInput('0.00')}>Clear</Chip>}
-          </div>
-          <p className="text-xs tabular-nums" style={{ color: toBudgetAfter < 0 ? 'var(--negative)' : 'var(--text-muted)' }}>
-            {budgetDelta === 0
-              ? `To budget: ${money(data.toBudget)}`
-              : toBudgetAfter < 0
-                ? `This overbudgets the month by ${money(-toBudgetAfter)}`
-                : `To budget after saving: ${money(toBudgetAfter)}`}
-          </p>
+          <AmountInput id="budget-amount" value={budgetInput} onChange={setBudgetInput} currency={baseCurrency} />
+          {budgetChips.length > 0 && (
+            <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pt-1">
+              {budgetChips.map((c) => (
+                <Chip key={c.key} onClick={() => setBudgetInput(centsToInput(c.value))}>
+                  {c.text}
+                </Chip>
+              ))}
+            </div>
+          )}
+          {budgetDelta !== 0 && (
+            <p className="text-caption tabular-nums" style={{ color: toBudgetAfter < 0 ? 'var(--negative)' : 'var(--text-muted)' }}>
+              {toBudgetAfter < 0 ? `This overbudgets the month by ${money(-toBudgetAfter)}` : `To budget after saving: ${money(toBudgetAfter)}`}
+            </p>
+          )}
         </form>
 
         {/* Move money */}
-        <form onSubmit={moveMoney} className="flex flex-col gap-2">
-          <span className="text-xs font-bold" style={labelStyle}>Move money</span>
-          <RadioGroup value={moveDir} onValueChange={(value) => setMoveDir(value as MoveDir)} aria-label="Move direction" className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-subtle)' }}>
+        <form onSubmit={moveMoney} className="flex flex-col gap-4 pt-6" style={sectionDivider} aria-labelledby="move-money-label">
+          <span id="move-money-label" className="text-label" style={mutedStyle}>
+            Move money
+          </span>
+          <RadioGroup
+            value={moveDir}
+            onValueChange={(value) => setMoveDir(value as MoveDir)}
+            aria-label="Move direction"
+            className="grid grid-cols-2 gap-1 rounded-2xl p-1"
+            style={{ backgroundColor: 'var(--bg-subtle)' }}
+          >
             {(
               [
                 ['in', `Into ${category.name}`],
@@ -203,7 +286,7 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
                 <RadioGroupItem
                   key={id}
                   value={id}
-                  className="h-10 truncate rounded-xl px-2 text-sm font-bold transition"
+                  className="h-10 truncate rounded-xl px-2 text-label transition"
                   style={{ backgroundColor: on ? 'var(--accent)' : 'transparent', color: on ? 'var(--accent-fg)' : 'var(--text-muted)' }}
                 >
                   {text}
@@ -211,84 +294,96 @@ export function BudgetCategorySheet({ category, groupName, data, monthName, base
               );
             })}
           </RadioGroup>
-          <Label htmlFor="move-other" className="sr-only">
-            {moveDir === 'in' ? 'Take money from' : 'Send money to'}
-          </Label>
-          <div className="flex items-center gap-2">
-            <span className="w-12 shrink-0 text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
-              {moveDir === 'in' ? 'From' : 'To'}
-            </span>
-            <NativeSelect id="move-other" value={moveOther} onChange={(e) => setMoveOther(e.target.value)} className="flex-1">
-              <NativeSelectOption value="">To budget ({money(data.toBudget)})</NativeSelectOption>
-              {otherGroups.map((g) => (
-                <NativeSelectOptGroup key={g.id} label={g.name}>
-                  {g.categories.map((c) => (
-                    <NativeSelectOption key={c.id} value={c.id}>
-                      {c.name} ({money(c.balance)})
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelectOptGroup>
-              ))}
-            </NativeSelect>
-          </div>
-          <div className="flex gap-2">
-            <Label htmlFor="move-amount" className="sr-only">Amount to move</Label>
-            <Input
-              id="move-amount"
-              inputMode="decimal"
-              value={moveInput}
-              onChange={(e) => setMoveInput(e.target.value)}
-              onFocus={(e) => e.target.select()}
-              placeholder="0.00"
-              className="flex-1 tabular-nums"
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="move-other" className="text-label" style={mutedStyle}>
+              {moveDir === 'in' ? 'Take from' : 'Send to'}
+            </Label>
+            <Select
+              id="move-other"
+              aria-label={moveDir === 'in' ? 'Take money from' : 'Send money to'}
+              value={moveOther}
+              onValueChange={setMoveOther}
+              options={moveOptions}
             />
-            <Button
-              type="submit"
-              disabled={busy !== null || moveCents === null || moveCents <= 0}
-              variant="secondary" className="h-12 shrink-0 rounded-2xl px-5 text-[15px] font-bold disabled:opacity-50"
-            >
-              {busy === 'move' ? 'Moving…' : 'Move'}
-            </Button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {moveDir === 'in' && over && <Chip onClick={() => setMoveInput(centsToInput(-category.balance))}>Overspent · {money(-category.balance)}</Chip>}
-            {moveDir === 'in' && otherAvailable > 0 && <Chip onClick={() => setMoveInput(centsToInput(otherAvailable))}>All of {otherName} · {money(otherAvailable)}</Chip>}
-            {moveDir === 'out' && category.balance > 0 && <Chip onClick={() => setMoveInput(centsToInput(category.balance))}>All available · {money(category.balance)}</Chip>}
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="move-amount" className="text-label" style={mutedStyle}>
+              Amount
+            </Label>
+            <div className="flex gap-2">
+              <AmountInput id="move-amount" value={moveInput} onChange={setMoveInput} currency={baseCurrency} />
+              <Button
+                type="submit"
+                disabled={busy !== null || moveCents === null || moveCents <= 0}
+                variant="secondary"
+                className="h-12 shrink-0 rounded-2xl px-5 text-body disabled:opacity-50"
+              >
+                {busy === 'move' ? 'Moving…' : 'Move'}
+              </Button>
+            </div>
+            {moveChips.length > 0 && (
+              <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pt-1">
+                {moveChips.map((c) => (
+                  <Chip key={c.key} onClick={() => setMoveInput(centsToInput(c.value))}>
+                    {c.text}
+                  </Chip>
+                ))}
+              </div>
+            )}
+            {moveWarning && (
+              <p className="text-caption" style={{ color: 'var(--warning)' }}>
+                {moveWarning}
+              </p>
+            )}
           </div>
-          {moveDir === 'in' && moveCents !== null && moveCents > otherAvailable && (
-            <p className="text-xs" style={{ color: 'var(--warning)' }}>
-              That's more than {otherName} has available; it will go negative.
-            </p>
-          )}
-          {moveDir === 'out' && moveCents !== null && moveCents > category.balance && (
-            <p className="text-xs" style={{ color: 'var(--warning)' }}>
-              That's more than {category.name} has available; it will go negative.
-            </p>
-          )}
         </form>
 
-        {/* Rollover */}
-        <Switch
-          checked={category.carryover}
-          disabled={busy !== null}
-          onCheckedChange={toggleRollover}
-          className="flex items-center justify-between gap-3 rounded-2xl p-3 text-left disabled:opacity-60"
-          style={{ backgroundColor: 'var(--bg-subtle)' }}
-        >
-          <span className="flex flex-col gap-0.5">
-            <span className="text-sm font-bold">Roll over overspending</span>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Carry a negative balance into next month instead of taking it from To budget.
+        {/* Category settings */}
+        <section className="flex flex-col gap-4 pt-6" style={sectionDivider} aria-label="Category settings">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="budget-category-name" className="text-label" style={mutedStyle}>
+              Name
+            </Label>
+            <Input
+              id="budget-category-name"
+              form="budget-category-form"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              autoComplete="off"
+              maxLength={100}
+            />
+          </div>
+          <Switch
+            checked={category.carryover}
+            disabled={busy !== null}
+            onCheckedChange={toggleRollover}
+            className="flex min-h-11 items-center justify-between gap-3 text-left disabled:opacity-60"
+          >
+            <span className="flex flex-col gap-0.5">
+              <span className="text-body">Roll over overspending</span>
+              <span className="text-caption" style={mutedStyle}>
+                Carry a negative balance into next month instead of taking it from To budget.
+              </span>
             </span>
-          </span>
-          <SwitchThumb className="shrink-0" />
-        </Switch>
+            <SwitchThumb className="shrink-0" />
+          </Switch>
+        </section>
 
         {error && (
           <Alert as="p" variant="destructive">
             {error}
           </Alert>
         )}
+
+        <Button
+          type="submit"
+          form="budget-category-form"
+          disabled={busy !== null || newBudgeted === null || !newName}
+          variant="default"
+          className="h-12 w-full rounded-2xl text-body disabled:opacity-50"
+        >
+          {busy === 'save' ? 'Saving…' : 'Save'}
+        </Button>
       </div>
     </Sheet>
   );

@@ -34,7 +34,8 @@ export function normalizeBudgetMonth(raw: RawBudgetMonth, months: string[], fall
         categories,
       };
     })
-    .filter((g) => g.categories.length > 0);
+    // Keep empty expense groups so a freshly created group shows up (with its "Add category" row).
+    .filter((g) => g.categories.length > 0 || !g.isIncome);
 
   return {
     month: raw.month || fallbackMonth,

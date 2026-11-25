@@ -21,7 +21,7 @@ function Toaster({ notification }: { notification: ToastMessage | null }) {
         hidden={!notification}
         tabIndex={-1}
         className={cn(
-          'rounded-full px-4 py-2.5 text-sm font-bold text-background shadow-lg',
+          'rounded-full px-4 py-2.5 text-label font-bold text-background shadow-lg',
           notification?.tone === 'error' ? 'bg-destructive' : 'bg-foreground',
         )}
       >

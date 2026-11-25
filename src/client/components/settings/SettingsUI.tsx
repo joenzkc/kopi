@@ -9,7 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@client/com
 export function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-3" aria-label={title}>
-      <h2 className="px-1 text-xs font-extrabold uppercase tracking-[0.08em]" style={{ color: 'var(--text-muted)' }}>
+      <h2 className="px-1 text-label" style={{ color: 'var(--text-muted)' }}>
         {title}
       </h2>
       {children}
@@ -40,9 +40,9 @@ export function SettingsCard({
             {icon}
           </span>
           <div className="min-w-0">
-            <h3 className="text-base font-extrabold leading-tight">{title}</h3>
+            <h3 className="text-heading">{title}</h3>
             {description && (
-              <p className="mt-0.5 text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+              <p className="mt-0.5 text-caption leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                 {description}
               </p>
             )}
@@ -64,9 +64,9 @@ export function Disclosure({ title, description, children }: { title: string; de
         className="flex min-h-[48px] w-full items-center justify-between gap-3 px-4 py-2 text-left"
       >
         <span className="flex flex-col">
-          <span className="text-sm font-bold">{title}</span>
+          <span className="text-body font-semibold">{title}</span>
           {description && (
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span className="text-caption" style={{ color: 'var(--text-muted)' }}>
               {description}
             </span>
           )}
@@ -105,7 +105,7 @@ export function ConfirmAction({
         type="button"
         onClick={() => setAsking(true)}
         aria-label={ariaLabel}
-        className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-bold"
+        className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl px-3 text-label"
         style={{ color: 'var(--negative)' }}
       >
         {label}
@@ -114,11 +114,11 @@ export function ConfirmAction({
   }
   return (
     <Alert className="flex w-full flex-col gap-2 rounded-2xl p-3" style={{ backgroundColor: 'var(--negative-soft)' }}>
-      <p className="text-xs leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+      <p className="text-caption leading-relaxed" style={{ color: 'var(--text-primary)' }}>
         {message}
       </p>
       <div className="flex gap-2">
-        <Button type="button" onClick={() => setAsking(false)} variant="secondary" className="h-10 flex-1 rounded-xl text-sm font-bold">
+        <Button type="button" onClick={() => setAsking(false)} variant="secondary" className="h-10 flex-1 rounded-xl text-label">
           Cancel
         </Button>
         <Button
@@ -128,7 +128,7 @@ export function ConfirmAction({
             await onConfirm();
             setAsking(false);
           }}
-          className="h-10 flex-1 rounded-xl text-sm font-bold disabled:opacity-50"
+          className="h-10 flex-1 rounded-xl text-label disabled:opacity-50"
           style={{ backgroundColor: 'var(--negative)', color: 'var(--bg-canvas)' }}
         >
           {confirmLabel}
@@ -157,12 +157,12 @@ export function CopyField({
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+      <span className="text-label" style={{ color: 'var(--text-secondary)' }}>
         {label}
       </span>
       <div className="flex items-stretch gap-2">
         <code
-          className={`min-w-0 flex-1 rounded-xl px-3 py-2.5 text-xs leading-relaxed [overflow-wrap:anywhere] ${mono ? '' : 'font-sans'} ${clamp && !expanded ? 'line-clamp-3' : ''}`}
+          className={`min-w-0 flex-1 rounded-xl px-3 py-2.5 text-caption leading-relaxed [overflow-wrap:anywhere] ${mono ? '' : 'font-sans'} ${clamp && !expanded ? 'line-clamp-3' : ''}`}
           style={{ backgroundColor: 'var(--bg-canvas)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}
         >
           {display ?? value}
@@ -186,7 +186,7 @@ export function CopyField({
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          className="flex min-h-11 items-center gap-1 self-start text-xs font-bold"
+          className="flex min-h-11 items-center gap-1 self-start text-label"
           style={{ color: 'var(--accent-text)' }}
         >
           <ChevronDown className="h-3.5 w-3.5 transition-transform" style={{ transform: expanded ? 'rotate(180deg)' : 'none' }} />

@@ -196,6 +196,48 @@ export async function getCategoryGroups(): Promise<ActualCategoryGroup[]> {
   return setCached(key, res.data || [], 30_000);
 }
 
+/** Creates a category in a group; returns the new id when actual-http-api reports it. */
+export async function createCategory(input: { name: string; groupId: string; isIncome?: boolean }): Promise<string | null> {
+  const { syncId } = await resolveBudgetSyncId();
+  const res = await request<{ data?: string }>(`/budgets/${encodeURIComponent(syncId)}/categories`, {
+    method: 'POST',
+    body: JSON.stringify({
+      category: { name: input.name, group_id: input.groupId, is_income: Boolean(input.isIncome) },
+    }),
+  });
+  invalidateActualCache();
+  return typeof res?.data === 'string' ? res.data : null;
+}
+
+export async function updateCategory(categoryId: string, fields: { name?: string; group_id?: string; hidden?: boolean }): Promise<void> {
+  const { syncId } = await resolveBudgetSyncId();
+  await request(`/budgets/${encodeURIComponent(syncId)}/categories/${encodeURIComponent(categoryId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ category: fields }),
+  });
+  invalidateActualCache();
+}
+
+/** Creates a category group; returns the new id when actual-http-api reports it. */
+export async function createCategoryGroup(input: { name: string; isIncome?: boolean }): Promise<string | null> {
+  const { syncId } = await resolveBudgetSyncId();
+  const res = await request<{ data?: string }>(`/budgets/${encodeURIComponent(syncId)}/categorygroups`, {
+    method: 'POST',
+    body: JSON.stringify({ category_group: { name: input.name, is_income: Boolean(input.isIncome) } }),
+  });
+  invalidateActualCache();
+  return typeof res?.data === 'string' ? res.data : null;
+}
+
+export async function updateCategoryGroup(groupId: string, fields: { name?: string; hidden?: boolean }): Promise<void> {
+  const { syncId } = await resolveBudgetSyncId();
+  await request(`/budgets/${encodeURIComponent(syncId)}/categorygroups/${encodeURIComponent(groupId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ category_group: fields }),
+  });
+  invalidateActualCache();
+}
+
 export async function getAccountTransactions(
   accountId: string,
   sinceDate?: string,

@@ -77,11 +77,11 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
             alt=""
             className="mx-auto mb-4 h-12 w-12 rounded-2xl shadow-sm"
           />
-          <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          <h1 className="text-title" style={{ color: 'var(--text-primary)' }}>
             kopi
           </h1>
           {needsSetup && (
-            <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <p className="mt-1 text-body" style={{ color: 'var(--text-secondary)' }}>
               Set up your personal owner account to get started.
             </p>
           )}
@@ -94,14 +94,14 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
                 type="button"
                 disabled={loading}
                 onClick={handlePasskeyLogin}
-                variant="default" className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+                variant="default" className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-body font-bold disabled:opacity-50"
               >
                 <Fingerprint className="h-4 w-4" />
                 Sign in with Passkey
               </Button>
               <div className="my-5 flex items-center gap-3">
                 <Separator className="flex-1" />
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                <span className="text-caption" style={{ color: 'var(--text-muted)' }}>
                   or use password
                 </span>
                 <Separator className="flex-1" />
@@ -111,7 +111,7 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="auth-username" className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="auth-username" className="mb-1.5 block text-label" style={{ color: 'var(--text-secondary)' }}>
                 Username
               </Label>
               <Input
@@ -125,7 +125,7 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
             </div>
 
             <div>
-              <Label htmlFor="auth-password" className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <Label htmlFor="auth-password" className="mb-1.5 block text-label" style={{ color: 'var(--text-secondary)' }}>
                 Password
               </Label>
               <Input
@@ -142,7 +142,7 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
 
             {needsSetup && (
               <div>
-                <Label className="mb-1.5 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                <Label className="mb-1.5 block text-label" style={{ color: 'var(--text-secondary)' }}>
                   Confirm Password
                 </Label>
                 <Input
@@ -158,7 +158,7 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
 
             {error && (
               <div
-                className="rounded-xl px-3.5 py-2.5 text-xs font-medium"
+                className="rounded-xl px-3.5 py-2.5 text-caption"
                 style={{ backgroundColor: 'var(--negative-soft)', color: 'var(--negative)' }}
               >
                 {error}
@@ -168,7 +168,7 @@ export function AuthPage({ needsSetup, hasPasskeys, onAuthenticated }: AuthPageP
             <Button
               type="submit"
               disabled={loading}
-              variant="default" className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50"
+              variant="default" className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-body font-bold disabled:opacity-50"
             >
               {needsSetup ? <ShieldCheck className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
               {loading ? 'Please wait...' : needsSetup ? 'Create Owner Account' : 'Sign In'}

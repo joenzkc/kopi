@@ -523,3 +523,89 @@ overviewRoutes.post('/budget/:month/move', requireSession, async (c) => {
     return c.json({ error: err instanceof Error ? err.message : 'Could not move money in Actual' }, 502);
   }
 });
+
+// --- Budget structure: categories ("buckets") and their groups ---
+
+const budgetNameSchema = z.string().trim().min(1, 'Enter a name').max(100, 'Keep the name under 100 characters');
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Visible expense groups; Kopi only creates and renames expense categories. */
+async function expenseGroups() {
+  const groups = await actual.getCategoryGroups();
+  return groups.filter((g) => !g.is_income && !g.hidden);
+}
+
+overviewRoutes.post('/budget/categories', requireSession, async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const parsed = z.object({ name: budgetNameSchema, groupId: z.string().min(1, 'Pick a group') }).safeParse(body);
+  if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message || 'Invalid category' }, 400);
+  const { name, groupId } = parsed.data;
+
+  try {
+    const [groups, categories] = await Promise.all([expenseGroups(), actual.getCategories()]);
+    if (!groups.some((g) => g.id === groupId)) return c.json({ error: 'That group is not an expense group in Actual' }, 404);
+    if (categories.some((cat) => cat.group_id === groupId && sameName(cat.name, name))) {
+      return c.json({ error: `There is already a ${name} category in that group` }, 409);
+    }
+    const id = await actual.createCategory({ name, groupId });
+    return c.json({ ok: true, id });
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : 'Could not create the category in Actual' }, 502);
+  }
+});
+
+overviewRoutes.patch('/budget/categories/:categoryId', requireSession, async (c) => {
+  const categoryId = c.req.param('categoryId');
+  const body = await c.req.json().catch(() => null);
+  const parsed = z.object({ name: budgetNameSchema }).safeParse(body);
+  if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message || 'Invalid category' }, 400);
+  const { name } = parsed.data;
+
+  try {
+    const categories = await actual.getCategories();
+    const category = categories.find((cat) => cat.id === categoryId);
+    if (!category || category.is_income) return c.json({ error: 'That category is not an expense category in Actual' }, 404);
+    if (categories.some((cat) => cat.id !== categoryId && cat.group_id === category.group_id && sameName(cat.name, name))) {
+      return c.json({ error: `There is already a ${name} category in that group` }, 409);
+    }
+    await actual.updateCategory(categoryId, { name });
+    return c.json({ ok: true });
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : 'Could not rename the category in Actual' }, 502);
+  }
+});
+
+overviewRoutes.post('/budget/category-groups', requireSession, async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const parsed = z.object({ name: budgetNameSchema }).safeParse(body);
+  if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message || 'Invalid group' }, 400);
+  const { name } = parsed.data;
+
+  try {
+    const groups = await actual.getCategoryGroups();
+    if (groups.some((g) => sameName(g.name, name))) return c.json({ error: `There is already a ${name} group` }, 409);
+    const id = await actual.createCategoryGroup({ name });
+    return c.json({ ok: true, id });
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : 'Could not create the group in Actual' }, 502);
+  }
+});
+
+overviewRoutes.patch('/budget/category-groups/:groupId', requireSession, async (c) => {
+  const groupId = c.req.param('groupId');
+  const body = await c.req.json().catch(() => null);
+  const parsed = z.object({ name: budgetNameSchema }).safeParse(body);
+  if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message || 'Invalid group' }, 400);
+  const { name } = parsed.data;
+
+  try {
+    const groups = await actual.getCategoryGroups();
+    const group = groups.find((g) => g.id === groupId);
+    if (!group || group.is_income || group.hidden) return c.json({ error: 'That group is not an expense group in Actual' }, 404);
+    if (groups.some((g) => g.id !== groupId && sameName(g.name, name))) return c.json({ error: `There is already a ${name} group` }, 409);
+    await actual.updateCategoryGroup(groupId, { name });
+    return c.json({ ok: true });
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : 'Could not rename the group in Actual' }, 502);
+  }
+});
