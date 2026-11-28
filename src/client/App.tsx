@@ -63,6 +63,18 @@ const TITLES: Record<AppTab, string> = {
   settings: 'Settings',
 };
 
+/** Max width of each page's header and content. Home turns into a two-column dashboard on wide
+ *  screens (xl), so it may grow; the other pages are still the phone column. */
+const PAGE_WIDTH: Record<AppTab, string> = {
+  home: 'max-w-3xl xl:max-w-[90rem]',
+  activity: 'max-w-3xl',
+  budget: 'max-w-3xl',
+  accounts: 'max-w-3xl',
+  invest: 'max-w-3xl',
+  bills: 'max-w-3xl',
+  settings: 'max-w-3xl',
+};
+
 const VALID_TABS = new Set<AppTab>(['home', 'activity', 'budget', 'accounts', 'invest', 'bills', 'settings']);
 
 function readInitialTab(): AppTab {
@@ -328,7 +340,8 @@ export function App() {
       </aside>
 
       <PullToRefresh onRefresh={refreshAll} disabled={Boolean(flow)}>
-        <header className="flex items-end justify-between gap-3 px-5 pb-2 safe-pt md:px-10 md:pt-8">
+        {/* Header and main share the page's width so the title lines up with the content. */}
+        <header className={`mx-auto flex w-full ${PAGE_WIDTH[tab]} items-end justify-between gap-3 px-5 pb-2 safe-pt md:px-10 md:pt-8`}>
           <div className="min-w-0">
             {/* Hidden (not removed) on Settings so every page's title sits at the same height. */}
             <p
@@ -371,7 +384,7 @@ export function App() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-3xl flex-1 px-5 pb-36 pt-3 md:px-10 md:pb-12">
+        <main className={`mx-auto w-full ${PAGE_WIDTH[tab]} flex-1 px-5 pb-36 pt-3 md:px-10 md:pb-12`}>
           <TabPanel id="home" active={tab} visited={visited}>
             <HomePage onNavigate={navigate} refreshTrigger={refreshTrigger} dataVersion={dataVersion} pendingCount={pendingCount} hiddenAccountIds={hiddenHomeAccounts} />
           </TabPanel>
