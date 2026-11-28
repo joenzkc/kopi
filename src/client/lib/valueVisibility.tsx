@@ -43,7 +43,12 @@ export function ValueVisibilityProvider({ children }: { children: ReactNode }) {
   return <VisibilityContext.Provider value={{ valuesHidden, setValuesHidden }}>{children}</VisibilityContext.Provider>;
 }
 
+/** Formatters for an explicit visibility, for a screen that decides masking itself (e.g. the amount you are typing). */
+export function financialFormats(hidden: boolean) {
+  return hidden ? hiddenFormats : visibleFormats;
+}
+
 export function useFinancialValues() {
   const visibility = useContext(VisibilityContext);
-  return { ...visibility, ...(visibility.valuesHidden ? hiddenFormats : visibleFormats) };
+  return { ...visibility, ...financialFormats(visibility.valuesHidden) };
 }

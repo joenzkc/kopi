@@ -1,11 +1,12 @@
 import { useFinancialValues } from '../lib/valueVisibility';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ChevronRight, Mail } from 'lucide-react';
-import type { BudgetMonthResponse, OverviewResponse, RecentTransaction, SnapshotPoint } from '@shared/types';
+import type { ActualAccount, ActualCategory, ActualPayee, BudgetMonthResponse, OverviewResponse, RecentTransaction, SnapshotPoint } from '@shared/types';
 import { apiFetch, formatDueBadge } from '../lib/api';
 import { fetchRecent, friendlyDate } from '../lib/recent';
 import { WIDE_QUERY, useMediaQuery } from '../lib/useMediaQuery';
 import { Tile } from '../components/Tile';
+import { EditTransactionSheet } from '../components/EditTransactionSheet';
 import { ProgressBar, currentMonthKey } from './BudgetPage';
 import { Button } from '@client/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
@@ -16,10 +17,20 @@ import { Skeleton } from '@client/components/ui/skeleton';
 /** Wide screens: a main column beside a phone-width rail. */
 const WIDE_GRID = 'grid grid-cols-[minmax(0,1fr)_22rem] items-start gap-8';
 
-export type AppTab ='home' | 'activity' | 'budget' | 'accounts' | 'invest' | 'bills' | 'settings';
+/** `account` is one account's history; it isn't in the nav and is opened from an account. */
+export type AppTab = 'home' | 'activity' | 'budget' | 'accounts' | 'invest' | 'bills' | 'settings' | 'account';
 
 interface HomePageProps {
   onNavigate: (tab: AppTab) => void;
+  /** Opens one account's history. */
+  onOpenAccount: (accountId: string) => void;
+  /** Opens a bill's edit sheet on the Bills page. */
+  onOpenBill: (scheduleId: string) => void;
+  /** For editing a Recent transaction in place. */
+  accounts: ActualAccount[];
+  categories: ActualCategory[];
+  payees: ActualPayee[];
+  onChanged: (message: string) => void;
   refreshTrigger: number;
   dataVersion: number;
   pendingCount: number;
@@ -52,12 +63,26 @@ function Sparkline({ snapshots }: { snapshots: SnapshotPoint[] }) {
   );
 }
 
-export function HomePage({ onNavigate, refreshTrigger, dataVersion, pendingCount, hiddenAccountIds }: HomePageProps) {
+export function HomePage({
+  onNavigate,
+  onOpenAccount,
+  onOpenBill,
+  accounts: allAccounts,
+  categories,
+  payees,
+  onChanged,
+  refreshTrigger,
+  dataVersion,
+  pendingCount,
+  hiddenAccountIds,
+}: HomePageProps) {
   const { valuesHidden, formatMoney, formatPct, formatSignedMoney, formatWhole } = useFinancialValues();
   const wide = useMediaQuery(WIDE_QUERY);
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [recent, setRecent] = useState<RecentTransaction[]>([]);
   const [budget, setBudget] = useState<BudgetMonthResponse | null>(null);
+  const [editTx, setEditTx] = useState<RecentTransaction | null>(null);
+  const editTrigger = useRef<HTMLElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [groupFilter, setGroupFilter] = useState<string>(() => {
@@ -373,7 +398,14 @@ export function HomePage({ onNavigate, refreshTrigger, dataVersion, pendingCount
                 ? `${formatMoney((acc.unclearedBalance ?? 0) / 100, cur)} uncleared`
                 : 'All cleared';
           return (
-            <Card as="article" variant="unstyled" key={acc.id} className="flex h-28 w-[168px] shrink-0 snap-start flex-col justify-between rounded-[22px] p-3.5 md:w-auto" style={style}>
+            <Button
+              type="button"
+              key={acc.id}
+              onClick={() => onOpenAccount(acc.id)}
+              title={`${acc.name} transactions`}
+              className="press flex h-28 w-[168px] shrink-0 snap-start flex-col justify-between rounded-[22px] p-3.5 text-left transition-[translate] duration-150 hover:-translate-y-0.5 md:w-auto"
+              style={style}
+            >
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate text-label">{acc.name}</span>
                 <span className="shrink-0 text-caption font-bold opacity-75">{tag}</span>
@@ -384,7 +416,7 @@ export function HomePage({ onNavigate, refreshTrigger, dataVersion, pendingCount
                 </span>
                 <span className="truncate text-caption opacity-75">{sub}</span>
               </div>
-            </Card>
+            </Button>
           );
         })}
       </div>
@@ -403,7 +435,13 @@ export function HomePage({ onNavigate, refreshTrigger, dataVersion, pendingCount
         const badge = formatDueBadge(s.daysUntilNext);
         const name = s.name || s.payeeName || 'Scheduled transaction';
         return (
-          <div key={s.id} className="flex items-center gap-3 py-2">
+          <Button
+            key={s.id}
+            type="button"
+            onClick={() => onOpenBill(s.id)}
+            title="Edit bill"
+            className="press flex w-full items-center gap-3 py-2 text-left"
+          >
             <Tile colorKey={name} label={name} />
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate text-body">{name}</span>
@@ -415,7 +453,7 @@ export function HomePage({ onNavigate, refreshTrigger, dataVersion, pendingCount
             <span className="text-body font-semibold tabular-nums" style={{ color: s.amountCents >= 0 ? 'var(--positive)' : 'var(--text-primary)' }}>
               {formatSignedMoney(s.amountCents / 100, cur)}
             </span>
-          </div>
+          </Button>
         );
       })}
     </section>
@@ -435,7 +473,16 @@ export function HomePage({ onNavigate, refreshTrigger, dataVersion, pendingCount
         </p>
       ) : (
         recent.slice(0, 5).map((t) => (
-          <div key={t.id} className="flex items-center gap-3 py-2">
+          <Button
+            key={t.id}
+            type="button"
+            onClick={(event) => {
+              editTrigger.current = event.currentTarget;
+              setEditTx(t);
+            }}
+            title="Edit transaction"
+            className="press flex w-full items-center gap-3 py-2 text-left"
+          >
             <Tile colorKey={t.categoryName || t.payeeName} label={t.payeeName} transfer={t.isTransfer} />
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate text-body">{t.payeeName}</span>
@@ -446,10 +493,29 @@ export function HomePage({ onNavigate, refreshTrigger, dataVersion, pendingCount
             <span className="text-body font-semibold tabular-nums" style={{ color: t.amount > 0 ? 'var(--positive)' : 'var(--text-primary)' }}>
               {formatSignedMoney(t.amount / 100, cur)}
             </span>
-          </div>
+          </Button>
         ))
       )}
     </section>
+  );
+
+  const editSheet = editTx && (
+    <EditTransactionSheet
+      key={editTx.id}
+      transaction={editTx}
+      accounts={allAccounts}
+      categories={categories}
+      payees={payees}
+      baseCurrency={cur}
+      onClose={() => {
+        setEditTx(null);
+        editTrigger.current?.focus({ preventScroll: true });
+      }}
+      onSaved={() => {
+        setEditTx(null);
+        onChanged('Transaction updated');
+      }}
+    />
   );
 
   // Wide screens: what you have (net worth, accounts) in the main column, and what's happening
@@ -468,6 +534,7 @@ export function HomePage({ onNavigate, refreshTrigger, dataVersion, pendingCount
           {comingUpSection}
           {recentSection}
         </div>
+        {editSheet}
       </div>
     );
   }
@@ -481,6 +548,7 @@ export function HomePage({ onNavigate, refreshTrigger, dataVersion, pendingCount
       {accountsSection}
       {comingUpSection}
       {recentSection}
+      {editSheet}
     </div>
   );
 }

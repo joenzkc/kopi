@@ -1,5 +1,5 @@
 import { useFinancialValues } from '../lib/valueVisibility';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   CalendarClock,
   CheckCircle2,
@@ -26,6 +26,8 @@ interface SchedulesPageProps {
   payees: ActualPayee[];
   baseCurrency: string;
   onToast: (msg: string, tone?: 'success' | 'error') => void;
+  /** Open this bill's edit sheet once schedules have loaded (Home's Coming up). `nonce` makes repeat taps count. */
+  openRequest?: { id: string; nonce: number } | null;
 }
 
 interface SchedulesRes {
@@ -41,7 +43,7 @@ interface SchedulesRes {
 
 type Preset = 'monthly' | 'biweekly' | 'weekly' | 'yearly' | 'once';
 
-export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: SchedulesPageProps) {
+export function SchedulesPage({ accounts, payees, baseCurrency, onToast, openRequest }: SchedulesPageProps) {
   const { formatMoney, formatSignedMoney } = useFinancialValues();
   const [data, setData] = useState<SchedulesRes | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,6 +76,15 @@ export function SchedulesPage({ accounts, payees, baseCurrency, onToast }: Sched
   useEffect(() => {
     void load();
   }, [load]);
+
+  const handledRequest = useRef<number | null>(null);
+  useEffect(() => {
+    if (!openRequest || !data || handledRequest.current === openRequest.nonce) return;
+    handledRequest.current = openRequest.nonce;
+    const s = data.schedules.find((x) => x.id === openRequest.id);
+    if (s) openEdit(s);
+    // openEdit only sets form state, so it isn't a dependency.
+  }, [openRequest, data]);
 
   function openCreate() {
     setEditing(null);

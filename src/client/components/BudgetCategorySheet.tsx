@@ -1,10 +1,11 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { ArrowLeftRight, ChevronLeft, PencilLine } from 'lucide-react';
-import type { ActualAccount, ActualCategory, ActualPayee, BudgetCategory, BudgetMonthResponse, RecentTransaction } from '@shared/types';
+import type { ActualAccount, ActualCategory, ActualPayee, BudgetCategory, BudgetHistoryPoint, BudgetMonthResponse, RecentTransaction } from '@shared/types';
 import { apiFetch, formatMoney } from '../lib/api';
 import { Sheet } from './Sheet';
 import { ProgressBar, barColor, spentRatio } from './budget/ProgressBar';
 import { CategoryTransactions } from './budget/CategoryTransactions';
+import { CategoryHistory } from './budget/CategoryHistory';
 import { EditTransactionSheet } from './EditTransactionSheet';
 import { Button } from '@client/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
@@ -28,6 +29,10 @@ interface BudgetCategorySheetProps {
   onSaved: (message: string, close: boolean) => void;
   /** A transaction was edited from this sheet (refreshes the rest of the app). */
   onTransactionChanged: (message: string) => void;
+  /** Wide screens: show as a side panel next to the category table instead of a sheet. */
+  inline?: boolean;
+  /** This category's recent months (wide screens), shown as a chart on the overview. */
+  history?: { months: string[]; points: BudgetHistoryPoint[] };
 }
 
 type MoveDir = 'in' | 'out';
@@ -108,6 +113,8 @@ export function BudgetCategorySheet({
   onClose,
   onSaved,
   onTransactionChanged,
+  inline,
+  history,
 }: BudgetCategorySheetProps) {
   const [view, setView] = useState<View>('overview');
   const [editTx, setEditTx] = useState<RecentTransaction | null>(null);
@@ -255,7 +262,7 @@ export function BudgetCategorySheet({
           : null;
 
   return (
-    <Sheet financialForm open onClose={onClose} title={category.name} subtitle={`${groupName} · ${monthName}`}>
+    <Sheet financialForm inline={inline} open onClose={onClose} title={category.name} subtitle={`${groupName} · ${monthName}`}>
       {view === 'overview' && (
         <div key="overview" className="view-in flex flex-col gap-6">
           {/* Summary */}
@@ -306,6 +313,8 @@ export function BudgetCategorySheet({
               <span aria-hidden="true">›</span>
             </Button>
           )}
+
+          {history && history.months.length > 1 && <CategoryHistory months={history.months} points={history.points} baseCurrency={baseCurrency} />}
 
           <CategoryTransactions
             month={data.month}

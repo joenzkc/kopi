@@ -14,6 +14,7 @@ import type {
   Appearance,
   OverviewResponse,
   ActualTransaction,
+  BudgetHistoryResponse,
   RecentTransaction,
   SnapshotPoint,
 } from '../../shared/types';
@@ -256,6 +257,37 @@ overviewRoutes.get('/budget/:month/categories/:categoryId/transactions', require
   }
 });
 
+/** One account's transactions from `since` through today, newest first (the Account page's history).
+ *  Split transactions appear once, as the parent with its full amount. */
+overviewRoutes.get('/accounts/:accountId/transactions', requireSession, async (c) => {
+  const accountId = c.req.param('accountId');
+  const since = c.req.query('since') || '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(since)) return c.json({ error: 'since must look like 2026-11-01' }, 400);
+  // Actual's default end date can still be yesterday in Kopi's time zone.
+  const until = localISODate(0, new Date());
+
+  try {
+    const [accounts, payees, categories] = await Promise.all([
+      actual.getAccounts(false),
+      actual.getPayees(),
+      actual.getCategories(),
+    ]);
+    if (!accounts.some((a) => a.id === accountId)) return c.json({ error: 'Account not found' }, 404);
+    const accountMap = new Map(accounts.map((a) => [a.id, a.name]));
+    const payeeMap = new Map(payees.map((p) => [p.id, p]));
+    const catMap = new Map(categories.map((cat) => [cat.id, cat.name]));
+
+    const raw = await actual.getAccountTransactions(accountId, since, until);
+    const transactions = raw
+      .filter((t) => !t.is_child)
+      .map((t) => enrichTransaction(t, accountMap, payeeMap, catMap))
+      .sort((a, b) => b.date.localeCompare(a.date));
+    return c.json({ accountId, since, transactions });
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : 'Could not load transactions from Actual' }, 502);
+  }
+});
+
 overviewRoutes.get('/transactions/recent', requireSession, async (c) => {
   const days = Math.min(90, Math.max(7, Number(c.req.query('days') || 30)));
   const now = new Date();
@@ -473,6 +505,40 @@ function currentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
+
+function shiftMonthKey(month: string, delta: number): string {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Expense categories' budgeted/spent for the `count` months ending at `month`, oldest first (Budget page history).
+ *  Months Actual doesn't have are left out. */
+overviewRoutes.get('/budget/history', requireSession, async (c) => {
+  const end = c.req.query('month') || currentMonth();
+  if (!/^\d{4}-\d{2}$/.test(end)) return c.json({ error: 'month must be YYYY-MM' }, 400);
+  const count = Math.min(12, Math.max(1, Number(c.req.query('count')) || 6));
+
+  try {
+    const available = await actual.getBudgetMonths().catch(() => [] as string[]);
+    const wanted = Array.from({ length: count }, (_, i) => shiftMonthKey(end, i - (count - 1)));
+    const months = available.length ? wanted.filter((m) => available.includes(m)) : wanted;
+    const raws = await Promise.all(months.map((m) => actual.getBudgetMonth(m)));
+
+    const categories: BudgetHistoryResponse['categories'] = {};
+    raws.forEach((raw, i) => {
+      for (const g of normalizeBudgetMonth(raw, available, months[i]).groups) {
+        if (g.isIncome) continue;
+        for (const cat of g.categories) {
+          (categories[cat.id] ??= Array.from({ length: months.length }, () => null))[i] = { budgeted: cat.budgeted, spent: cat.spent };
+        }
+      }
+    });
+    return c.json({ months, categories } satisfies BudgetHistoryResponse);
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : 'Could not load budget history from Actual' }, 502);
+  }
+});
 
 overviewRoutes.get('/budget', requireSession, async (c) => {
   const requested = c.req.query('month');

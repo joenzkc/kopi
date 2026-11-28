@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, CreditCard, Delete, Link2, Mail, MoreHorizontal, Pencil, Plus, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, CreditCard, Delete, EyeOff, Link2, Mail, Plus, Search, X } from 'lucide-react';
 import type {
   ActualAccount,
   ActualCategory,
@@ -9,8 +9,7 @@ import type {
   RecentTransaction,
 } from '@shared/types';
 import { apiFetch } from '../lib/api';
-import { HIDDEN_VALUE, useFinancialValues } from '../lib/valueVisibility';
-import { ValueVisibilityButton } from './ValueVisibilityButton';
+import { HIDDEN_VALUE, financialFormats, useFinancialValues } from '../lib/valueVisibility';
 import { fetchRecent, friendlyDate, invalidateRecent, localISODate, senderLabel, shiftDays } from '../lib/recent';
 import { Tile } from './Tile';
 import { LinkPayeeSheet } from './LinkPayeeSheet';
@@ -22,7 +21,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@client/com
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
 import { Select } from '@client/components/ui/select';
-import { Menu } from '@client/components/ui/menu';
 import { Alert } from '@client/components/ui/alert';
 import { Dialog } from '@base-ui/react/dialog';
 
@@ -30,6 +28,9 @@ export type FlowKind = 'expense' | 'income' | 'transfer';
 export type FlowRequest = { mode: 'add'; kind?: FlowKind } | { mode: 'review'; event: EmailEventRecord };
 
 type Step = 'amount' | 'payee' | 'details' | 'category' | 'done';
+
+/** Screen order, for sliding forward (from the right) or back (from the left). */
+const STEP_ORDER: Record<string, number> = { amount: 0, payee: 1, details: 2, privateReview: 2, category: 3, done: 4 };
 
 interface TransactionFlowProps {
   request: FlowRequest;
@@ -50,6 +51,26 @@ function displayAmount(raw: string): string {
   const [int, dec] = raw.split('.');
   const grouped = (int || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return dec !== undefined ? `${grouped}.${dec}` : grouped;
+}
+
+/** The keypad amount can be a sum like "12.5+8-3". Adds it up (a trailing operator is ignored), rounded to cents. */
+function evaluateAmount(expr: string): number {
+  const total = (expr.match(/[+-]?[^+-]+/g) ?? []).reduce((sum, part) => sum + (Number.parseFloat(part) || 0), 0);
+  return Math.round(total * 100) / 100;
+}
+
+/** "12.5+8-" → "12.5 + 8 −", each number grouped like the main amount. */
+function displayExpression(expr: string): string {
+  return expr
+    .split(/([+-])/)
+    .filter(Boolean)
+    .map((part) => (part === '+' ? '+' : part === '-' ? '−' : displayAmount(part)))
+    .join(' ');
+}
+
+/** A computed total for the big amount: whole numbers stay whole, otherwise two decimals. */
+function totalText(total: number): string {
+  return Number.isInteger(total) ? String(total) : total.toFixed(2);
 }
 
 /** Email text with web links made clickable (opened in a new tab, without passing Kopi's address along). */
@@ -94,7 +115,12 @@ export function TransactionFlow({
   const defaultAccountId = openAccounts.find((a) => !a.offbudget)?.id || openAccounts[0]?.id || '';
   const today = localISODate();
 
-  const { valuesHidden, formatMoney, formatSignedMoney } = useFinancialValues();
+  // Account balances follow the global eye. The transaction itself doesn't: an amount you're typing is never
+  // masked, and an imported email's values stay covered only until you reveal them for this review.
+  const { valuesHidden, formatMoney } = useFinancialValues();
+  const [revealed, setRevealed] = useState(false);
+  const hideEntry = Boolean(review) && valuesHidden && !revealed;
+  const entry = financialFormats(hideEntry);
   const [step, setStep] = useState<Step>(review ? 'details' : 'amount');
   const [direction, setDirection] = useState<'expense' | 'income'>(() => {
     if (review) {
@@ -129,6 +155,8 @@ export function TransactionFlow({
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState<RecentTransaction[]>([]);
   const [done, setDone] = useState<{ title: string; line1: string; line2: string } | null>(null);
+  // Closing flips this; the parent's onClose runs once the exit transition has finished (onOpenChangeComplete).
+  const [open, setOpen] = useState(true);
   const dialogRef = useRef<HTMLDivElement>(null);
   const payeeInputRef = useRef<HTMLInputElement>(null);
   const linkPayeeOpenerRef = useRef<HTMLButtonElement>(null);
@@ -139,7 +167,8 @@ export function TransactionFlow({
       .catch(() => setRecent([]));
   }, []);
 
-  const n = Number.parseFloat(amt) || 0;
+  const n = evaluateAmount(amt);
+  const isSum = /[+-]/.test(amt);
   const kind: FlowKind = isTransfer ? 'transfer' : direction;
   const incomingReview = Boolean(review && direction === 'income');
   const transferIncoming = isTransfer && incomingReview;
@@ -160,11 +189,21 @@ export function TransactionFlow({
   const press = useCallback((k: string) => {
     setAmt((a) => {
       if (k === 'back') return a.slice(0, -1);
-      if (k === '.') return a.includes('.') ? a : (a || '0') + '.';
-      const dot = a.indexOf('.');
-      if (dot >= 0 && a.length - dot > 2) return a;
-      if (a.replace('.', '').length >= 9) return a;
-      if (a === '0') return k;
+      if (k === '+' || k === '-') {
+        if (!a) return a; // nothing to add to yet
+        if (/[+-]$/.test(a)) return a.slice(0, -1) + k; // a second operator replaces the first
+        if (a.length >= 40) return a;
+        return a.replace(/\.$/, '') + k; // "12." then + → "12+"
+      }
+      // Digits and the decimal point apply to the number being typed (after the last operator).
+      const start = Math.max(a.lastIndexOf('+'), a.lastIndexOf('-')) + 1;
+      const head = a.slice(0, start);
+      const cur = a.slice(start);
+      if (k === '.') return cur.includes('.') ? a : head + (cur || '0') + '.';
+      const dot = cur.indexOf('.');
+      if (dot >= 0 && cur.length - dot > 2) return a;
+      if (cur.replace('.', '').length >= 9) return a;
+      if (cur === '0') return head + k;
       return a + k;
     });
   }, []);
@@ -177,12 +216,13 @@ export function TransactionFlow({
   }, [n, review, payeeName, isTransfer, toAccountId]);
 
   function handleAmountKey(e: React.KeyboardEvent) {
-    if (step !== 'amount' || (review && valuesHidden) || e.defaultPrevented || e.nativeEvent.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (step !== 'amount' || hideEntry || e.defaultPrevented || e.nativeEvent.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
     const target = e.target;
     if (!(target instanceof HTMLElement) || target.isContentEditable || target.closest('input, textarea, select')) return;
 
     if (/^[0-9]$/.test(e.key)) press(e.key);
     else if (e.key === '.' || e.key === ',') press('.');
+    else if (e.key === '+' || e.key === '-') press(e.key);
     else if (e.key === 'Backspace') press('back');
     else if (e.key === 'Enter' && !target.closest('button, a, [role="button"]')) goFromAmount();
     else return;
@@ -368,7 +408,7 @@ export function TransactionFlow({
     try {
       await apiFetch(`/api/inbox/${review.id}/dismiss`, { method: 'POST' });
       onChanged('Dismissed');
-      onClose();
+      setOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Dismiss failed');
     } finally {
@@ -444,7 +484,6 @@ export function TransactionFlow({
           </p>
         )}
       </div>
-      <ValueVisibilityButton />
       {onBack && (
         <Dialog.Close
           render={
@@ -499,18 +538,27 @@ export function TransactionFlow({
     { id: 'transfer', label: 'Transfer' },
   ];
   const reviewTransfer = Boolean(review) && isTransfer;
-  const showPayeeMenu = Boolean(review && !isTransfer && rawPayee && !review.parsed?.payeeFromRule);
+  const showLinkPayee = Boolean(review && !isTransfer && rawPayee && !review.parsed?.payeeFromRule);
   const accountLabel = kind === 'income' || transferIncoming ? 'Into account' : isTransfer ? 'From account' : 'Account';
 
-  const amountSummary = isTransfer ? formatMoney(n, baseCurrency) : formatSignedMoney(signed, baseCurrency);
+  const amountSummary = isTransfer ? entry.formatMoney(n, baseCurrency) : entry.formatSignedMoney(signed, baseCurrency);
   const transferAction = incomingReview ? 'Transfer from account' : 'Transfer to account';
   const intoAccount = kind === 'income' || transferIncoming;
   const dialogTitle = review ? 'Review email transaction' : 'New transaction';
-  const visibleStep = review && valuesHidden ? 'privateReview' : step;
+  const visibleStep = hideEntry ? 'privateReview' : step;
+
+  // Which way the current screen slid in, recorded when the screen changes (React's "previous value" pattern,
+  // so the new screen mounts with the right class). Null until the first change: on open, only the panel rises.
+  const [shown, setShown] = useState<{ step: string; dir: 'forward' | 'back' | null }>({ step: visibleStep, dir: null });
+  if (shown.step !== visibleStep) {
+    const addAnotherStart = shown.step === 'done' && visibleStep === 'amount';
+    setShown({ step: visibleStep, dir: addAnotherStart || STEP_ORDER[visibleStep] >= STEP_ORDER[shown.step] ? 'forward' : 'back' });
+  }
+  const stepIn = shown.dir === null ? '' : shown.dir === 'forward' ? 'step-in-forward' : 'step-in-back';
 
   const panel = (
     <Dialog.Portal>
-      <Dialog.Backdrop className="fixed inset-0 z-50 hidden bg-black/60 md:block" />
+      <Dialog.Backdrop className="flow-backdrop fixed inset-0 z-50 hidden bg-black/60 md:block" />
       <Dialog.Viewport className="fixed inset-0 z-50 flex items-stretch justify-center md:items-center md:p-6">
       <Dialog.Popup
         ref={dialogRef}
@@ -518,14 +566,30 @@ export function TransactionFlow({
         initialFocus={dialogRef}
         onKeyDown={handleAmountKey}
         aria-label={dialogTitle}
-        className="rise-in relative flex h-full w-full flex-col overflow-hidden md:h-[min(860px,92dvh)] md:max-w-[440px] md:rounded-[28px] md:border"
+        className="rise-in flow-popup relative flex h-full w-full flex-col overflow-hidden md:h-[min(860px,92dvh)] md:max-w-[440px] md:rounded-[28px] md:border"
         style={{ backgroundColor: 'var(--bg-canvas)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}
       >
         <Dialog.Title className="sr-only">{dialogTitle}</Dialog.Title>
         {/* ---------- AMOUNT ---------- */}
-        {visibleStep === 'privateReview' && header('Review import', null, 'Show financial values to review this email.')}
-        {visibleStep === 'amount' && (
+        {visibleStep === 'privateReview' && (
           <div className="flex min-h-0 flex-1 flex-col">
+            {header('Review import', null)}
+            {/* Values are hidden app-wide; reveal them for this review only, without turning the eye off. */}
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 pb-16 text-center">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-muted)' }}>
+                <EyeOff className="h-6 w-6" />
+              </span>
+              <p className="text-body" style={{ color: 'var(--text-muted)' }}>
+                Values are hidden. Show them to review this email.
+              </p>
+              <Button type="button" variant="secondary" onClick={() => setRevealed(true)} className="h-12 rounded-2xl px-6 text-body">
+                Show values
+              </Button>
+            </div>
+          </div>
+        )}
+        {visibleStep === 'amount' && (
+          <div className={`flex min-h-0 flex-1 flex-col ${stepIn}`}>
             {header(review ? 'Edit amount' : 'New transaction', review || payeeName ? () => setStep('details') : null)}
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-5 safe-pb">
               {kindControl(kinds)}
@@ -534,16 +598,27 @@ export function TransactionFlow({
                 <span className="text-label" style={{ color: 'var(--text-muted)' }}>
                   {kind === 'income' ? 'Received' : isTransfer ? 'Moving' : 'Spent'}
                 </span>
-                <div
-                  aria-live="polite"
-                  className="flex max-w-full items-baseline gap-1 tabular-nums"
-                  style={{ color: kind === 'income' ? 'var(--positive)' : 'var(--text-primary)' }}
-                >
-                  <span className="text-title">
-                    {kind === 'income' ? '+' : kind === 'expense' ? '−' : ''}
-                    {sym}
+                <div className="flex max-w-full flex-col items-center gap-1">
+                  <div
+                    aria-live="polite"
+                    className="flex max-w-full items-baseline gap-1 tabular-nums"
+                    style={{ color: kind === 'income' ? 'var(--positive)' : 'var(--text-primary)' }}
+                  >
+                    <span className="text-title">
+                      {kind === 'income' ? '+' : kind === 'expense' ? '−' : ''}
+                      {sym}
+                    </span>
+                    <span className="truncate text-entry">
+                      {hideEntry ? HIDDEN_VALUE : isSum ? (n > 0 ? displayAmount(totalText(n)) : '0') : displayAmount(amt)}
+                    </span>
+                  </div>
+                  {/* The sum behind the total. Its line is always there so the amount doesn't jump when it appears. */}
+                  <span
+                    className="h-5 max-w-full truncate text-body tabular-nums"
+                    style={{ color: isSum && n <= 0 ? 'var(--warning)' : 'var(--text-muted)' }}
+                  >
+                    {isSum && !hideEntry && (n > 0 ? displayExpression(amt) : `${displayExpression(amt)} = ${displayAmount(totalText(n)).replace('-', '−')}`)}
                   </span>
-                  <span className="truncate text-entry">{valuesHidden ? HIDDEN_VALUE : displayAmount(amt)}</span>
                 </div>
                 <Select
                   variant="inline"
@@ -557,7 +632,20 @@ export function TransactionFlow({
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
+                {/* Operators first, pinned to the fourth column; the digits fill the first three as before. */}
+                {(['-', '+'] as const).map((op, i) => (
+                  <Button
+                    key={op}
+                    type="button"
+                    onClick={() => press(op)}
+                    aria-label={op === '+' ? 'Plus' : 'Minus'}
+                    className={`press col-start-4 row-span-2 flex items-center justify-center rounded-2xl text-title transition ${i === 0 ? 'row-start-1' : 'row-start-3'}`}
+                    style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--accent-text)' }}
+                  >
+                    {op === '+' ? '+' : '−'}
+                  </Button>
+                ))}
                 {KEYS.map((k) => (
                   <Button
                     key={k}
@@ -585,7 +673,7 @@ export function TransactionFlow({
 
         {/* ---------- PAYEE / DESTINATION ---------- */}
         {visibleStep === 'payee' && (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className={`flex min-h-0 flex-1 flex-col ${stepIn}`}>
             {header(
               pickingTransferAccount ? transferAction : kind === 'income' ? 'Who paid you?' : 'Who was it?',
               () => setStep(review || payeeName || toAccountId ? 'details' : 'amount'),
@@ -691,7 +779,7 @@ export function TransactionFlow({
 
         {/* ---------- DETAILS ---------- */}
         {visibleStep === 'details' && (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className={`flex min-h-0 flex-1 flex-col ${stepIn}`}>
             {header(review ? 'Review import' : 'Details', review ? null : () => setStep('payee'))}
             <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-6">
               {review && kindControl(reviewKinds)}
@@ -776,7 +864,7 @@ export function TransactionFlow({
                     <Button
                       type="button"
                       onClick={() => setStep('payee')}
-                      className={`press flex min-w-0 flex-1 flex-col items-start gap-0.5 rounded-3xl p-4 text-left ${showPayeeMenu ? 'pr-12' : ''}`}
+                      className="press flex min-w-0 flex-1 flex-col items-start gap-0.5 rounded-3xl p-4 text-left"
                       style={{ backgroundColor: 'var(--bg-surface)' }}
                     >
                       <span className="text-label" style={{ color: 'var(--text-muted)' }}>
@@ -790,31 +878,12 @@ export function TransactionFlow({
                           Renamed by your Actual rule from “{rawPayee}”
                         </span>
                       )}
-                      {showPayeeMenu && rawPayee && rawPayee !== payeeName && (
+                      {showLinkPayee && rawPayee && rawPayee !== payeeName && (
                         <span className="w-full truncate text-caption" style={{ color: 'var(--text-muted)' }}>
                           Email says “{rawPayee}”
                         </span>
                       )}
                     </Button>
-                    {showPayeeMenu && (
-                      <Menu
-                        trigger={
-                          <Button
-                            type="button"
-                            ref={linkPayeeOpenerRef}
-                            aria-label="Payee options"
-                            className="press absolute right-1.5 top-1.5 flex h-11 w-11 items-center justify-center rounded-full"
-                            style={{ color: 'var(--text-muted)' }}
-                          >
-                            <MoreHorizontal className="h-5 w-5" />
-                          </Button>
-                        }
-                        items={[
-                          { label: 'Change payee', icon: <Pencil />, onSelect: () => setStep('payee') },
-                          { label: 'Always rename to a payee…', icon: <Link2 />, onSelect: () => setLinkOpen(true) },
-                        ]}
-                      />
-                    )}
                   </div>
                 )}
                 <Button
@@ -835,6 +904,18 @@ export function TransactionFlow({
                   </span>
                 </Button>
               </div>
+              {showLinkPayee && (
+                <Button
+                  type="button"
+                  ref={linkPayeeOpenerRef}
+                  onClick={() => setLinkOpen(true)}
+                  className="-mt-2 flex min-h-11 min-w-0 items-center gap-1.5 self-start px-1 text-left text-label"
+                  style={{ color: 'var(--accent-text)' }}
+                >
+                  <Link2 className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Always rename “{rawPayee}”…</span>
+                </Button>
+              )}
               {review && n <= 0 && (
                 <p className="-mt-2 px-1 text-caption" style={{ color: 'var(--warning)' }}>
                   No amount found in this email. If it isn’t a transaction, Dismiss it.
@@ -1026,7 +1107,7 @@ export function TransactionFlow({
 
         {/* ---------- CATEGORY PICKER ---------- */}
         {visibleStep === 'category' && (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className={`flex min-h-0 flex-1 flex-col ${stepIn}`}>
             {header('Category', () => setStep('details'))}
             <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-5 safe-pb">
               <Label
@@ -1092,12 +1173,14 @@ export function TransactionFlow({
 
         {/* ---------- DONE ---------- */}
         {visibleStep === 'done' && done && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-5 px-8 text-center safe-pb">
-            <span className="flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}>
+          <div className={`flex flex-1 flex-col items-center justify-center gap-5 px-8 text-center safe-pb ${stepIn}`}>
+            <span className="done-badge flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}>
               <Check className="h-10 w-10" strokeWidth={2.6} />
             </span>
-            <h1 className="text-title">{done.title}</h1>
-            <div className="flex flex-col gap-1">
+            <h1 className="done-item text-title" style={{ '--delay': '160ms' } as React.CSSProperties}>
+              {done.title}
+            </h1>
+            <div className="done-item flex flex-col gap-1" style={{ '--delay': '230ms' } as React.CSSProperties}>
               <span
                 className="text-display tabular-nums"
                 style={{ color: kind === 'income' ? 'var(--positive)' : 'var(--text-primary)' }}
@@ -1109,7 +1192,7 @@ export function TransactionFlow({
                 {done.line2}
               </span>
             </div>
-            <div className="mt-3 flex w-full gap-2">
+            <div className="done-item mt-3 flex w-full gap-2" style={{ '--delay': '300ms' } as React.CSSProperties}>
               {!review && (
                 <Button type="button" onClick={addAnother} variant="secondary" className="h-14 flex-1 rounded-2xl text-body">
                   Add another
@@ -1127,7 +1210,7 @@ export function TransactionFlow({
         )}
       </Dialog.Popup>
       </Dialog.Viewport>
-      {review && !valuesHidden && rawPayee && (
+      {review && !hideEntry && rawPayee && (
         <LinkPayeeSheet
           open={linkOpen}
           onClose={() => setLinkOpen(false)}
@@ -1144,7 +1227,16 @@ export function TransactionFlow({
 
   return (
     // Outside presses don't dismiss: on desktop the backdrop is visible but a stray click shouldn't lose the entry.
-    <Dialog.Root open disablePointerDismissal onOpenChange={(next) => { if (!next) onClose(); }}>
+    <Dialog.Root
+      open={open}
+      disablePointerDismissal
+      onOpenChange={(next) => {
+        if (!next) setOpen(false);
+      }}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+    >
       {panel}
     </Dialog.Root>
   );

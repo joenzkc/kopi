@@ -11,6 +11,8 @@ interface SheetProps {
   title: string;
   subtitle?: string;
   financialForm?: boolean;
+  /** Render in place as a side panel (wide screens' list + detail) instead of a modal sheet. */
+  inline?: boolean;
   children: ReactNode;
 }
 
@@ -28,7 +30,7 @@ function HiddenForm({ children }: { children: ReactNode }) {
  * Bottom sheet on phones (swipe down or tap outside to dismiss), centred panel on desktop.
  * Base UI Drawer: modal focus trap, scroll lock, nested-sheet aware; motion lives in index.css (.sheet-*).
  */
-export function Sheet({ open, onClose, title, subtitle, financialForm, children }: SheetProps) {
+export function Sheet({ open, onClose, title, subtitle, financialForm, inline, children }: SheetProps) {
   const { valuesHidden } = useFinancialValues();
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -54,6 +56,39 @@ export function Sheet({ open, onClose, title, subtitle, financialForm, children 
     const id = requestAnimationFrame(() => setShown(true));
     return () => cancelAnimationFrame(id);
   }, [open]);
+
+  if (inline) {
+    if (!open) return null;
+    // Same header and body as the sheet, laid out in the page; the body scrolls within the viewport.
+    return (
+      <section
+        aria-label={title}
+        className="view-in flex max-h-[calc(100dvh-3rem)] flex-col overflow-hidden rounded-3xl border"
+        style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
+      >
+        <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+          <div className="min-w-0 pt-1.5">
+            <h2 className="text-heading">{title}</h2>
+            {subtitle && (
+              <p className="mt-0.5 text-caption" style={{ color: 'var(--text-muted)' }}>
+                {subtitle}
+              </p>
+            )}
+          </div>
+          <Button
+            type="button"
+            onClick={onClose}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+            style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="sheet-body">{financialForm && valuesHidden ? <HiddenForm>{children}</HiddenForm> : children}</div>
+      </section>
+    );
+  }
 
   return (
     <Drawer.Root

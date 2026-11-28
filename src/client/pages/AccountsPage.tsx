@@ -1,6 +1,6 @@
 import { useFinancialValues } from '../lib/valueVisibility';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ChevronRight, CreditCard, FolderPlus, Pencil, Plus, X } from 'lucide-react';
+import { AlertTriangle, ChevronRight, CreditCard, Pencil, Plus, X } from 'lucide-react';
 import type { AccountLink, ActualAccount, ActualCategory } from '@shared/types';
 import { apiFetch } from '../lib/api';
 import { Sheet } from '../components/Sheet';
@@ -8,6 +8,7 @@ import { Tile } from '../components/Tile';
 import { Button } from '@client/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
 import { Switch, SwitchThumb } from '@client/components/ui/switch';
+import { Checkbox } from '@client/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@client/components/ui/collapsible';
 import { Input } from '@client/components/ui/input';
 import { Label } from '@client/components/ui/label';
@@ -16,6 +17,9 @@ import { Alert } from '@client/components/ui/alert';
 import { Skeleton } from '@client/components/ui/skeleton';
 
 type ManagedAccount = ActualAccount & { linkedHoldings: number; autoImport: boolean; links: AccountLink[] };
+
+/** Edit-mode controls slide/fade in instead of popping. They stay mounted (inert while hidden) so they can animate. */
+const EDIT_MOTION = 'transition-[width,margin,opacity,scale,flex-grow] duration-200 ease-[var(--ease-out)] motion-reduce:transition-none';
 
 const KNOWN_ISSUERS = ['DBS', 'UOB', 'OCBC', 'Citi', 'MariBank', 'HSBC', 'StanChart', 'Amex', 'Trust', 'GXS', 'Revolut', 'Wise', 'YouTrip'];
 type AccountGroup = { id: string; name: string };
@@ -27,6 +31,10 @@ interface AccountsPageProps {
   /** Account ids hidden from the Home screen carousel. */
   hiddenHomeAccounts: string[];
   onToggleHome: (accountId: string, show: boolean) => void;
+  /** Opens one account's transaction history. */
+  onOpenAccount: (accountId: string) => void;
+  /** Edit mode (Home ticks, group edits, tap to manage), toggled by the pen button in the page header. */
+  editing: boolean;
   onChanged: (message: string) => void;
   onToast: (msg: string, tone?: 'success' | 'error') => void;
 }
@@ -67,7 +75,7 @@ function Segmented({
   );
 }
 
-export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHomeAccounts, onToggleHome, onChanged, onToast }: AccountsPageProps) {
+export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHomeAccounts, onToggleHome, onOpenAccount, editing, onChanged, onToast }: AccountsPageProps) {
   const { formatMoney } = useFinancialValues();
   const [accounts, setAccounts] = useState<ManagedAccount[]>([]);
   const [groups, setGroups] = useState<AccountGroup[]>([]);
@@ -293,31 +301,34 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
     return (
       <div
         key={a.id}
-        className="flex items-center gap-1"
+        className="flex items-center"
         style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)', opacity: a.closed ? 0.7 : 1 }}
       >
         {!a.closed && (
-          <Label className="-ml-2 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center" title="Show on Home">
-            <Input
-              variant="unstyled"
-              type="checkbox"
+          <div inert={!editing} className={`flex shrink-0 overflow-hidden ${EDIT_MOTION} ${editing ? '-ml-2.5 mr-1 w-11 opacity-100' : 'ml-0 mr-0 w-0 opacity-0'}`}>
+            <Checkbox
               checked={onHome}
-              onChange={(e) => onToggleHome(a.id, e.target.checked)}
+              onCheckedChange={(checked) => onToggleHome(a.id, checked)}
               aria-label={`Show ${a.name} on Home`}
-              className="h-5 w-5 cursor-pointer"
-              style={{ accentColor: 'var(--accent)' }}
+              title="Show on Home"
             />
-          </Label>
+          </div>
         )}
-        <Button type="button" onClick={() => openManage(a)} className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
+        <Button
+          type="button"
+          onClick={() => (editing || a.closed ? openManage(a) : onOpenAccount(a.id))}
+          title={editing || a.closed ? undefined : `${a.name} transactions`}
+          className="press flex min-w-0 flex-1 items-center gap-3 py-3 text-left"
+        >
           <Tile colorKey={a.name} label={a.name} size={40} />
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="line-clamp-2 text-body [overflow-wrap:anywhere]">{a.name}</span>
-            <span className="truncate text-caption" style={{ color: 'var(--text-muted)' }}>
-              {a.closed ? 'Closed' : a.offbudget ? 'Tracking' : 'Budget'}
-              {!a.closed && !onHome && ' · hidden from Home'}
-              {a.links.length > 0 && ` · ${a.links.filter((l) => l.kind !== 'alert').length || a.links.length} linked`}
-              {a.linkedHoldings > 0 && (
+            <span key={editing ? 'edit' : 'browse'} className="truncate text-caption motion-safe:animate-[tab-fade_200ms_ease]" style={{ color: 'var(--text-muted)' }}>
+              {/* Edit mode: the caption explains the checkbox beside it, so the page needs no hint line. */}
+              {editing && !a.closed ? (onHome ? 'On Home' : 'Hidden from Home') : a.closed ? 'Closed' : a.offbudget ? 'Tracking' : 'Budget'}
+              {!editing && !a.closed && !onHome && ' · hidden from Home'}
+              {!editing && a.links.length > 0 && ` · ${a.links.filter((l) => l.kind !== 'alert').length || a.links.length} linked`}
+              {!editing && a.linkedHoldings > 0 && (
                 <>
                   {' · '}
                   {a.linkedHoldings} holding{a.linkedHoldings === 1 ? '' : 's'} synced
@@ -342,9 +353,10 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
           {group && (
             <Button
               type="button"
+              inert={!editing}
               onClick={() => openGroupSheet(group)}
               aria-label={`Rename or delete ${group.name}`}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+              className={`-my-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${EDIT_MOTION} ${editing ? 'opacity-100' : 'scale-75 opacity-0'}`}
               style={{ color: 'var(--text-muted)' }}
             >
               <Pencil className="h-3.5 w-3.5" />
@@ -384,27 +396,6 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
 
   return (
     <Collapsible open={showClosed} onOpenChange={setShowClosed} className="flex flex-col gap-5">
-      <Button
-        type="button"
-        onClick={() => {
-          setSheetError(null);
-          setAddOpen(true);
-        }}
-        variant="default" className="flex h-12 items-center justify-center gap-2 rounded-2xl text-body"
-      >
-        <Plus className="h-5 w-5" />
-        Add account
-      </Button>
-
-      <div className="-mt-2 flex items-start justify-between gap-3 px-1">
-        <p className="text-caption" style={{ color: 'var(--text-muted)' }}>
-          Ticked accounts appear on Home. Tap an account to rename, regroup, switch type or close it.
-        </p>
-        <Button type="button" onClick={() => openGroupSheet()} className="flex shrink-0 items-center gap-1 text-label" style={{ color: 'var(--accent-text)' }}>
-          <FolderPlus className="h-4 w-4" />
-          New group
-        </Button>
-      </div>
 
       {error && (
         <p className="rounded-2xl p-4 text-body font-semibold" style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}>
@@ -417,8 +408,31 @@ export function AccountsPage({ categories, baseCurrency, dataVersion, hiddenHome
 
       {!loading && !error && (
         <>
-          {groups.map((g) => section(g.name, open.filter((a) => a.account_group_id === g.id), g))}
+          {groups
+            .map((g) => ({ g, list: open.filter((a) => a.account_group_id === g.id) }))
+            .filter(({ list }) => editing || list.length > 0)
+            .map(({ g, list }) => section(g.name, list, g))}
           {(ungrouped.length > 0 || groups.length === 0) && section(groups.length ? 'No group' : 'Accounts', ungrouped)}
+          <div className="flex">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setSheetError(null);
+                setAddOpen(true);
+              }}
+              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-body"
+            >
+              <Plus className="h-4 w-4" />
+              Add account
+            </Button>
+            <div inert={!editing} className={`flex basis-0 overflow-hidden ${EDIT_MOTION} ${editing ? 'ml-2 grow opacity-100' : 'ml-0 grow-0 opacity-0'}`}>
+              <Button type="button" variant="secondary" onClick={() => openGroupSheet()} className="flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-body">
+                <Plus className="h-4 w-4" />
+                Add group
+              </Button>
+            </div>
+          </div>
           {closed.length > 0 && (
             <>
               <CollapsibleTrigger className="self-center text-label" style={{ color: 'var(--accent-text)' }}>

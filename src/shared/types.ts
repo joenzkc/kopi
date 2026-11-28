@@ -639,6 +639,16 @@ export interface BudgetGroup {
   categories: BudgetCategory[];
 }
 
+/** One category's budgeted and spent (cents, spending positive) for one month; null if the month had no data. */
+export type BudgetHistoryPoint = { budgeted: number; spent: number } | null;
+
+/** Expense categories' budgeted/spent for consecutive months (oldest first), for history columns and charts. */
+export interface BudgetHistoryResponse {
+  months: string[];
+  /** Keyed by category id; each array lines up with `months`. */
+  categories: Record<string, BudgetHistoryPoint[]>;
+}
+
 export interface BudgetMonthResponse {
   month: string; // YYYY-MM
   months: string[];

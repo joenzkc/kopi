@@ -1,8 +1,9 @@
 import { useFinancialValues } from '../lib/valueVisibility';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Repeat } from 'lucide-react';
-import type { ActualAccount, ActualCategory, ActualPayee, BudgetCategory, BudgetMonthResponse } from '@shared/types';
+import { AlertTriangle, ChevronLeft, ChevronRight, PiggyBank, Plus, Repeat } from 'lucide-react';
+import type { ActualAccount, ActualCategory, ActualPayee, BudgetCategory, BudgetHistoryResponse, BudgetMonthResponse } from '@shared/types';
 import { apiFetch } from '../lib/api';
+import { WIDE_QUERY, useMediaQuery } from '../lib/useMediaQuery';
 import { Tile } from '../components/Tile';
 import { BudgetCategorySheet } from '../components/BudgetCategorySheet';
 import { ProgressBar, barColor, spentRatio } from '../components/budget/ProgressBar';
@@ -45,6 +46,11 @@ function monthLabel(month: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString('en-SG', { month: 'long', year: 'numeric' });
 }
 
+function shortMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-SG', { month: 'short' });
+}
+
 function isEmpty(c: BudgetCategory): boolean {
   return c.budgeted === 0 && c.spent === 0 && c.balance === 0;
 }
@@ -61,6 +67,9 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
   const [creating, setCreating] = useState<NewBudgetItem | null>(null);
   // Categories created here stay listed even while empty, so they don't vanish behind "Show empty".
   const [keepVisible, setKeepVisible] = useState<ReadonlySet<string>>(() => new Set());
+  // Wide screens: categories as a table with the selected one in a side panel, plus recent months' history.
+  const wide = useMediaQuery(WIDE_QUERY);
+  const [history, setHistory] = useState<BudgetHistoryResponse | null>(null);
 
   const money = useCallback((cents: number) => formatMoney(cents / 100, baseCurrency), [baseCurrency, formatMoney]);
 
@@ -80,6 +89,22 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
   useEffect(() => {
     void load(month);
   }, [load, month, refreshTrigger, dataVersion]);
+
+  // Refetched whenever the month's data reloads, so edits show up in the history too.
+  useEffect(() => {
+    if (!wide || !data) return;
+    let cancelled = false;
+    apiFetch<BudgetHistoryResponse>(`/api/budget/history?month=${data.month}&count=6`)
+      .then((res) => {
+        if (!cancelled) setHistory(res);
+      })
+      .catch(() => {
+        if (!cancelled) setHistory(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [wide, data]);
 
   const months = data?.months ?? [];
   const canPrev = months.length === 0 || months.includes(shiftMonth(month, -1));
@@ -209,10 +234,8 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
   const overallRatio = data.totalBudgeted > 0 ? Math.min(1, data.totalSpent / data.totalBudgeted) : 0;
   const tb = data.toBudget;
 
-  return (
-    <div className="flex flex-col gap-5" style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 150ms' }}>
-      {monthNav}
-
+  const summaryCard = (
+    <>
       {/* Summary */}
       <Card as="section" variant="flat" className="flex flex-col gap-4 rounded-3xl p-5">
         <div className="flex items-start justify-between gap-3">
@@ -258,7 +281,11 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
           ))}
         </div>
       </Card>
+    </>
+  );
 
+  const overspentBanner = (
+    <>
       {/* Stays put while filtering (only its action flips) so the filter control never jumps. */}
       {data.overspentCount > 0 && (
         <Button
@@ -274,7 +301,11 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
           <span className="shrink-0 text-label">{filter === 'overspent' ? 'Show all' : 'Show'}</span>
         </Button>
       )}
+    </>
+  );
 
+  const filterControl = (
+    <>
       <RadioGroup value={filter} onValueChange={(value) => setFilter(value as Filter)} aria-label="Filter categories" className="grid grid-cols-3 gap-1 rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-surface)' }}>
         {(
           [
@@ -296,13 +327,22 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
           );
         })}
       </RadioGroup>
+    </>
+  );
 
+  const emptyMessage = (
+    <>
       {expenseGroups.length === 0 && (
         <p className="py-6 text-center text-body" style={{ color: 'var(--text-muted)' }}>
           {filter === 'overspent' ? 'Nothing overspent this month.' : filter === 'available' ? 'No categories have money left.' : 'No budget categories this month.'}
         </p>
       )}
+    </>
+  );
 
+  // Phones: each group is a card of category rows that open a sheet.
+  const groupCards = (
+    <>
       {expenseGroups.map((g) => (
         <section key={g.id} className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between px-1">
@@ -362,7 +402,11 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
           </div>
         </section>
       ))}
+    </>
+  );
 
+  const addGroupButton = (
+    <>
       {filter === 'all' && (
         <Button
           type="button"
@@ -374,13 +418,21 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
           Add group
         </Button>
       )}
+    </>
+  );
 
+  const showEmptyToggle = (
+    <>
       {filter === 'all' && emptyTotal > 0 && (
         <Button type="button" onClick={() => setShowEmpty((v) => !v)} className="self-center text-label" style={{ color: 'var(--accent-text)' }}>
           {showEmpty ? 'Hide empty categories' : `Show ${emptyTotal} empty categor${emptyTotal === 1 ? 'y' : 'ies'}`}
         </Button>
       )}
+    </>
+  );
 
+  const incomeSection = (
+    <>
       {filter === 'all' && incomeGroups.length > 0 && (
         <section className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between px-1">
@@ -405,6 +457,186 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
           </div>
         </section>
       )}
+    </>
+  );
+
+  const creatingSheet = (
+    <>
+      {creating && (
+        <NewBudgetItemSheet
+          key={creating.kind === 'category' ? `category:${creating.groupId}` : 'group'}
+          item={creating}
+          groups={groupOptions}
+          onClose={() => setCreating(null)}
+          onCreated={handleCreated}
+        />
+      )}
+    </>
+  );
+
+  if (wide) {
+    const muted = { color: 'var(--text-muted)' };
+    // Ignore history still loading for the previous month: it must end at the month on screen.
+    const hist = history && history.months[history.months.length - 1] === data.month ? history : null;
+    // Columns: category, budgeted, spent, balance, [bar when there's room], last 3 months.
+    const cols =
+      'grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem_5.5rem_3.5rem] items-center gap-3 @min-[40rem]:grid-cols-[minmax(0,1fr)_5.5rem_5.5rem_5.5rem_6rem_3.5rem]';
+    const signed = (cents: number) => (cents < 0 ? `−${money(-cents)}` : money(cents));
+
+    /** Spending in the three months before this one; red where it went over budget. Details are in the panel's chart. */
+    const lastThree = (id: string) => {
+      const end = hist ? hist.months.length - 1 : 0;
+      const idx = [end - 3, end - 2, end - 1].filter((i) => i >= 0);
+      if (!hist || idx.length === 0) return <span />;
+      const pts = idx.map((i) => ({ m: hist.months[i], p: hist.categories[id]?.[i] ?? null }));
+      const scale = Math.max(1, ...pts.map(({ p }) => Math.max(p?.spent ?? 0, p?.budgeted ?? 0)));
+      return (
+        <span
+          aria-hidden="true"
+          title={pts.map(({ m, p }) => `${shortMonth(m)}: ${p ? `${money(p.spent)} of ${money(p.budgeted)}` : 'no data'}`).join(' · ')}
+          className="flex h-5 items-end gap-1"
+        >
+          {pts.map(({ m, p }) => (
+            <span
+              key={m}
+              className="w-1.5 rounded-sm"
+              style={{
+                height: `${p && p.spent > 0 ? Math.max(15, (p.spent / scale) * 100) : 15}%`,
+                backgroundColor: !p || p.spent <= 0 ? 'var(--bg-subtle)' : p.spent > p.budgeted ? 'var(--negative)' : 'var(--text-muted)',
+              }}
+            />
+          ))}
+        </span>
+      );
+    };
+
+    return (
+      <div className="grid grid-cols-[minmax(0,1fr)_23rem] items-start gap-8" style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 150ms' }}>
+        <div className="flex min-w-0 flex-col gap-5">
+          {monthNav}
+          {summaryCard}
+          {overspentBanner}
+          {filterControl}
+          {emptyMessage}
+          {expenseGroups.length > 0 && (
+            <div className="@container flex flex-col gap-2">
+              <div aria-hidden="true" className={`${cols} px-4 text-caption`} style={muted}>
+                <span>Category</span>
+                <span className="text-right">Budgeted</span>
+                <span className="text-right">Spent</span>
+                <span className="text-right">Balance</span>
+                <span className="hidden @min-[40rem]:block" />
+                <span>Last 3 mo</span>
+              </div>
+              <div className="flex flex-col gap-4">
+                {expenseGroups.map((g) => (
+                  <section key={g.id} aria-label={g.name} className="flex flex-col overflow-hidden rounded-3xl" style={{ backgroundColor: 'var(--bg-surface)' }}>
+                    <div className={`${cols} px-4 py-3`}>
+                      <h2 className="truncate text-heading">{g.name}</h2>
+                      <span className="text-right text-label tabular-nums" style={muted}>
+                        {money(g.budgeted)}
+                      </span>
+                      <span className="text-right text-label tabular-nums" style={muted}>
+                        {money(g.spent)}
+                      </span>
+                      <span className="text-right text-label tabular-nums" style={{ color: g.balance < 0 ? 'var(--negative)' : 'var(--text-muted)' }}>
+                        {signed(g.balance)}
+                      </span>
+                    </div>
+                    {g.visible.map((c) => {
+                      const ratio = spentRatio(c.spent, c.balance);
+                      const selected = c.id === editingId;
+                      return (
+                        <Button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setEditingId(c.id)}
+                          aria-current={selected ? 'true' : undefined}
+                          className={`${cols} w-full px-4 py-2.5 text-left transition-colors duration-150 ${selected ? '' : 'hover:bg-[var(--bg-hover)]'}`}
+                          style={{ borderTop: '1px solid var(--border-subtle)', backgroundColor: selected ? 'var(--accent-soft)' : undefined }}
+                        >
+                          <span className="flex min-w-0 items-center gap-2.5">
+                            <Tile colorKey={c.name} label={c.name} size={30} />
+                            <span className="truncate text-body">{c.name}</span>
+                            {c.carryover && <Repeat className="h-3.5 w-3.5 shrink-0" aria-label="Rolls over" style={muted} />}
+                          </span>
+                          <span className="text-right text-body tabular-nums">{money(c.budgeted)}</span>
+                          <span className="text-right text-body tabular-nums">{money(c.spent)}</span>
+                          <span
+                            className="text-right text-body font-semibold tabular-nums"
+                            style={{ color: c.balance < 0 ? 'var(--negative)' : c.balance === 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}
+                          >
+                            {signed(c.balance)}
+                          </span>
+                          <span className="hidden @min-[40rem]:block">
+                            <ProgressBar ratio={ratio} color={barColor(c.balance, ratio)} label={`${c.name}: ${Math.round(ratio * 100)}% spent`} />
+                          </span>
+                          {lastThree(c.id)}
+                        </Button>
+                      );
+                    })}
+                    {filter === 'all' && (
+                      <Button
+                        type="button"
+                        onClick={() => setCreating({ kind: 'category', groupId: g.id })}
+                        className="flex min-h-11 w-full items-center gap-2 px-4 text-left text-label transition-colors duration-150 hover:bg-[var(--bg-hover)]"
+                        style={{ borderTop: '1px solid var(--border-subtle)', color: 'var(--accent-text)' }}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add category
+                      </Button>
+                    )}
+                  </section>
+                ))}
+              </div>
+            </div>
+          )}
+          {addGroupButton}
+          {showEmptyToggle}
+          {incomeSection}
+        </div>
+
+        <div className="sticky top-6">
+          {editing ? (
+            <BudgetCategorySheet
+              inline
+              history={hist ? { months: hist.months, points: hist.months.map((_, i) => hist.categories[editing.category.id]?.[i] ?? null) } : undefined}
+              key={editing.category.id}
+              category={editing.category}
+              groupName={editing.groupName}
+              data={data}
+              monthName={monthLabel(month)}
+              baseCurrency={baseCurrency}
+              accounts={accounts}
+              categories={categories}
+              payees={payees}
+              onClose={closeEditor}
+              onSaved={handleSaved}
+              onTransactionChanged={onChanged}
+              
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-2 rounded-3xl border border-dashed px-6 py-12 text-center" style={{ borderColor: 'var(--border-strong)', color: 'var(--text-muted)' }}>
+              <PiggyBank className="h-6 w-6" />
+              <p className="text-body">No category selected</p>
+            </div>
+          )}
+        </div>
+        {creatingSheet}
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-5" style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 150ms' }}>
+      {monthNav}
+      {summaryCard}
+      {overspentBanner}
+      {filterControl}
+      {emptyMessage}
+      {groupCards}
+      {addGroupButton}
+      {showEmptyToggle}
+      {incomeSection}
 
       <p className="text-center text-caption" style={{ color: 'var(--text-muted)' }}>
         Tap a category to change its budget, move money or rename it. Changes save to Actual.
@@ -427,15 +659,7 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
         />
       )}
 
-      {creating && (
-        <NewBudgetItemSheet
-          key={creating.kind === 'category' ? `category:${creating.groupId}` : 'group'}
-          item={creating}
-          groups={groupOptions}
-          onClose={() => setCreating(null)}
-          onCreated={handleCreated}
-        />
-      )}
+      {creatingSheet}
     </div>
   );
 }

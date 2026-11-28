@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { CalendarClock, House, Landmark, LineChart, ListOrdered, PiggyBank, Plus, RefreshCw, Settings, UserRound } from 'lucide-react';
+import { CalendarClock, Check, ChevronLeft, House, Landmark, LineChart, ListOrdered, Pen, PiggyBank, Plus, RefreshCw, Settings, UserRound } from 'lucide-react';
 import type { ActualAccount, ActualBudget, ActualCategory, ActualCategoryGroup, ActualPayee, Appearance } from '@shared/types';
 import { apiFetch } from './lib/api';
 import { applyAppearance, loadCachedAppearance } from './lib/theme';
@@ -12,6 +12,7 @@ import { AccountsPage } from './pages/AccountsPage';
 import { PortfolioPage } from './pages/PortfolioPage';
 import { SchedulesPage } from './pages/SchedulesPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AccountPage } from './pages/AccountPage';
 import { TransactionFlow, type FlowRequest } from './components/TransactionFlow';
 import { ValueVisibilityButton } from './components/ValueVisibilityButton';
 import { PullToRefresh } from './components/PullToRefresh';
@@ -61,18 +62,20 @@ const TITLES: Record<AppTab, string> = {
   invest: 'Invest',
   bills: 'Bills',
   settings: 'Settings',
+  account: 'Account',
 };
 
-/** Max width of each page's header and content. Home turns into a two-column dashboard on wide
- *  screens (xl), so it may grow; the other pages are still the phone column. */
+/** Max width of each page's header and content. Home and Account get a second column on wide
+ *  screens (xl), so they may grow; the other pages are still the phone column. */
 const PAGE_WIDTH: Record<AppTab, string> = {
   home: 'max-w-3xl xl:max-w-[90rem]',
   activity: 'max-w-3xl',
-  budget: 'max-w-3xl',
+  budget: 'max-w-3xl xl:max-w-[90rem]',
   accounts: 'max-w-3xl',
   invest: 'max-w-3xl',
   bills: 'max-w-3xl',
   settings: 'max-w-3xl',
+  account: 'max-w-3xl xl:max-w-[90rem]',
 };
 
 const VALID_TABS = new Set<AppTab>(['home', 'activity', 'budget', 'accounts', 'invest', 'bills', 'settings']);
@@ -107,6 +110,12 @@ export function App() {
   const [pendingCount, setPendingCount] = useState(0);
   const [flow, setFlow] = useState<FlowRequest | null>(null);
   const [flowKey, setFlowKey] = useState(0);
+  // The account whose history the Account page shows, and the tab its back link returns to.
+  const [account, setAccount] = useState<{ id: string; from: AppTab } | null>(null);
+  // A bill to open on the Bills page (tapped in Home's Coming up); nonce lets the same bill open twice.
+  const [billRequest, setBillRequest] = useState<{ id: string; nonce: number } | null>(null);
+  // Accounts page edit mode; the toggle sits in the page header next to the eye button.
+  const [accountsEditing, setAccountsEditing] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   // When Actual data was last fetched; drives the "Synced 2 min ago" line in the page header.
   const [syncedAt, setSyncedAt] = useState<number | null>(null);
@@ -233,6 +242,7 @@ export function App() {
     }
     scrollByTab.current[prev] = window.scrollY;
     if (t === 'settings') beforeSettings.current = prev;
+    if (prev === 'accounts') setAccountsEditing(false);
     tabRef.current = t;
     setVisited((v) => (v.has(t) ? v : new Set(v).add(t)));
     setTab(t);
@@ -269,6 +279,24 @@ export function App() {
     navigate(tab === 'settings' ? beforeSettings.current : 'settings');
   }, [navigate, tab]);
 
+  const openAccount = useCallback(
+    (id: string) => {
+      const from = tabRef.current;
+      setAccount((prev) => ({ id, from: from === 'account' ? prev?.from ?? 'home' : from }));
+      scrollByTab.current.account = 0;
+      navigate('account');
+    },
+    [navigate],
+  );
+
+  const openBill = useCallback(
+    (id: string) => {
+      setBillRequest({ id, nonce: Date.now() });
+      navigate('bills');
+    },
+    [navigate],
+  );
+
   const openFlow = useCallback((req: FlowRequest) => {
     setFlowKey((k) => k + 1);
     setFlow(req);
@@ -288,7 +316,10 @@ export function App() {
 
   const showRefresh = tab === 'home' || tab === 'invest' || tab === 'budget';
   // Home's title is the budget it shows (the date is already on the phone); other tabs use their name.
-  const heading = tab === 'home' ? meta.activeBudgetName || 'Kopi' : TITLES[tab];
+  const shownAccount = account ? meta.accounts.find((a) => a.id === account.id) : undefined;
+  const heading = tab === 'home' ? meta.activeBudgetName || 'Kopi' : tab === 'account' ? shownAccount?.name || TITLES.account : TITLES[tab];
+  // The Account page isn't in the nav; keep the tab it was opened from highlighted.
+  const navTab = tab === 'account' && account ? account.from : tab;
   const offline = syncedAt !== null && !meta.connected;
   const syncLine = syncedAt === null ? 'Syncing…' : offline ? 'Actual offline' : `Synced ${sinceLabel(now - syncedAt)}`;
 
@@ -300,9 +331,14 @@ export function App() {
           <img src="/icon.svg" alt="" className="h-9 w-9 rounded-xl" />
           <div>
             <div className="text-heading">kopi</div>
-            <div className="flex items-center gap-1.5 text-caption" style={{ color: 'var(--text-muted)' }}>
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: meta.connected ? 'var(--positive)' : 'var(--warning)' }} />
-              {meta.connected ? 'Actual synced' : 'Actual offline'}
+            {/* Desktop's only sync status; the per-page line in the header is for phones. */}
+            <div className="flex items-center gap-1.5 text-caption tabular-nums" style={{ color: offline ? 'var(--warning)' : 'var(--text-muted)' }} aria-live="polite">
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: offline ? 'var(--warning)' : syncedAt === null ? 'var(--text-muted)' : 'var(--positive)' }}
+              />
+              {syncLine}
             </div>
           </div>
         </div>
@@ -313,7 +349,7 @@ export function App() {
         <nav aria-label="Primary" className="flex flex-1 flex-col gap-1">
           {SIDEBAR_NAV.map((item) => {
             const Icon = item.icon;
-            const active = tab === item.id;
+            const active = navTab === item.id;
             return (
               <Button
                 key={item.id}
@@ -344,19 +380,32 @@ export function App() {
         <header className={`mx-auto flex w-full ${PAGE_WIDTH[tab]} items-end justify-between gap-3 px-5 pb-2 safe-pt md:px-10 md:pt-8`}>
           <div className="min-w-0">
             {/* Hidden (not removed) on Settings so every page's title sits at the same height. */}
-            <p
-              aria-hidden={tab === 'settings' || undefined}
-              className={`flex items-center gap-1.5 text-caption tabular-nums ${tab === 'settings' ? 'invisible' : ''}`}
-              style={{ color: offline ? 'var(--warning)' : 'var(--text-muted)' }}
-              aria-live="polite"
-            >
-              <span
-                aria-hidden="true"
-                className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: offline ? 'var(--warning)' : syncedAt === null ? 'var(--text-muted)' : 'var(--positive)' }}
-              />
-              {syncLine}
-            </p>
+            {tab === 'account' && account ? (
+              // Back link in the sync line's place; negative margins keep a 44px target without moving the title.
+              <Button
+                type="button"
+                onClick={() => navigate(account.from)}
+                className="press -my-3.5 -ml-1 flex min-h-11 items-center gap-0.5 pr-2 text-caption font-semibold"
+                style={{ color: 'var(--accent-text)' }}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                {account.from === 'home' && meta.activeBudgetName ? meta.activeBudgetName : TITLES[account.from]}
+              </Button>
+            ) : (
+              <p
+                aria-hidden={tab === 'settings' || undefined}
+                className={`flex items-center gap-1.5 text-caption tabular-nums md:hidden ${tab === 'settings' ? 'invisible' : ''}`}
+                style={{ color: offline ? 'var(--warning)' : 'var(--text-muted)' }}
+                aria-live="polite"
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: offline ? 'var(--warning)' : syncedAt === null ? 'var(--text-muted)' : 'var(--positive)' }}
+                />
+                {syncLine}
+              </p>
+            )}
             <h1 className="truncate text-title">{heading}</h1>
           </div>
           <div className="flex items-center gap-2">
@@ -370,6 +419,29 @@ export function App() {
               >
                 <RefreshCw className="h-[18px] w-[18px]" />
               </Button>
+            )}
+            {tab === 'accounts' && (
+              <Toggle
+                pressed={accountsEditing}
+                onPressedChange={setAccountsEditing}
+                aria-label={accountsEditing ? 'Done editing accounts' : 'Edit accounts'}
+                title={accountsEditing ? 'Done' : 'Edit accounts'}
+                className="press relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors duration-200 motion-reduce:transition-none"
+                style={{
+                  backgroundColor: accountsEditing ? 'var(--accent)' : 'var(--bg-surface)',
+                  color: accountsEditing ? 'var(--accent-fg)' : 'var(--text-primary)',
+                }}
+              >
+                {/* Pen and check crossfade as edit mode toggles. */}
+                <Pen
+                  aria-hidden="true"
+                  className={`absolute h-[18px] w-[18px] transition-[opacity,scale] duration-200 ease-[var(--ease-out)] motion-reduce:transition-none ${accountsEditing ? 'scale-50 opacity-0' : ''}`}
+                />
+                <Check
+                  aria-hidden="true"
+                  className={`absolute h-[18px] w-[18px] transition-[opacity,scale] duration-200 ease-[var(--ease-out)] motion-reduce:transition-none ${accountsEditing ? '' : 'scale-50 opacity-0'}`}
+                />
+              </Toggle>
             )}
             <ValueVisibilityButton />
             <Toggle
@@ -386,7 +458,19 @@ export function App() {
 
         <main className={`mx-auto w-full ${PAGE_WIDTH[tab]} flex-1 px-5 pb-36 pt-3 md:px-10 md:pb-12`}>
           <TabPanel id="home" active={tab} visited={visited}>
-            <HomePage onNavigate={navigate} refreshTrigger={refreshTrigger} dataVersion={dataVersion} pendingCount={pendingCount} hiddenAccountIds={hiddenHomeAccounts} />
+            <HomePage
+              onNavigate={navigate}
+              onOpenAccount={openAccount}
+              onOpenBill={openBill}
+              accounts={meta.accounts}
+              categories={meta.categories}
+              payees={meta.payees}
+              onChanged={handleChanged}
+              refreshTrigger={refreshTrigger}
+              dataVersion={dataVersion}
+              pendingCount={pendingCount}
+              hiddenAccountIds={hiddenHomeAccounts}
+            />
           </TabPanel>
           <TabPanel id="activity" active={tab} visited={visited}>
             <ActivityPage
@@ -411,6 +495,8 @@ export function App() {
               dataVersion={dataVersion}
               hiddenHomeAccounts={hiddenHomeAccounts}
               onToggleHome={setAccountOnHome}
+              onOpenAccount={openAccount}
+              editing={accountsEditing}
               onChanged={handleChanged}
               onToast={showToast}
             />
@@ -419,7 +505,7 @@ export function App() {
             <PortfolioPage accounts={meta.accounts} onToast={showToast} refreshTrigger={refreshTrigger} />
           </TabPanel>
           <TabPanel id="bills" active={tab} visited={visited}>
-            <SchedulesPage accounts={meta.accounts} payees={meta.payees} baseCurrency={baseCurrency} onToast={showToast} />
+            <SchedulesPage accounts={meta.accounts} payees={meta.payees} baseCurrency={baseCurrency} onToast={showToast} openRequest={billRequest} />
           </TabPanel>
           <TabPanel id="settings" active={tab} visited={visited}>
             <SettingsPage
@@ -433,6 +519,24 @@ export function App() {
               onLoggedOut={() => setAuth((prev) => (prev ? { ...prev, authenticated: false, user: null } : null))}
               onToast={showToast}
             />
+          </TabPanel>
+          <TabPanel id="account" active={tab} visited={visited}>
+            {shownAccount ? (
+              <AccountPage
+                key={shownAccount.id}
+                account={shownAccount}
+                accounts={meta.accounts}
+                categories={meta.categories}
+                payees={meta.payees}
+                baseCurrency={baseCurrency}
+                dataVersion={dataVersion}
+                onChanged={handleChanged}
+              />
+            ) : (
+              <p className="py-6 text-center text-body" style={{ color: 'var(--text-muted)' }}>
+                {syncedAt === null ? 'Loading…' : 'This account is closed or no longer in Actual.'}
+              </p>
+            )}
           </TabPanel>
         </main>
       </PullToRefresh>
@@ -465,7 +569,7 @@ export function App() {
             );
           }
           const Icon = item.icon;
-          const active = tab === item.id;
+          const active = navTab === item.id;
           return (
             <Button
               key={item.id}
