@@ -7,6 +7,16 @@ function monthKey(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/** Colour for one month of history, shared by the panel chart and the Budget table's Last 3 mo column. */
+export function historyBarColor(p: BudgetHistoryPoint): string {
+  if (!p) return 'var(--bg-subtle)';
+  // Ended overspent, as Actual counts it (carry-in included).
+  if (p.balance < 0) return 'var(--negative)';
+  // Something happened and it didn't end overspent: spending, a refund, or money set aside with nothing spent.
+  if (p.spent !== 0 || p.budgeted !== 0) return 'var(--accent)';
+  return 'var(--bg-subtle)';
+}
+
 function shortMonth(month: string): string {
   const [y, m] = month.split('-').map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString('en-SG', { month: 'short' });
@@ -35,15 +45,20 @@ export function CategoryHistory({ months, points, baseCurrency }: { months: stri
       >
         {months.map((m, i) => {
           const p = points[i];
-          const over = p !== null && p.balance < 0;
           return (
             <div key={m} className="flex h-full flex-1 flex-col items-center gap-1">
               <div className="relative w-full flex-1">
                 {p && (
                   <>
+                    {/* A month with nothing spent still gets a stub, so money set aside shows as lime. */}
                     <span
                       className="absolute inset-x-0 bottom-0 rounded-md"
-                      style={{ height: `${Math.max(2, (p.spent / scale) * 100)}%`, backgroundColor: over ? 'var(--negative)' : 'var(--accent)', opacity: m === thisMonth ? 0.55 : 1 }}
+                      style={{
+                        height: `${Math.max(0, (p.spent / scale) * 100)}%`,
+                        minHeight: 4,
+                        backgroundColor: historyBarColor(p),
+                        opacity: m === thisMonth ? 0.55 : 1,
+                      }}
                     />
                     {p.budgeted > 0 && (
                       <span className="absolute -inset-x-0.5 h-0.5 rounded-full" style={{ bottom: `${(p.budgeted / scale) * 100}%`, backgroundColor: 'var(--text-secondary)' }} />

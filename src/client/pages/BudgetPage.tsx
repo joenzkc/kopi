@@ -8,6 +8,7 @@ import { Tile } from '../components/Tile';
 import { BudgetCategorySheet } from '../components/BudgetCategorySheet';
 import { ProgressBar, barColor, spentRatio } from '../components/budget/ProgressBar';
 import { NewBudgetItemSheet, type NewBudgetItem } from '../components/budget/NewBudgetItemSheet';
+import { historyBarColor } from '../components/budget/CategoryHistory';
 import { Button } from '@client/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@client/components/ui/radio-group';
 import { Badge } from '@client/components/ui/badge';
@@ -502,7 +503,8 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
               className="w-1.5 rounded-sm"
               style={{
                 height: `${p && p.spent > 0 ? Math.max(15, (p.spent / scale) * 100) : 15}%`,
-                backgroundColor: !p || p.spent <= 0 ? 'var(--bg-subtle)' : p.balance < 0 ? 'var(--negative)' : 'var(--text-muted)',
+                // Same rule as the panel's chart; the row's amber "nearly out" only means something for this month.
+                backgroundColor: historyBarColor(p),
               }}
             />
           ))}
