@@ -483,7 +483,7 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
       'grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem_5.5rem_3.5rem] items-center gap-3 @min-[40rem]:grid-cols-[minmax(0,1fr)_5.5rem_5.5rem_5.5rem_6rem_3.5rem]';
     const signed = (cents: number) => (cents < 0 ? `−${money(-cents)}` : money(cents));
 
-    /** Spending in the three months before this one; red where it went over budget. Details are in the panel's chart. */
+    /** Spending in the three months before this one; red where the month ended overspent. Details are in the panel's chart. */
     const lastThree = (id: string) => {
       const end = hist ? hist.months.length - 1 : 0;
       const idx = [end - 3, end - 2, end - 1].filter((i) => i >= 0);
@@ -493,7 +493,7 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
       return (
         <span
           aria-hidden="true"
-          title={pts.map(({ m, p }) => `${shortMonth(m)}: ${p ? `${money(p.spent)} of ${money(p.budgeted)}` : 'no data'}`).join(' · ')}
+          title={pts.map(({ m, p }) => `${shortMonth(m)}: ${p ? `${money(p.spent)} of ${money(p.budgeted)}${p.balance < 0 ? ', overspent' : ''}` : 'no data'}`).join(' · ')}
           className="flex h-5 items-end gap-1"
         >
           {pts.map(({ m, p }) => (
@@ -502,7 +502,7 @@ export function BudgetPage({ baseCurrency, accounts, categories, payees, onChang
               className="w-1.5 rounded-sm"
               style={{
                 height: `${p && p.spent > 0 ? Math.max(15, (p.spent / scale) * 100) : 15}%`,
-                backgroundColor: !p || p.spent <= 0 ? 'var(--bg-subtle)' : p.spent > p.budgeted ? 'var(--negative)' : 'var(--text-muted)',
+                backgroundColor: !p || p.spent <= 0 ? 'var(--bg-subtle)' : p.balance < 0 ? 'var(--negative)' : 'var(--text-muted)',
               }}
             />
           ))}

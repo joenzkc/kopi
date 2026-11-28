@@ -12,7 +12,8 @@ function shortMonth(month: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString('en-SG', { month: 'short' });
 }
 
-/** Bars of spending per month, with a tick at what was budgeted; red where spending went over. */
+/** Bars of spending per month, with a tick at what was budgeted. Red only where the month ended overspent (negative
+ *  balance, as Actual counts it): spending past the month's budget that earlier savings covered isn't overspending. */
 export function CategoryHistory({ months, points, baseCurrency }: { months: string[]; points: BudgetHistoryPoint[]; baseCurrency: string }) {
   const { formatMoney } = useFinancialValues();
   const money = (cents: number) => formatMoney(cents / 100, baseCurrency);
@@ -29,12 +30,12 @@ export function CategoryHistory({ months, points, baseCurrency }: { months: stri
       </h3>
       <div
         role="img"
-        aria-label={months.map((m, i) => `${shortMonth(m)} ${points[i] ? `${money(points[i]!.spent)} spent of ${money(points[i]!.budgeted)}` : 'no data'}`).join(', ')}
+        aria-label={months.map((m, i) => `${shortMonth(m)} ${points[i] ? `${money(points[i]!.spent)} spent of ${money(points[i]!.budgeted)}${points[i]!.balance < 0 ? ', overspent' : ''}` : 'no data'}`).join(', ')}
         className="flex h-24 items-end gap-2"
       >
         {months.map((m, i) => {
           const p = points[i];
-          const over = p !== null && p.spent > p.budgeted;
+          const over = p !== null && p.balance < 0;
           return (
             <div key={m} className="flex h-full flex-1 flex-col items-center gap-1">
               <div className="relative w-full flex-1">

@@ -639,8 +639,9 @@ export interface BudgetGroup {
   categories: BudgetCategory[];
 }
 
-/** One category's budgeted and spent (cents, spending positive) for one month; null if the month had no data. */
-export type BudgetHistoryPoint = { budgeted: number; spent: number } | null;
+/** One category's month (cents, spending positive); null if the month had no data. `balance` is what was left at
+ *  the end, carry-in included: negative means overspent, the same rule Actual uses. */
+export type BudgetHistoryPoint = { budgeted: number; spent: number; balance: number } | null;
 
 /** Expense categories' budgeted/spent for consecutive months (oldest first), for history columns and charts. */
 export interface BudgetHistoryResponse {

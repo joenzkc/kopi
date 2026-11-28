@@ -530,7 +530,7 @@ overviewRoutes.get('/budget/history', requireSession, async (c) => {
       for (const g of normalizeBudgetMonth(raw, available, months[i]).groups) {
         if (g.isIncome) continue;
         for (const cat of g.categories) {
-          (categories[cat.id] ??= Array.from({ length: months.length }, () => null))[i] = { budgeted: cat.budgeted, spent: cat.spent };
+          (categories[cat.id] ??= Array.from({ length: months.length }, () => null))[i] = { budgeted: cat.budgeted, spent: cat.spent, balance: cat.balance };
         }
       }
     });
